@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wedding Photo Selection | DM Films & Photography</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/client.css">
+</head>
+<body>
+
+  <!-- Site Header -->
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="nav-container">
+      <a href="index.html" class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <div>
+          <div class="brand-title" id="client-studio-brand">DM FILMS</div>
+          <div class="brand-subtitle">Client Portal</div>
+        </div>
+      </a>
+
+      <!-- Event Name & Date moved up into Top Header -->
+      <div style="display:flex;align-items:center;gap:1.25rem;">
+        <div style="text-align:right;">
+          <div class="gold-gradient-text" id="client-event-title" style="font-family:var(--font-serif);font-weight:700;font-size:1.15rem;letter-spacing:0.06em;line-height:1.2;">WEDDING</div>
+          <div id="client-event-date" style="font-size:0.75rem;color:var(--text-gold);letter-spacing:0.1em;text-transform:uppercase;font-weight:500;">EVENT DATE: 2025-10-16</div>
+        </div>
+        <span class="badge badge-gold" id="client-names" style="font-size:0.85rem;padding:0.4rem 0.9rem;">Loading...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Photo Selection & Filter Controls (Fixed on Scroll) -->
+  <div class="sticky-controls-wrapper">
+    <div class="selection-bar-container" style="margin-bottom:0.75rem;">
+      <div class="selection-metric">
+        <div class="selection-counter">
+          Selected: <span id="selected-count-display">0</span> / <span id="selection-max-limit">350</span>
+        </div>
+        <div class="selection-progress-wrap">
+          <div class="selection-progress-fill" id="selection-progress-fill"></div>
+        </div>
+      </div>
+      <div class="selection-actions">
+        <button class="btn btn-primary" id="submit-selection-btn" onclick="openSubmitModal()" disabled>
+          Submit Selection (0)
+        </button>
+      </div>
+    </div>
+
+    <!-- Dedicated Folder Tabs Row on Top -->
+    <div class="folder-tabs-row" id="folder-tabs-row">
+      <!-- Dynamically rendered folder tabs -->
+    </div>
+
+    <!-- Filter & Search Controls Row -->
+    <div class="gallery-controls-row">
+      <div class="filter-pills" id="category-pills">
+        <button class="filter-pill active" onclick="setStatusFilter('all')">
+          <span>📸 All Photos</span> <span class="pill-badge" id="pill-count-all">0</span>
+        </button>
+        <button class="filter-pill" onclick="setStatusFilter('favorites')">
+          <span>❤️ Favorites</span> <span class="pill-badge" id="pill-count-favorites">0</span>
+        </button>
+        <button class="filter-pill" onclick="setStatusFilter('selected')">
+          <span>⭐ Selected</span> <span class="pill-badge" id="pill-count-selected">0</span>
+        </button>
+        <button class="filter-pill" onclick="setStatusFilter('unselected')">
+          <span>⚪ Unselected</span> <span class="pill-badge" id="pill-count-unselected">0</span>
+        </button>
+      </div>
+      <div class="gallery-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="gallery-search-input" class="form-control" placeholder="Search by photo name or #...">
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Portal Content -->
+  <main id="client-main-view" style="padding-top:1.5rem;">
+    <!-- Selection Locked Banner (if already submitted) -->
+    <div id="locked-selection-banner" class="locked-banner" style="display:none;max-width:1400px;margin:0 auto 1.5rem;padding:0 1.5rem;"></div>
+
+    <!-- Gallery Grid -->
+    <div class="gallery-container">
+      <div class="gallery-grid" id="client-gallery-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- STUDIO LIGHTBOX FULLSCREEN VIEWER (With Zoom, Drag, Heart & Comments) -->
+  <div class="lightbox-modal" id="lightbox-modal">
+    <div class="lightbox-header">
+      <div class="lightbox-info">
+        <span id="lightbox-photo-number" class="badge badge-gold">#001</span>
+        <span id="lightbox-photo-title" style="font-weight:500;font-size:0.95rem;">Photo Preview</span>
+        <span id="lightbox-zoom-badge" class="badge" style="background:rgba(212,175,55,0.15);color:var(--gold-400);border:1px solid var(--border-gold);font-size:0.75rem;">🔍 100% (Scroll wheel to Zoom &bull; Drag to Pan)</span>
+      </div>
+      <button class="modal-close" onclick="closeLightbox()">&times;</button>
+    </div>
+
+    <div class="lightbox-stage">
+      <button class="lightbox-nav-btn lightbox-prev" onclick="prevLightboxPhoto()" title="Previous Photo (Left Arrow)">&#10094;</button>
+      <div class="lightbox-image-container" id="lightbox-image-stage">
+        <img id="lightbox-image" class="lightbox-img" src="" alt="Full preview" draggable="false">
+      </div>
+      <button class="lightbox-nav-btn lightbox-next" onclick="nextLightboxPhoto()" title="Next Photo (Right Arrow)">&#10095;</button>
+    </div>
+
+    <div class="lightbox-footer" style="flex-direction:column;gap:0.75rem;padding:0.85rem 1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:1rem;flex-wrap:wrap;">
+        <span style="font-size:0.8rem;color:var(--text-muted);">Double-click image to quick zoom (1x ↔ 2.5x) &bull; Mouse wheel to zoom in/out</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <button id="lightbox-toggle-heart" class="btn btn-outline-pink" onclick="toggleCurrentLightboxFavorite()" style="border-color:#ec4899;color:#f472b6;">
+            🤍 Special Favorite
+          </button>
+          <button id="lightbox-toggle-select" class="btn btn-outline-gold" onclick="toggleCurrentLightboxPhoto()">
+            + Select This Photo
+          </button>
+        </div>
+      </div>
+      
+      <!-- Photo Custom Instructions & Comment Input -->
+      <div style="width:100%;display:flex;align-items:center;gap:0.75rem;background:rgba(0,0,0,0.3);padding:0.4rem 0.75rem;border-radius:var(--radius-md);border:1px solid var(--border-subtle);">
+        <span style="font-size:1.1rem;">💬</span>
+        <input type="text" id="lightbox-photo-comment" class="form-control" style="border:none;background:transparent;box-shadow:none;font-size:0.85rem;" placeholder="Add special note/instructions for this photo (e.g. Smooth skin, living room canvas frame, edit background...)" oninput="saveCurrentLightboxComment(this.value)" onkeydown="event.stopPropagation()">
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMISSION CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="submit-confirm-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="gold-gradient-text">Submit Your Photo Selection</h3>
+        <button class="modal-close" onclick="closeModal('submit-confirm-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:1.05rem;margin-bottom:1.25rem;">
+          You have chosen <strong style="color:var(--gold-400);" id="confirm-selected-count">0</strong> photos for your final wedding album.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Special instructions / notes for the studio (Optional):</label>
+          <textarea id="selection-client-notes" class="form-control" rows="3" placeholder="e.g. Please put photo #001 on the main cover, and lighten the reception shots."></textarea>
+        </div>
+        <p style="color:var(--text-muted);font-size:0.8rem;">
+          Once submitted, your final choice will be instantly sent and locked for album design.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('submit-confirm-modal')">Review More</button>
+        <button class="btn btn-primary" id="btn-confirm-submit" onclick="confirmSubmitSelection()">Confirm & Send to Studio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SECURE PIN GATE (ROYAL LUXURY GOLDEN THEME) -->
+  <div class="modal-overlay" id="pin-gate-modal" style="display:none;background:rgba(3,5,10,0.96);backdrop-filter:blur(18px);z-index:99999;align-items:center;justify-content:center;">
+    <div class="modal-container" style="max-width:420px;width:92%;background:linear-gradient(180deg, #0f172a 0%, #0b0f19 100%);border:1px solid rgba(212,175,55,0.35);border-radius:24px;padding:2.5rem 1.85rem;text-align:center;box-shadow:0 25px 60px -10px rgba(0,0,0,0.95), 0 0 35px rgba(212,175,55,0.18);">
+      
+      <!-- Shield Icon Container with Gold Glow -->
+      <div style="width:76px;height:76px;background:rgba(212,175,55,0.12);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;border:1px solid rgba(212,175,55,0.45);box-shadow:0 0 25px rgba(212,175,55,0.35);">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--gold-400)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+
+      <h2 style="font-size:1.75rem;font-weight:800;font-family:var(--font-heading, 'Cinzel', serif);background:linear-gradient(135deg, #ffffff 0%, #fde047 50%, #d4af37 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:0.6rem;letter-spacing:0.05em;text-transform:uppercase;">
+        ENTER PIN
+      </h2>
+      <p style="font-size:0.9rem;color:#cbd5e1;line-height:1.55;margin-bottom:1.85rem;max-width:300px;margin-left:auto;margin-right:auto;" id="pin-gate-subtitle">
+        Please enter the unique secure PIN provided by your studio.
+      </p>
+
+      <form id="pin-gate-form" onsubmit="verifyClientPin(event)">
+        <div style="margin-bottom:1.6rem;position:relative;">
+          <input type="password" id="client-pin-input" class="form-control" placeholder="••••" maxlength="12" autocomplete="off" style="height:58px;font-size:1.5rem;letter-spacing:0.35em;text-align:center;background:rgba(0,0,0,0.5);border:1.5px solid rgba(212,175,55,0.45);border-radius:14px;color:var(--gold-300);font-weight:700;outline:none;box-shadow:inset 0 2px 10px rgba(0,0,0,0.6);" required autofocus>
+          <div id="pin-error-msg" style="color:#ef4444;font-size:0.83rem;margin-top:0.65rem;display:none;font-weight:600;"></div>
+        </div>
+
+        <button type="submit" id="btn-unlock-gallery" class="btn" style="width:100%;height:54px;background:linear-gradient(135deg, #fde047 0%, #d4af37 50%, #b8860b 100%);color:#000000;font-size:1.1rem;font-weight:800;border:none;border-radius:14px;box-shadow:0 10px 30px -5px rgba(212,175,55,0.5);cursor:pointer;transition:all 0.2s ease;letter-spacing:0.02em;">
+          ✨ Unlock Secure Gallery
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/client.js"></script>
+</body>
+</html>

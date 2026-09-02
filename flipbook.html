@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive 3D Virtual Wedding Album | DM Studio Flipbook</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --gold-100: #fef08a;
+      --gold-300: #fde047;
+      --gold-400: #facc15;
+      --gold-500: #eab308;
+      --gold-600: #d4af37;
+      --gold-700: #b8860b;
+      --bg-dark: #050810;
+    }
+
+    body {
+      min-height: 100vh;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 50% 30%, rgba(212, 175, 55, 0.14) 0%, rgba(5, 8, 16, 0.92) 65%, #020408 100%);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #ffffff;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Header */
+    .fb-header {
+      height: 68px;
+      padding: 0 1.5rem;
+      background: rgba(9, 13, 22, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+    }
+
+    .fb-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .fb-brand-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 0%, #fde047 50%, #d4af37 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 0.04em;
+    }
+
+    .fb-brand-subtitle {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .fb-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .fb-btn {
+      height: 38px;
+      padding: 0 0.9rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 10px;
+      color: var(--gold-300);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+
+    .fb-btn:hover {
+      background: rgba(212, 175, 55, 0.2);
+      color: #ffffff;
+      border-color: rgba(212, 175, 55, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .fb-btn-music {
+      background: rgba(212, 175, 55, 0.15);
+      border: 1.5px solid var(--gold-400);
+      color: #fde047;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
+    }
+
+    .fb-btn-gold {
+      background: linear-gradient(135deg, #fde047 0%, #d4af37 50%, #b8860b 100%);
+      color: #000000;
+      font-weight: 800;
+      border: none;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+    }
+
+    .fb-btn-gold:hover {
+      filter: brightness(1.12);
+      color: #000000;
+    }
+
+    /* Main Stage */
+    .fb-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 0.8rem;
+      perspective: 3000px;
+    }
+
+    .book-wrap {
+      position: relative;
+      width: 94vw;
+      height: calc(100vh - 165px);
+      max-width: 1300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 3000px;
+    }
+
+    /* Dynamic 3D Album Stage: 100% Original Photo Aspect Ratio Fit (NO STRETCH) */
+    .album-3d-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 3000px;
+      transform-style: preserve-3d;
+    }
+
+    /* The Master Photobook Spread Base (Two 12x18 Physical Pages + Center Spine) */
+    .spread-base {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 8px;
+      overflow: visible;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.95), 0 0 35px rgba(212, 175, 55, 0.2);
+      background: transparent;
+      transform-style: preserve-3d;
+      perspective: 3000px;
+      transition: transform 0.75s cubic-bezier(0.645, 0.045, 0.355, 1), width 0.35s ease, height 0.35s ease;
+    }
+
+    /* Front Cover Mode: Right 12x18 Cover is centered directly in the middle of the screen */
+    .spread-base.front-cover-mode {
+      transform: translateX(-25%);
+    }
+
+    /* Open Spread Mode: Full 12x36 Double-page is centered */
+    .spread-base.spread-mode {
+      transform: translateX(0);
+    }
+
+    /* Back Cover Mode: Left 12x18 Back Cover is centered directly in the middle of the screen */
+    .spread-base.back-cover-mode {
+      transform: translateX(25%);
+    }
+
+    /* Left & Right Physical Pages (12x18) */
+    .page-side {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      height: 100%;
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: transparent;
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      z-index: 10;
+    }
+
+    .page-side.left {
+      left: 0;
+      width: calc(50% + 1px);
+      border-radius: 8px 0 0 8px;
+    }
+
+    .page-side.right {
+      left: 50%;
+      width: 50%;
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* Page Inner Art */
+    .page-inner-art {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background-repeat: no-repeat;
+      background-color: transparent;
+      outline: none;
+      border: none;
+    }
+
+    .spread-mode .page-side.left .page-inner-art {
+      background-position: left center;
+      background-size: 200.1% 100%;
+      box-shadow: none;
+    }
+
+    .spread-mode .page-side.right .page-inner-art {
+      background-position: right center;
+      background-size: 200.1% 100%;
+      box-shadow: none;
+    }
+
+    /* Center Spine Crease Line - Completely Hidden */
+    .center-spine {
+      display: none !important;
+    }
+
+    /* 3D Physical Turning Page Leaf (Hinged strictly at the Center Spine) */
+    .turning-leaf {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: calc(50% + 1px);
+      height: 100%;
+      transform-style: preserve-3d;
+      z-index: 50;
+      display: none;
+      pointer-events: none;
+      will-change: transform;
+      background-color: transparent;
+      outline: none;
+      border: none;
+    }
+
+    /* Forward Next Turn: Hinge at LEFT edge (Center Spine), rotates 0deg -> -180deg */
+    .turning-leaf.flip-next {
+      display: block;
+      left: calc(50% - 0.5px);
+      transform-origin: left center;
+      animation: flipNextPhys 0.75s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
+    }
+
+    /* Backward Prev Turn: Hinge at RIGHT edge (Center Spine), rotates 0deg -> +180deg */
+    .turning-leaf.flip-prev {
+      display: block;
+      left: 0;
+      transform-origin: right center;
+      animation: flipPrevPhys 0.75s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
+    }
+
+    @keyframes flipNextPhys {
+      0% {
+        transform: rotateY(0deg);
+      }
+      50% {
+        transform: rotateY(-90deg) scale(1.012);
+      }
+      100% {
+        transform: rotateY(-180deg);
+      }
+    }
+
+    @keyframes flipPrevPhys {
+      0% {
+        transform: rotateY(0deg);
+      }
+      50% {
+        transform: rotateY(90deg) scale(1.012);
+      }
+      100% {
+        transform: rotateY(180deg);
+      }
+    }
+
+    /* Turning Page Physical Faces (Front & Back) */
+    .leaf-face {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      overflow: hidden;
+      background-repeat: no-repeat;
+      background-color: transparent;
+      transform-style: preserve-3d;
+      border: none;
+      outline: none;
+    }
+
+    .leaf-face.front {
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .leaf-face.back {
+      transform: rotateY(180deg);
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    @keyframes floatParticle {
+      0% { transform: translateY(0px) scale(1); opacity: 0.2; }
+      50% { transform: translateY(-35px) scale(1.4); opacity: 0.7; }
+      100% { transform: translateY(0px) scale(1); opacity: 0.2; }
+    }
+
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(12, 16, 26, 0.88);
+      border: 1px solid rgba(212, 175, 55, 0.5);
+      color: var(--gold-300);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 90;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.85);
+      transition: all 0.2s ease;
+    }
+
+    .nav-arrow.prev { left: 1.2rem; }
+    .nav-arrow.next { right: 1.2rem; }
+
+    .nav-arrow:hover {
+      background: rgba(212, 175, 55, 0.3);
+      color: #ffffff;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .fb-controls {
+      height: 65px;
+      padding: 0 1.5rem;
+      background: rgba(9, 13, 22, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(212, 175, 55, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+    }
+
+    .page-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .page-indicator input {
+      width: 55px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 6px;
+      color: var(--gold-300);
+      font-weight: 700;
+      text-align: center;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    /* Thumbnails Drawer */
+    .thumb-drawer {
+      position: fixed;
+      bottom: 65px;
+      left: 0;
+      right: 0;
+      height: 115px;
+      background: rgba(9, 13, 22, 0.96);
+      border-top: 1px solid rgba(212, 175, 55, 0.3);
+      backdrop-filter: blur(15px);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0 1.5rem;
+      overflow-x: auto;
+      z-index: 95;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .thumb-drawer.active {
+      transform: translateY(0);
+    }
+
+    .thumb-item {
+      width: 120px;
+      height: 80px;
+      flex-shrink: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: all 0.2s ease;
+      background: #000;
+    }
+
+    .thumb-item.active, .thumb-item:hover {
+      border-color: #fde047;
+      opacity: 1;
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(253, 224, 71, 0.4);
+    }
+
+    .thumb-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .book-wrap { height: calc(100vh - 180px); }
+      .fb-brand-subtitle { display: none; }
+      .nav-arrow.prev { left: 0.4rem; }
+      .nav-arrow.next { right: 0.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="fb-header">
+    <a href="javascript:void(0)" class="fb-brand">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="1.8">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+      <div>
+        <div class="fb-brand-title" id="album-title">LOADING ALBUM...</div>
+        <div class="fb-brand-subtitle" id="album-subtitle">Interactive 3D Virtual Flipbook</div>
+      </div>
+    </a>
+
+    <div class="fb-actions">
+      <!-- Music Play / Pause Button in Header -->
+      <button class="fb-btn fb-btn-music" id="btn-music" onclick="toggleBgMusic()" title="Play / Pause Background Music">
+        🎵 Music: ON
+      </button>
+
+      <button class="fb-btn" onclick="toggleThumbnails()" title="Toggle Thumbnail Tray">
+        🖼️ Thumbnails
+      </button>
+      <button class="fb-btn" id="btn-sound" onclick="toggleSound()" title="Toggle Sound Effect">
+        🔊 Sound: ON
+      </button>
+      <button class="fb-btn" onclick="toggleFullscreen()" title="Fullscreen Mode">
+        ⛶ Fullscreen
+      </button>
+      <button class="fb-btn fb-btn-gold" onclick="shareWhatsApp()" title="Share Album on WhatsApp">
+        💬 Share Album
+      </button>
+    </div>
+  </header>
+
+  <!-- Stage -->
+  <main class="fb-stage" id="fb-stage-main">
+    
+    <!-- Background Animated Particles Container -->
+    <div id="particles-layer" style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;overflow:hidden;z-index:0;"></div>
+
+    <!-- Prev Arrow -->
+    <button class="nav-arrow prev" onclick="prevSpread()" title="Previous Page">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+
+    <!-- 3D Photobook Container -->
+    <div class="book-wrap" id="book-wrap">
+      <div class="album-3d-stage" id="album-stage">
+        
+        <!-- Base Photobook Spread (Left 12x18 + Right 12x18 + Center Spine) -->
+        <div class="spread-base front-cover-mode" id="spread-base">
+          <!-- Left Physical Page (12x18) -->
+          <div class="page-side left" id="page-left" onclick="prevSpread()" title="Click to flip to previous page">
+            <div class="page-inner-art" id="page-left-art"></div>
+          </div>
+          
+          <!-- Center Spine Crease Line -->
+          <div class="center-spine" id="center-spine"></div>
+          
+          <!-- Right Physical Page (12x18) -->
+          <div class="page-side right" id="page-right" onclick="nextSpread()" title="Click to flip to next page">
+            <div class="page-inner-art" id="page-right-art"></div>
+          </div>
+
+          <!-- 3D Turning Physical Page Leaf (Hinged at Center Spine) -->
+          <div class="turning-leaf" id="turning-leaf">
+            <div class="leaf-face front" id="leaf-face-front">
+              <div class="page-inner-art" id="leaf-front-art"></div>
+            </div>
+            <div class="leaf-face back" id="leaf-face-back">
+              <div class="page-inner-art" id="leaf-back-art"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Next Arrow -->
+    <button class="nav-arrow next" onclick="nextSpread()" title="Next Page">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+
+  </main>
+
+  <!-- Thumbnails Drawer -->
+  <div class="thumb-drawer" id="thumb-drawer">
+    <!-- Dynamically populated page thumbnails -->
+  </div>
+
+  <!-- Footer Controls -->
+  <footer class="fb-controls">
+    <div class="page-indicator">
+      <span>Spread</span>
+      <input type="number" id="input-page-num" value="1" min="1" onchange="jumpToSpread(this.value)">
+      <span id="total-pages-text">/ 1</span>
+    </div>
+
+    <div style="display:flex;gap:0.4rem;align-items:center;">
+      <!-- Zoom In / Out / Reset Controls -->
+      <button class="fb-btn" onclick="zoomOut()" title="Zoom Out (Scroll Down)">🔍 -</button>
+      <button class="fb-btn" id="btn-zoom-reset" onclick="resetZoom()" title="Reset Zoom (Double Click Book)">100%</button>
+      <button class="fb-btn" onclick="zoomIn()" title="Zoom In (Scroll Up)">🔍 +</button>
+    </div>
+
+    <div style="display:flex;gap:0.75rem;align-items:center;">
+      <!-- Music Button in Footer -->
+      <button class="fb-btn fb-btn-music" id="btn-music-footer" onclick="toggleBgMusic()">
+        🎵 Music: ON
+      </button>
+
+      <button class="fb-btn" id="btn-autoplay" onclick="toggleAutoplay()">
+        ▶ Slideshow
+      </button>
+    </div>
+  </footer>
+
+  <!-- Background Audio Player -->
+  <audio id="fb-bg-music-player" loop preload="auto"></audio>
+
+  <script src="js/config.js"></script>
+  <script>
+    const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.WORKER_API_URL) ? window.APP_CONFIG.WORKER_API_URL : 'http://localhost:3000';
+    
+    let rawPages = [];
+    let albumSpreads = [];
+    let currentSpreadIndex = 0;
+    let isSoundEnabled = true;
+    let isAutoplay = false;
+    let autoplayTimer = null;
+    let isAnimating = false;
+    let isMusicPlaying = false;
+    let hasMusicTrack = false;
+
+    let zoomLevel = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let hasDragged = false;
+
+    /**
+     * Realistic Multi-Layered Paper Turn Audio Synthesizer (Web Audio API):
+     * Simulates real textured paper friction whoosh, air displacement, and soft page landing.
+     */
+    function playPageTurnSound() {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = ctx.currentTime;
+        
+        // 1. Friction & Air Whoosh Layer (Filtered Noise Buffer)
+        const bufferSize = Math.floor(ctx.sampleRate * 0.32);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.09));
+        }
+        
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        
+        // Sweeping Bandpass Filter (Mimics paper edge moving across air)
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1600, now);
+        filter.frequency.exponentialRampToValueAtTime(320, now + 0.28);
+        filter.Q.setValueAtTime(1.6, now);
+        
+        // Crisp Paper Friction Highpass
+        const highpass = ctx.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.setValueAtTime(350, now);
+        
+        // Dynamic Gain Volume Envelope
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.42, now + 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        
+        // 2. Soft Page Landing Texture (Low Resonance Body)
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(135, now + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.28);
+        
+        const oscGain = ctx.createGain();
+        oscGain.gain.setValueAtTime(0.0, now);
+        oscGain.gain.setValueAtTime(0.18, now + 0.08);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        
+        noise.connect(highpass);
+        highpass.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.connect(oscGain);
+        oscGain.connect(ctx.destination);
+        
+        noise.start(now);
+        noise.stop(now + 0.32);
+        osc.start(now + 0.08);
+        osc.stop(now + 0.3);
+      } catch(e) {}
+    }
+
+    async function initFlipbook() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code') || params.get('id') || 'PS253';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/public/flipbook/${encodeURIComponent(code)}`);
+        const data = await res.json();
+
+        if (res.ok && data) {
+          document.title = `${data.title || 'Wedding Album'} | 3D Flipbook`;
+          document.getElementById('album-title').textContent = (data.title || 'Wedding Photo Album').toUpperCase();
+          document.getElementById('album-subtitle').textContent = `${data.clientName || ''} • ${data.studioName || ''}`;
+
+          rawPages = data.pages || [];
+          if (rawPages.length === 0) {
+            alert('No photos found in this album');
+            return;
+          }
+
+          // Strictly build spreads from uploaded photos
+          compileAlbumSpreads(rawPages);
+          renderCurrentSpread();
+          renderThumbnails();
+          createBackgroundParticles();
+          initBackgroundMusic(data.bgMusic);
+        } else {
+          alert(data.error || 'Album not found');
+        }
+      } catch (err) {
+        console.error('Flipbook init error:', err);
+      }
+    }
+
+    function initBackgroundMusic(musicUrl) {
+      const audio = document.getElementById('fb-bg-music-player');
+      const btnHeader = document.getElementById('btn-music');
+      const btnFooter = document.getElementById('btn-music-footer');
+
+      if (!musicUrl) {
+        hasMusicTrack = false;
+        if (btnHeader) btnHeader.style.display = 'none';
+        if (btnFooter) btnFooter.style.display = 'none';
+        return;
+      }
+
+      hasMusicTrack = true;
+      if (btnHeader) btnHeader.style.display = 'flex';
+      if (btnFooter) btnFooter.style.display = 'flex';
+
+      audio.src = musicUrl;
+      audio.load();
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          isMusicPlaying = true;
+          updateMusicButtonUI();
+        }).catch(() => {
+          isMusicPlaying = false;
+          updateMusicButtonUI();
+          const unlockAudio = () => {
+            if (!isMusicPlaying && hasMusicTrack) {
+              audio.play().then(() => {
+                isMusicPlaying = true;
+                updateMusicButtonUI();
+              }).catch(() => {});
+            }
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('keydown', unlockAudio);
+          };
+          document.addEventListener('click', unlockAudio);
+          document.addEventListener('keydown', unlockAudio);
+        });
+      }
+    }
+
+    function toggleBgMusic() {
+      const audio = document.getElementById('fb-bg-music-player');
+      if (!audio || !hasMusicTrack) return;
+
+      if (audio.paused) {
+        audio.play().then(() => {
+          isMusicPlaying = true;
+          updateMusicButtonUI();
+        }).catch(() => {});
+      } else {
+        audio.pause();
+        isMusicPlaying = false;
+        updateMusicButtonUI();
+      }
+    }
+
+    function updateMusicButtonUI() {
+      const btnHeader = document.getElementById('btn-music');
+      const btnFooter = document.getElementById('btn-music-footer');
+      const label = isMusicPlaying ? '🎵 Music: ON' : '🔇 Music: OFF';
+
+      if (btnHeader) {
+        btnHeader.textContent = label;
+        btnHeader.style.opacity = isMusicPlaying ? '1' : '0.6';
+      }
+      if (btnFooter) {
+        btnFooter.textContent = label;
+        btnFooter.style.opacity = isMusicPlaying ? '1' : '0.6';
+      }
+    }
+
+    /**
+     * 12x18 Front Cover, 12x36 Inner Sheets, and 12x18 Back Cover:
+     * - First Page: Front Cover (12x18 single page on Right, centered with slide)
+     * - Middle Pages: 12x36 Inner Sheets (Two physical 12x18 pages split at Center Spine)
+     * - Last Page: Back Cover (12x18 single page on Left, centered with slide)
+     */
+    function compileAlbumSpreads(pages) {
+      albumSpreads = [];
+      if (!pages || pages.length === 0) return;
+
+      const total = pages.length;
+
+      if (total === 1) {
+        albumSpreads.push({
+          type: 'front-cover',
+          title: 'Front Cover',
+          url: pages[0],
+          thumbUrl: pages[0]
+        });
+        return;
+      }
+
+      pages.forEach((url, idx) => {
+        if (idx === 0) {
+          // Spread 0: Front Cover (12x18 single page)
+          albumSpreads.push({
+            type: 'front-cover',
+            title: 'Front Cover',
+            url: url,
+            thumbUrl: url
+          });
+        } else if (idx === total - 1) {
+          // Spread Last: Back Cover (12x18 single page)
+          albumSpreads.push({
+            type: 'back-cover',
+            title: 'Back Cover',
+            url: url,
+            thumbUrl: url
+          });
+        } else {
+          // Inner 12x36 Spreads
+          albumSpreads.push({
+            type: 'panorama',
+            title: `Spread ${idx}`,
+            url: url,
+            thumbUrl: url
+          });
+        }
+      });
+    }
+
+    function createBackgroundParticles() {
+      const container = document.getElementById('particles-layer');
+      if (!container) return;
+      let html = '';
+      for (let i = 0; i < 25; i++) {
+        const size = Math.floor(Math.random() * 14) + 6;
+        const left = Math.floor(Math.random() * 100);
+        const top = Math.floor(Math.random() * 100);
+        const delay = (Math.random() * 5).toFixed(2);
+        const duration = (Math.random() * 6 + 4).toFixed(2);
+        html += `<div style="position:absolute;left:${left}%;top:${top}%;width:${size}px;height:${size}px;border-radius:50%;background:radial-gradient(circle, #fde047 0%, rgba(212,175,55,0) 75%);opacity:0.3;animation:floatParticle ${duration}s infinite ease-in-out ${delay}s;pointer-events:none;"></div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    /**
+     * Dynamic Viewport Fit:
+     * Calculates available width and height to guarantee 100% Full Preview with Zero Distortion
+     */
+    function adjustSpreadDimensions(spread) {
+      const spreadBase = document.getElementById('spread-base');
+      if (!spreadBase || !spread || !spread.url) return;
+
+      const img = new Image();
+      img.onload = () => {
+        const nw = img.naturalWidth || 1200;
+        const nh = img.naturalHeight || 800;
+        let naturalRatio = nw / nh;
+
+        // If front-cover or back-cover (single 12x18 page), double ratio for the two-page spread stage
+        if (spread.type === 'front-cover' || spread.type === 'back-cover') {
+          naturalRatio = naturalRatio * 2;
+        }
+
+        const availableW = Math.min(window.innerWidth * 0.88, 1260);
+        const availableH = Math.max(window.innerHeight - 170, 360);
+
+        let targetW = availableW;
+        let targetH = targetW / naturalRatio;
+
+        if (targetH > availableH) {
+          targetH = availableH;
+          targetW = targetH * naturalRatio;
+        }
+
+        const finalW = Math.round(targetW / 2) * 2;
+        const finalH = Math.round(targetH / 2) * 2;
+        spreadBase.style.width = `${finalW}px`;
+        spreadBase.style.height = `${finalH}px`;
+        spreadBase.style.aspectRatio = `${naturalRatio}`;
+      };
+      img.src = spread.url;
+    }
+
+    /**
+     * Applies the correct half of the 12x36 image or 12x18 cover to a physical page side:
+     * - front-cover: Right side only (contain)
+     * - back-cover: Left side only (contain)
+     * - panorama: Left 0–50% (left) and Right 50–100% (right)
+     */
+    function applyPageSideContent(sideEl, spread, sideName) {
+      if (!sideEl) return;
+      sideEl.style.backgroundImage = '';
+      sideEl.style.backgroundSize = '';
+      sideEl.style.backgroundPosition = '';
+      sideEl.style.backgroundRepeat = 'no-repeat';
+
+      if (!spread || !spread.url) return;
+
+      if (spread.type === 'front-cover') {
+        if (sideName === 'right') {
+          sideEl.style.backgroundImage = `url("${spread.url}")`;
+          sideEl.style.backgroundSize = 'contain';
+          sideEl.style.backgroundPosition = 'center center';
+        } else {
+          sideEl.style.backgroundImage = 'none';
+        }
+      } else if (spread.type === 'back-cover') {
+        if (sideName === 'left') {
+          sideEl.style.backgroundImage = `url("${spread.url}")`;
+          sideEl.style.backgroundSize = 'contain';
+          sideEl.style.backgroundPosition = 'center center';
+        } else {
+          sideEl.style.backgroundImage = 'none';
+        }
+      } else {
+        // 12x36 Inner Spread split into Two 12x18 Physical Pages
+        sideEl.style.backgroundImage = `url("${spread.url}")`;
+        sideEl.style.backgroundSize = '200% 100%';
+        if (sideName === 'left') {
+          sideEl.style.backgroundPosition = 'left center'; // 0% to 50%
+        } else {
+          sideEl.style.backgroundPosition = 'right center'; // 50% to 100%
+        }
+      }
+    }
+
+    function renderCurrentSpread() {
+      if (albumSpreads.length === 0) return;
+
+      const spreadBase = document.getElementById('spread-base');
+      const leftArt = document.getElementById('page-left-art');
+      const rightArt = document.getElementById('page-right-art');
+      const pageLeft = document.getElementById('page-left');
+      const pageRight = document.getElementById('page-right');
+      const turningLeaf = document.getElementById('turning-leaf');
+      const spine = document.getElementById('center-spine');
+
+      const spread = albumSpreads[currentSpreadIndex];
+
+      adjustSpreadDimensions(spread);
+
+      if (spreadBase) {
+        spreadBase.classList.remove('front-cover-mode', 'spread-mode', 'back-cover-mode');
+        if (spread.type === 'front-cover') {
+          spreadBase.classList.add('front-cover-mode');
+        } else if (spread.type === 'back-cover') {
+          spreadBase.classList.add('back-cover-mode');
+        } else {
+          spreadBase.classList.add('spread-mode');
+        }
+      }
+
+      if (spread.type === 'front-cover') {
+        if (pageLeft) pageLeft.style.opacity = '0';
+        if (pageRight) pageRight.style.opacity = '1';
+        if (spine) spine.style.opacity = '0';
+      } else if (spread.type === 'back-cover') {
+        if (pageLeft) pageLeft.style.opacity = '1';
+        if (pageRight) pageRight.style.opacity = '0';
+        if (spine) spine.style.opacity = '0';
+      } else {
+        if (pageLeft) pageLeft.style.opacity = '1';
+        if (pageRight) pageRight.style.opacity = '1';
+        if (spine) spine.style.opacity = '1';
+      }
+
+      applyPageSideContent(leftArt, spread, 'left');
+      applyPageSideContent(rightArt, spread, 'right');
+
+      if (turningLeaf) turningLeaf.className = 'turning-leaf';
+
+      // Update Page Controls
+      const pageInput = document.getElementById('input-page-num');
+      const totalText = document.getElementById('total-pages-text');
+      if (pageInput) pageInput.value = currentSpreadIndex + 1;
+      if (totalText) totalText.textContent = `/ ${albumSpreads.length}`;
+
+      updateActiveThumbnail();
+    }
+
+    function nextSpread() {
+      if (isAnimating) return;
+      if (currentSpreadIndex + 1 < albumSpreads.length) {
+        triggerFlip('next');
+        playPageTurnSound();
+      }
+    }
+
+    function prevSpread() {
+      if (isAnimating) return;
+      if (currentSpreadIndex > 0) {
+        triggerFlip('prev');
+        playPageTurnSound();
+      }
+    }
+
+    /**
+     * 3D Physical Page Turn Engine:
+     * - NEXT: ONLY the Right 12x18 page turns around Center Spine (0deg -> -180deg) to the Left
+     * - PREVIOUS: ONLY the Left 12x18 page turns around Center Spine (0deg -> +180deg) to the Right
+     * - Front & Back Covers: Smoothly slide horizontally to center when closed
+     */
+    function triggerFlip(direction) {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const spreadBase = document.getElementById('spread-base');
+      const turningLeaf = document.getElementById('turning-leaf');
+      const leafFrontArt = document.getElementById('leaf-front-art');
+      const leafBackArt = document.getElementById('leaf-back-art');
+      const rightArt = document.getElementById('page-right-art');
+      const leftArt = document.getElementById('page-left-art');
+      const pageLeft = document.getElementById('page-left');
+      const pageRight = document.getElementById('page-right');
+      const spine = document.getElementById('center-spine');
+
+      const currentSpread = albumSpreads[currentSpreadIndex];
+      const targetIndex = direction === 'next' ? currentSpreadIndex + 1 : currentSpreadIndex - 1;
+      const targetSpread = albumSpreads[targetIndex];
+
+      if (spreadBase) {
+        spreadBase.classList.remove('front-cover-mode', 'spread-mode', 'back-cover-mode');
+        if (targetSpread.type === 'front-cover') {
+          spreadBase.classList.add('front-cover-mode');
+        } else if (targetSpread.type === 'back-cover') {
+          spreadBase.classList.add('back-cover-mode');
+        } else {
+          spreadBase.classList.add('spread-mode');
+        }
+      }
+
+      if (pageLeft) pageLeft.style.opacity = '1';
+      if (pageRight) pageRight.style.opacity = '1';
+      if (spine) spine.style.opacity = '1';
+
+      if (direction === 'next') {
+        // FORWARD FLIP: Right 12x18 Page turns from 0deg to -180deg around Center Spine
+        // 1. Front face of turning leaf = Current Right 12x18 (Right 50% or Front Cover)
+        applyPageSideContent(leafFrontArt, currentSpread, 'right');
+
+        // 2. Back face of turning leaf = Target Left 12x18 (Left 50% or Back Cover)
+        applyPageSideContent(leafBackArt, targetSpread, 'left');
+
+        // 3. Right page underneath = Target Right 12x18 (Right 50%)
+        applyPageSideContent(rightArt, targetSpread, 'right');
+
+        // 4. Left page underneath = Current Left 12x18 (stays visible while turning)
+        applyPageSideContent(leftArt, currentSpread, 'left');
+
+        // Trigger 3D Right-to-Left Flip animation
+        turningLeaf.className = 'turning-leaf flip-next';
+      } else {
+        // BACKWARD PREV FLIP: Left 12x18 Page turns from 0deg to +180deg around Center Spine
+        // 1. Front face of turning leaf = Current Left 12x18 (Left 50% or Back Cover)
+        applyPageSideContent(leafFrontArt, currentSpread, 'left');
+
+        // 2. Back face of turning leaf = Target Right 12x18 (Right 50% or Front Cover)
+        applyPageSideContent(leafBackArt, targetSpread, 'right');
+
+        // 3. Left page underneath = Target Left 12x18 (Left 50%)
+        applyPageSideContent(leftArt, targetSpread, 'left');
+
+        // 4. Right page underneath = Current Right 12x18 (stays visible while turning)
+        applyPageSideContent(rightArt, currentSpread, 'right');
+
+        // Trigger 3D Left-to-Right Flip animation
+        turningLeaf.className = 'turning-leaf flip-prev';
+      }
+
+      setTimeout(() => {
+        currentSpreadIndex = targetIndex;
+        renderCurrentSpread();
+        isAnimating = false;
+      }, 750);
+    }
+
+    function jumpToSpread(num) {
+      if (isAnimating) return;
+      const val = parseInt(num, 10);
+      if (!isNaN(val) && val >= 1 && val <= albumSpreads.length) {
+        currentSpreadIndex = val - 1;
+        playPageTurnSound();
+        renderCurrentSpread();
+      }
+    }
+
+    function renderThumbnails() {
+      const drawer = document.getElementById('thumb-drawer');
+      if (!drawer) return;
+
+      drawer.innerHTML = albumSpreads.map((spread, idx) => `
+        <div class="thumb-item ${idx === currentSpreadIndex ? 'active' : ''}" onclick="jumpToSpread(${idx + 1})" title="${spread.title}">
+          <img src="${spread.thumbUrl || spread.url}" alt="Spread ${idx + 1}">
+        </div>
+      `).join('');
+    }
+
+    function updateActiveThumbnail() {
+      const items = document.querySelectorAll('.thumb-item');
+      items.forEach((item, idx) => {
+        item.classList.toggle('active', idx === currentSpreadIndex);
+      });
+    }
+
+    function toggleThumbnails() {
+      const drawer = document.getElementById('thumb-drawer');
+      if (drawer) drawer.classList.toggle('active');
+    }
+
+    function toggleSound() {
+      isSoundEnabled = !isSoundEnabled;
+      const btn = document.getElementById('btn-sound');
+      if (btn) btn.textContent = isSoundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    function toggleAutoplay() {
+      isAutoplay = !isAutoplay;
+      const btn = document.getElementById('btn-autoplay');
+      if (isAutoplay) {
+        if (btn) btn.textContent = '⏸ Pause';
+        autoplayTimer = setInterval(() => {
+          if (currentSpreadIndex + 1 < albumSpreads.length) {
+            nextSpread();
+          } else {
+            toggleAutoplay();
+          }
+        }, 3500);
+      } else {
+        if (btn) btn.textContent = '▶ Slideshow';
+        if (autoplayTimer) clearInterval(autoplayTimer);
+      }
+    }
+
+    function applyZoomTransform(animate = false) {
+      const albumStage = document.getElementById('album-stage');
+      const resetBtn = document.getElementById('btn-zoom-reset');
+      if (!albumStage) return;
+
+      if (animate) {
+        albumStage.style.transition = 'transform 0.22s cubic-bezier(0.25, 1, 0.5, 1)';
+      } else {
+        albumStage.style.transition = 'none';
+      }
+
+      albumStage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+
+      if (resetBtn) {
+        resetBtn.textContent = `${Math.round(zoomLevel * 100)}%`;
+        resetBtn.style.color = (zoomLevel > 1.0) ? '#fde047' : 'inherit';
+        resetBtn.style.borderColor = (zoomLevel > 1.0) ? '#fde047' : 'rgba(212, 175, 55, 0.3)';
+      }
+
+      const bookWrap = document.getElementById('book-wrap');
+      if (bookWrap) {
+        bookWrap.style.cursor = (zoomLevel > 1.0) ? (isDragging ? 'grabbing' : 'grab') : 'default';
+      }
+    }
+
+    function zoomIn() {
+      zoomLevel = Math.min(zoomLevel + 0.35, 3.5);
+      applyZoomTransform(true);
+    }
+
+    function zoomOut() {
+      zoomLevel = Math.max(zoomLevel - 0.35, 1.0);
+      if (zoomLevel === 1.0) {
+        panX = 0;
+        panY = 0;
+      }
+      applyZoomTransform(true);
+    }
+
+    function resetZoom() {
+      zoomLevel = 1.0;
+      panX = 0;
+      panY = 0;
+      applyZoomTransform(true);
+    }
+
+    function toggleQuickZoom() {
+      if (zoomLevel > 1.0) {
+        resetZoom();
+      } else {
+        zoomLevel = 2.0;
+        applyZoomTransform(true);
+      }
+    }
+
+    function setupZoomAndPan() {
+      const wrap = document.getElementById('book-wrap');
+      if (!wrap) return;
+
+      // Mouse Wheel Zoom
+      wrap.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY;
+        if (delta < 0) {
+          zoomLevel = Math.min(zoomLevel + 0.25, 3.5);
+        } else {
+          zoomLevel = Math.max(zoomLevel - 0.25, 1.0);
+          if (zoomLevel === 1.0) {
+            panX = 0;
+            panY = 0;
+          }
+        }
+        applyZoomTransform(false);
+      }, { passive: false });
+
+      // Double Click Quick Zoom (100% <-> 200%)
+      wrap.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        toggleQuickZoom();
+      });
+
+      // Left Click Drag Pan
+      wrap.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // only left click
+        if (zoomLevel > 1.0) {
+          isDragging = true;
+          hasDragged = false;
+          dragStartX = e.clientX - panX;
+          dragStartY = e.clientY - panY;
+          applyZoomTransform(false);
+        }
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const newX = e.clientX - dragStartX;
+        const newY = e.clientY - dragStartY;
+        if (Math.abs(newX - panX) > 3 || Math.abs(newY - panY) > 3) {
+          hasDragged = true;
+        }
+        panX = newX;
+        panY = newY;
+        applyZoomTransform(false);
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          applyZoomTransform(false);
+          setTimeout(() => { hasDragged = false; }, 80);
+        }
+      });
+
+      // Touch Pinch Zoom & Drag on Mobile/Tablet
+      let touchStartDist = 0;
+      let initialZoom = 1.0;
+
+      wrap.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          touchStartDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          initialZoom = zoomLevel;
+        } else if (e.touches.length === 1 && zoomLevel > 1.0) {
+          isDragging = true;
+          hasDragged = false;
+          dragStartX = e.touches[0].clientX - panX;
+          dragStartY = e.touches[0].clientY - panY;
+        }
+      }, { passive: true });
+
+      wrap.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && touchStartDist > 0) {
+          const currentDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const factor = currentDist / touchStartDist;
+          zoomLevel = Math.min(Math.max(initialZoom * factor, 1.0), 3.5);
+          applyZoomTransform(false);
+        } else if (e.touches.length === 1 && isDragging) {
+          hasDragged = true;
+          panX = e.touches[0].clientX - dragStartX;
+          panY = e.touches[0].clientY - dragStartY;
+          applyZoomTransform(false);
+        }
+      }, { passive: true });
+
+      wrap.addEventListener('touchend', () => {
+        isDragging = false;
+        touchStartDist = 0;
+        setTimeout(() => { hasDragged = false; }, 80);
+      });
+    }
+
+    function nextSpread() {
+      if (isAnimating || hasDragged || zoomLevel > 1.05) return;
+      if (currentSpreadIndex + 1 < albumSpreads.length) {
+        triggerFlip('next');
+        playPageTurnSound();
+      }
+    }
+
+    function prevSpread() {
+      if (isAnimating || hasDragged || zoomLevel > 1.05) return;
+      if (currentSpreadIndex > 0) {
+        triggerFlip('prev');
+        playPageTurnSound();
+      }
+    }
+
+    function shareWhatsApp() {
+      const url = encodeURIComponent(window.location.href);
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('✨ Check out our Interactive 3D Virtual Wedding Album:\n')}${url}`, '_blank');
+    }
+
+    // Keyboard navigation support
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        nextSpread();
+      } else if (e.key === 'ArrowLeft') {
+        prevSpread();
+      } else if (e.key === '+' || e.key === '=') {
+        zoomIn();
+      } else if (e.key === '-' || e.key === '_') {
+        zoomOut();
+      } else if (e.key === '0' || e.key === 'Escape') {
+        resetZoom();
+      }
+    });
+
+    // Initialize flipbook and zoom/pan engine
+    initFlipbook();
+    setupZoomAndPan();
+  </script>
+</body>
+</html>

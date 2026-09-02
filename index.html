@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DM FILMS MAKER | Main Website & Photo Selection Portal</title>
+  <meta name="description" content="DM FILMS MAKER - Master Portal for Software, Video Effects, PSD Files, Audio Sound, and Photo Selection System.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Montserrat:wght@700;800;900&family=Playfair+Display:wght@700;800;900&family=Syne:wght@700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --bg-card: rgba(15, 23, 42, 0.95);
+      --gold-400: #d4af37;
+      --border-gold: rgba(212, 175, 55, 0.4);
+      --border-subtle: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Site Navigation Header */
+    .site-header {
+      background: rgba(10, 14, 26, 0.95);
+      backdrop-filter: blur(16px);
+      border-bottom: 1.5px solid var(--border-gold);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .nav-container {
+      max-width: 1350px;
+      margin: 0 auto;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+    .brand-title {
+      font-family: 'Cinzel', serif;
+      font-weight: 900;
+      font-size: 1.25rem;
+      background: linear-gradient(135deg, #fde047 0%, #d4af37 50%, #b8860b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 0.04em;
+    }
+    .brand-subtitle {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Top Main Navbar Tabs - Ultra-Luxury 3D Glassmorphic Dock Capsule */
+    .main-nav-tabs {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(10, 14, 26, 0.88);
+      backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(212, 175, 55, 0.4);
+      border-radius: 50px;
+      padding: 6px 10px;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(255, 255, 255, 0.12), 0 0 20px rgba(212, 175, 55, 0.15);
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    .main-nav-tab {
+      color: #cbd5e1;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 0.6rem 1.15rem;
+      border-radius: 40px;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      letter-spacing: 0.02em;
+    }
+    .main-nav-tab:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+    }
+    .main-nav-tab.active {
+      color: #000000;
+      background: linear-gradient(135deg, #fde047 0%, #d4af37 60%, #b8860b 100%);
+      font-weight: 900;
+      box-shadow: 0 4px 22px rgba(253, 224, 71, 0.55), inset 0 1px 2px #ffffff;
+      border: 1.5px solid #ffffff;
+      transform: scale(1.05);
+    }
+    .main-nav-tab-photo-selection {
+      background: rgba(212, 175, 55, 0.15);
+      border: 1.5px solid rgba(212, 175, 55, 0.55) !important;
+      color: #fde047 !important;
+      font-weight: 800;
+    }
+    .main-nav-tab-photo-selection:hover {
+      background: rgba(212, 175, 55, 0.3) !important;
+      border-color: #fde047 !important;
+      box-shadow: 0 0 22px rgba(253, 224, 71, 0.5) !important;
+      transform: translateY(-2px) scale(1.05);
+      color: #ffffff !important;
+    }
+
+    /* Main Tab Views Wrapper */
+    .main-content {
+      flex: 1;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    .main-tab-panel {
+      animation: fadeIn 0.35s ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Shared Hero Banner Styles - 100% PERFECTLY CENTERED HEADER & FULL-WIDTH GRID */
+    .hero-section {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 1300px;
+    }
+    .hero-content {
+      max-width: 900px !important;
+      margin: 0 auto !important;
+      text-align: center !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100% !important;
+    }
+    .hero-badge {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.5rem;
+      background: rgba(212, 175, 55, 0.15);
+      border: 1px solid var(--border-gold);
+      padding: 0.45rem 1.2rem;
+      border-radius: 20px;
+      color: #fde047;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0 auto 1.25rem auto !important;
+      text-align: center !important;
+    }
+    .hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: 3rem;
+      line-height: 1.25;
+      margin: 0 auto 1rem auto !important;
+      font-weight: 900;
+      text-align: center !important;
+      width: 100% !important;
+    }
+    .hero-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 780px;
+      margin: 0 auto 2rem auto !important;
+      line-height: 1.6;
+      text-align: center !important;
+      width: 100% !important;
+    }
+
+    /* Grid Cards Section - FULL WIDTH MULTI-COLUMN GRID */
+    .cards-grid {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+      gap: 1.75rem !important;
+      width: 100% !important;
+      max-width: 1250px !important;
+      margin: 2.5rem auto 1rem auto !important;
+      text-align: left !important;
+    }
+    .card-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .card-item:hover {
+      transform: translateY(-6px);
+      border-color: var(--border-gold);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(212, 175, 55, 0.2);
+    }
+
+    /* Client Portal Access Box */
+    .client-portal-box {
+      background: rgba(15, 23, 42, 0.92);
+      border: 1.5px solid var(--border-gold);
+      border-radius: 18px;
+      padding: 2rem;
+      max-width: 500px;
+      margin: 0 auto;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(212, 175, 55, 0.25);
+    }
+
+    /* Audio Player Item */
+    .audio-track-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    /* Clean Solid Gold with Slow Front White Sliding Light Ray (No Back Glow) */
+    @keyframes whiteSlideLight {
+      0% {
+        background-position: -250% center;
+      }
+      100% {
+        background-position: 250% center;
+      }
+    }
+
+    .brand-title-3d {
+      font-family: 'Cinzel', serif;
+      font-size: 3.2rem;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      background: linear-gradient(
+        90deg, 
+        #d4af37 0%, 
+        #fde047 38%, 
+        #ffffff 50%, 
+        #fde047 62%, 
+        #d4af37 100%
+      );
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+      display: inline-block;
+      white-space: nowrap;
+      line-height: 1.1;
+      animation: whiteSlideLight 6s linear infinite;
+      filter: none !important;
+      text-shadow: none !important;
+    }
+
+    /* 3D Individual Letter Rotation Sequenced by Word (DM -> FILMS -> MAKER) */
+    .brand-title-rotating {
+      perspective: 1000px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: nowrap;
+      user-select: none;
+      line-height: 1.1;
+    }
+
+    .brand-word {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .brand-space {
+      display: inline-block;
+      width: 1.2rem;
+    }
+
+    .brand-title-rotating .char {
+      display: inline-block;
+      font-family: 'Cinzel', serif;
+      font-size: 3.2rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      background: linear-gradient(
+        90deg, 
+        #d4af37 0%, 
+        #fde047 38%, 
+        #ffffff 50%, 
+        #fde047 62%, 
+        #d4af37 100%
+      );
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      transform-style: preserve-3d;
+      will-change: transform;
+      animation: letter3DStepRotate 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite, whiteSlideLight 6s linear infinite;
+      animation-delay: var(--d, 0s), 0s;
+      transition: transform 0.3s ease;
+      cursor: default;
+    }
+
+    .brand-title-rotating .char:hover {
+      transform: scale(1.2) rotateY(360deg);
+      filter: drop-shadow(0 0 14px rgba(253, 224, 71, 0.85));
+    }
+
+    @keyframes letter3DStepRotate {
+      0% {
+        transform: rotateY(0deg);
+      }
+      18% {
+        transform: rotateY(360deg);
+      }
+      100% {
+        transform: rotateY(360deg);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .brand-title-rotating .char {
+        font-size: 1.75rem;
+        letter-spacing: 0.04em;
+      }
+      .brand-space {
+        width: 0.55rem;
+      }
+    }
+    html, body {
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    /* Luxury 9:16 Portrait 100% FULL-WIDTH Edge-to-Edge Continuous Reel Slider */
+    .sli-slider-wrapper {
+      position: relative;
+      width: 100vw;
+      max-width: 100vw;
+      margin-left: calc(50% - 50vw);
+      margin-right: calc(50% - 50vw);
+      left: 0;
+      right: 0;
+      margin-top: 0.5rem;
+      margin-bottom: 2.5rem;
+      overflow: hidden;
+      border-top: 1.5px solid var(--border-gold);
+      border-bottom: 1.5px solid var(--border-gold);
+      border-left: none;
+      border-right: none;
+      border-radius: 0;
+      box-shadow: 0 15px 45px rgba(0, 0, 0, 0.9), 0 0 30px rgba(212, 175, 55, 0.15);
+      background: radial-gradient(circle at 50% 50%, #0f172a 0%, #070a12 100%);
+      padding: 1.5rem 0;
+    }
+    
+    .sli-slides-viewport {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+      padding: 1.25rem 0;
+    }
+
+    .sli-slides-track {
+      display: flex;
+      gap: 1.5rem;
+      width: max-content;
+      will-change: transform;
+      align-items: center;
+      padding: 0;
+    }
+
+    .sli-slide-portrait {
+      flex: 0 0 240px;
+      width: 240px;
+      aspect-ratio: 9 / 16;
+      height: 425px;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      border: 1.5px solid rgba(212, 175, 55, 0.4);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(212, 175, 55, 0.12);
+      transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+      background: #0b0f19;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sli-slide-portrait:hover {
+      transform: translateY(-6px) scale(1.03);
+      border-color: #fde047;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.95), 0 0 28px rgba(253, 224, 71, 0.45);
+    }
+
+    .sli-slide-portrait img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      transition: transform 0.4s ease;
+      pointer-events: none;
+    }
+
+    .sli-slide-portrait:hover img {
+      transform: scale(1.04);
+    }
+
+    @media (max-width: 768px) {
+      .sli-slider-wrapper { padding: 1rem 0; }
+      .sli-slide-portrait {
+        flex: 0 0 200px;
+        width: 200px;
+        height: 355px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Site Navigation Header -->
+  <header class="site-header" style="background:linear-gradient(180deg, #0d121f 0%, #070a12 100%);border-bottom:2px solid var(--border-gold);padding:1.25rem 1.5rem 0.85rem 1.5rem;text-align:center;">
+    
+    <!-- LEVEL 1: TOP 3D INDIVIDUAL ROTATING LETTER ANIMATION (DM -> FILMS -> MAKER) -->
+    <div style="margin-bottom:0.4rem;">
+      <a href="index.html" style="text-decoration:none;display:inline-block;">
+        <span class="brand-title-rotating" aria-label="DM FILMS MAKER">
+          <!-- WORD 1: DM (Starts at 0.0s) -->
+          <span class="brand-word">
+            <span class="char" style="--d:0.0s">D</span>
+            <span class="char" style="--d:0.18s">M</span>
+          </span>
+          <span class="brand-space">&nbsp;</span>
+          <!-- WORD 2: FILMS (Starts at 1.8s) -->
+          <span class="brand-word">
+            <span class="char" style="--d:1.80s">F</span>
+            <span class="char" style="--d:1.98s">I</span>
+            <span class="char" style="--d:2.16s">L</span>
+            <span class="char" style="--d:2.34s">M</span>
+            <span class="char" style="--d:2.52s">S</span>
+          </span>
+          <span class="brand-space">&nbsp;</span>
+          <!-- WORD 3: MAKER (Starts at 3.9s) -->
+          <span class="brand-word">
+            <span class="char" style="--d:3.90s">M</span>
+            <span class="char" style="--d:4.08s">A</span>
+            <span class="char" style="--d:4.26s">K</span>
+            <span class="char" style="--d:4.44s">E</span>
+            <span class="char" style="--d:4.62s">R</span>
+          </span>
+        </span>
+      </a>
+    </div>
+
+    <!-- LEVEL 2: TAGLINE DIRECTLY BELOW BIG TITLE -->
+    <div class="brand-subtitle" style="font-size:0.82rem;color:#cbd5e1;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;justify-content:center;gap:0.75rem;">
+      <span style="color:#d4af37;">✦</span> LUXURY WEDDING MEDIA, SOFTWARE &amp; CLIENT SELECTION PORTAL <span style="color:#d4af37;">✦</span>
+    </div>
+
+    <!-- LEVEL 3: NAVIGATION TABS & LOGIN BUTTON BAR BELOW TAGLINE -->
+    <div style="max-width:1300px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.9rem;">
+      
+      <!-- 6 NAVIGATION TABS (LUXURY GLASS CAPSULE DOCK) -->
+      <nav class="main-nav-tabs" style="margin:0 auto;">
+        <a class="main-nav-tab active" data-tab="home" onclick="switchMainTab('home', event)">🏠 Home</a>
+        <a class="main-nav-tab" data-tab="software" onclick="switchMainTab('software', event)">💻 Software</a>
+        <a class="main-nav-tab" data-tab="effects" onclick="switchMainTab('effects', event)">🎬 Effects</a>
+        <a class="main-nav-tab" data-tab="psd-files" onclick="switchMainTab('psd-files', event)">🖼️ Psd Files</a>
+        <a class="main-nav-tab" data-tab="audio-sound" onclick="switchMainTab('audio-sound', event)">🎵 Audio Sound</a>
+        <a class="main-nav-tab main-nav-tab-photo-selection" href="login.html" onclick="handlePhotoSelectionClick(event)">📷 Photo Selection</a>
+      </nav>
+
+      <!-- Right Action Button (Studio Login Pill) -->
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <a href="login.html" class="btn btn-outline-gold btn-sm" style="border-radius:30px;padding:0.5rem 1.15rem;font-weight:700;box-shadow:0 0 16px rgba(212,175,55,0.25);">Studio Login / Portal</a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="main-content">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: 🏠 HOME TAB                         -->
+    <!-- ========================================== -->
+    <div id="main-tab-home" class="main-tab-panel">
+      <section class="hero-section">
+        
+        <!-- LUXURY 9:16 PORTRAIT CONTINUOUS SMOOTH REEL (EXACT USER PHOTOS, ZERO DUPLICATES) -->
+        <div class="sli-slider-wrapper" id="sliSliderWrapper">
+          <div class="sli-slides-viewport" id="sliSlidesViewport">
+            <div class="sli-slides-track" id="sliSlidesTrack"></div>
+          </div>
+        </div>
+
+        <!-- Quick Access Grid Cards -->
+        <div class="cards-grid">
+          
+          <div class="card-item" onclick="switchMainTab('software', event)" style="cursor:pointer;">
+            <div>
+              <div style="font-size:2.5rem;margin-bottom:0.75rem;">💻</div>
+              <h3 style="font-size:1.3rem;margin-bottom:0.5rem;color:#ffffff;">Software Tools</h3>
+              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">Pro editing tools, plugins, 3D flipbook software, and batch photo utilities for studios.</p>
+            </div>
+            <div style="margin-top:1.25rem;color:#fde047;font-weight:700;font-size:0.9rem;">Explore Software &rarr;</div>
+          </div>
+
+          <div class="card-item" onclick="switchMainTab('effects', event)" style="cursor:pointer;">
+            <div>
+              <div style="font-size:2.5rem;margin-bottom:0.75rem;">🎬</div>
+              <h3 style="font-size:1.3rem;margin-bottom:0.5rem;color:#ffffff;">Video Effects & LUTs</h3>
+              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">Cinematic color grading presets, 4K light leaks, Haldi/Mehendi LUTs & wedding transitions.</p>
+            </div>
+            <div style="margin-top:1.25rem;color:#fde047;font-weight:700;font-size:0.9rem;">Browse Effects &rarr;</div>
+          </div>
+
+          <div class="card-item" onclick="switchMainTab('psd-files', event)" style="cursor:pointer;">
+            <div>
+              <div style="font-size:2.5rem;margin-bottom:0.75rem;">🖼️</div>
+              <h3 style="font-size:1.3rem;margin-bottom:0.5rem;color:#ffffff;">12x36 Album PSD Files</h3>
+              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">Multi-layer Indian wedding album templates, cover designs, frames & background layers.</p>
+            </div>
+            <div style="margin-top:1.25rem;color:#fde047;font-weight:700;font-size:0.9rem;">Download PSD Sheets &rarr;</div>
+          </div>
+
+          <div class="card-item" onclick="switchMainTab('audio-sound', event)" style="cursor:pointer;">
+            <div>
+              <div style="font-size:2.5rem;margin-bottom:0.75rem;">🎵</div>
+              <h3 style="font-size:2.5rem;margin-bottom:0.75rem;">🎵 Audio Sound Tracks</h3>
+              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">Shehnai bgm, romantic entry audio, Vidai instrumental tracks & wedding sound effects.</p>
+            </div>
+            <div style="margin-top:1.25rem;color:#fde047;font-weight:700;font-size:0.9rem;">Listen Audio Tracks &rarr;</div>
+          </div>
+
+          <div class="card-item" onclick="handlePhotoSelectionClick(event)" style="cursor:pointer;border-color:var(--border-gold);">
+            <div>
+              <div style="font-size:2.5rem;margin-bottom:0.75rem;">📷</div>
+              <h3 style="font-size:1.3rem;margin-bottom:0.5rem;color:#fde047;">Photo Selection System</h3>
+              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">Client event gallery login, photo selection limit, 3D flipbook viewer & instant cloud sync.</p>
+            </div>
+            <div style="margin-top:1.25rem;color:#fde047;font-weight:900;font-size:0.95rem;">Open Photo Selection Portal &rarr;</div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: 💻 SOFTWARE TAB                     -->
+    <!-- ========================================== -->
+    <div id="main-tab-software" class="main-tab-panel" style="display:none;">
+      <section class="hero-section">
+        <div class="hero-badge">💻 Professional Studio Software & Plugins</div>
+        <h1 class="hero-title">High-Speed Studio Utilities & Tools</h1>
+        <p class="hero-subtitle">Boost your photography & video production workflow with dedicated editing software, album designers, and cloud connectors.</p>
+
+        <div class="cards-grid">
+          
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">📖</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">DM Album Design 3D Pro</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;margin-bottom:1rem;">Automatic 12x36 sheet layout generator and interactive 3D digital album flipbook exporter.</p>
+            </div>
+            <a href="login.html" class="btn btn-outline-gold btn-sm" style="text-align:center;">Download / Studio Access</a>
+          </div>
+
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">🎨</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">DM Colorist FX Premiere Plugin</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;margin-bottom:1rem;">1-Click cinematic color grading plugin for Premiere Pro, After Effects & DaVinci Resolve.</p>
+            </div>
+            <button type="button" class="btn btn-outline-gold btn-sm" onclick="alert('Download link will be sent via WhatsApp!')">Get Download Link</button>
+          </div>
+
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">⚡</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">DM Fast Client Photo Selector</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;margin-bottom:1rem;">Ultra-fast photo review and selection software with auto copy to original folder feature.</p>
+            </div>
+            <a href="login.html" onclick="handlePhotoSelectionClick(event)" class="btn btn-primary btn-sm" style="text-align:center;">Launch Selection Portal</a>
+          </div>
+
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: 🎬 EFFECTS TAB                      -->
+    <!-- ========================================== -->
+    <div id="main-tab-effects" class="main-tab-panel" style="display:none;">
+      <section class="hero-section">
+        <div class="hero-badge">🎬 Video Effects, Overlays & LUTs</div>
+        <h1 class="hero-title">Cinematic Wedding Video Effects</h1>
+        <p class="hero-subtitle">Elevate your wedding films with color grading LUTs, light leaks, transitions, and animated text templates.</p>
+
+        <div class="cards-grid">
+          
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">🌅</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">Haldi & Mehendi Color LUTs</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">Vibrant yellow, rich greens & warm skin tone presets specifically tuned for Indian ceremonies.</p>
+            </div>
+            <button class="btn btn-outline-gold btn-sm" onclick="alert('LUT Pack Download Ready!')">Download LUT Pack</button>
+          </div>
+
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">✨</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">4K Sparklers & Light Leaks</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">Real high-resolution light leak overlays and romantic bokeh sparkle videos.</p>
+            </div>
+            <button class="btn btn-outline-gold btn-sm" onclick="alert('Overlays Pack Download Ready!')">Download Overlays</button>
+          </div>
+
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">💥</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">3D Transition Presets</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">Seamless zoom, whip pan, and page flip video transitions for Premiere Pro.</p>
+            </div>
+            <button class="btn btn-outline-gold btn-sm" onclick="alert('Transitions Pack Download Ready!')">Download Transitions</button>
+          </div>
+
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: 🖼️ PSD FILES TAB                   -->
+    <!-- ========================================== -->
+    <div id="main-tab-psd-files" class="main-tab-panel" style="display:none;">
+      <section class="hero-section">
+        <div class="hero-badge">🖼️ 12x36 Wedding Album PSD Files</div>
+        <h1 class="hero-title">Premium Album Sheet Templates</h1>
+        <p class="hero-subtitle">High-resolution multi-layered Photoshop PSD sheets, cover designs, frames, and background artwork.</p>
+
+        <div class="cards-grid">
+          
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">👑</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">Royal Indian Wedding 12x36 Sheets</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">Editable photo frames, gold ornaments, and rich velvet backgrounds.</p>
+            </div>
+            <button class="btn btn-outline-gold btn-sm" onclick="alert('PSD Sheets Pack Download Ready!')">Download 12x36 PSDs</button>
+          </div>
+
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">💛</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">Haldi & Sangeet Creative PSDs</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">Bright floral graphics, marigold vectors, and fun candid album frames.</p>
+            </div>
+            <button class="btn btn-outline-gold btn-sm" onclick="alert('Haldi PSD Pack Download Ready!')">Download Haldi PSDs</button>
+          </div>
+
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">💍</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">Album Leather Cover Designs</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;">Front & back pad cover PSDs, embossing artwork, and couple typography.</p>
+            </div>
+            <button class="btn btn-outline-gold btn-sm" onclick="alert('Covers Pack Download Ready!')">Download Cover PSDs</button>
+          </div>
+
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: 🎵 AUDIO SOUND TAB                  -->
+    <!-- ========================================== -->
+    <div id="main-tab-audio-sound" class="main-tab-panel" style="display:none;">
+      <section class="hero-section">
+        <div class="hero-badge">🎵 Wedding Audio &amp; Background Music</div>
+        <h1 class="hero-title">High-Quality Audio &amp; Sound Effects</h1>
+        <p class="hero-subtitle">Listen and download traditional Shehnai bgm, romantic entry audio, Vidai instrumental tracks &amp; sound FX.</p>
+
+        <!-- Audio Cards Grid (Full-Width Grid Layout across screen) -->
+        <div class="cards-grid">
+          
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">🎶</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">Shehnai &amp; Dhol Arrival BGM</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;margin-bottom:1.25rem;">Traditional Indian Wedding • High-Quality 320kbps MP3 Classical BGM.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="alert('Playing Shehnai &amp; Dhol Preview Track...')" style="width:100%;">▶ Play Track Preview</button>
+          </div>
+
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">💖</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">Romantic Flute &amp; Strings</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;margin-bottom:1.25rem;">Prewedding Teasers &amp; Highlights • Royalty-Free Cinematic BGM.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="alert('Playing Romantic Flute Preview Track...')" style="width:100%;">▶ Play Track Preview</button>
+          </div>
+
+          <div class="card-item">
+            <div>
+              <div style="font-size:2.2rem;margin-bottom:0.5rem;">🌺</div>
+              <h3 style="font-size:1.2rem;color:#ffffff;margin-bottom:0.4rem;">Vidai &amp; Mandap Instrumental</h3>
+              <p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.5;margin-bottom:1.25rem;">Emotional Wedding Moments • Soft Sitar &amp; Tabla Instrumental Track.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="alert('Playing Vidai Track Preview...')" style="width:100%;">▶ Play Track Preview</button>
+          </div>
+
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 6: 📷 PHOTO SELECTION TAB              -->
+    <!-- (Full Ready SaaS Photo Selection Portal!)  -->
+    <!-- ========================================== -->
+    <div id="main-tab-photo-selection" class="main-tab-panel" style="display:none;">
+      <section class="hero-section">
+        <div class="hero-content" style="margin:0 auto;">
+          <div class="hero-badge" id="dyn-hero-badge">
+            ✨ Luxury Wedding Photo Selection Portal
+          </div>
+          <h1 class="hero-title" id="dyn-hero-title">
+            Cherish Every Moment, <br>
+            <span class="gold-gradient-text">Select Your Favorites</span>
+          </h1>
+          <p class="hero-subtitle" id="dyn-hero-subtitle">
+            Welcome to your private wedding photo gallery. Effortlessly review, select, and finalize your memories for your personalized wedding album.
+          </p>
+
+          <!-- Client Access Code Box -->
+          <div class="client-portal-box">
+            <h3 style="font-size:1.2rem;margin-bottom:1rem;color:var(--gold-400);" id="dyn-portal-heading">Access Your Event Gallery</h3>
+            <form id="portal-access-form" onsubmit="handleAccessSubmit(event)">
+              <div class="form-group" style="margin-bottom:1rem;">
+                <input type="text" id="access-code-input" class="form-control" placeholder="Enter Client Code (e.g. RAJ2026)" required style="text-align:center;font-size:1.1rem;letter-spacing:0.1em;text-transform:uppercase;">
+              </div>
+              <button type="submit" id="dyn-portal-btn" class="btn btn-primary" style="width:100%;">Open My Gallery &rarr;</button>
+            </form>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:1rem;">
+              Don't have your client code? Please contact DM Films Studio.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features Grid for Photo Selection -->
+      <section class="features-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:2rem;max-width:1200px;margin:3rem auto 1rem auto;">
+        <div class="glass-card card-item">
+          <div style="font-size:2rem;color:var(--gold-400);margin-bottom:0.75rem;">💎</div>
+          <h3 style="font-size:1.25rem;margin-bottom:0.5rem;">Ultra High-Definition</h3>
+          <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">View every candid expression in crystal clarity with instant zoom and full-screen lightbox preview.</p>
+        </div>
+        <div class="glass-card card-item">
+          <div style="font-size:2rem;color:var(--gold-400);margin-bottom:0.75rem;">⚡</div>
+          <h3 style="font-size:1.25rem;margin-bottom:0.5rem;">Seamless Selection</h3>
+          <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">Select and filter with a single tap. Live selection counters keep you on budget and within album quotas.</p>
+        </div>
+        <div class="glass-card card-item">
+          <div style="font-size:2rem;color:var(--gold-400);margin-bottom:0.75rem;">🔒</div>
+          <h3 style="font-size:1.25rem;margin-bottom:0.5rem;">Enterprise Cloud Security</h3>
+          <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.5;">Your precious photos are securely synchronized with high-speed private cloud servers with bank-grade encryption.</p>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer id="dyn-footer">
+    &copy; 2026 DM FILMS MAKER. All rights reserved. Ultra-Fast Photography SaaS Platform & Media Resources.
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script>
+    function handleAccessSubmit(e) {
+      e.preventDefault();
+      const code = document.getElementById('access-code-input').value.trim();
+      if (code) {
+        window.location.href = `client.html?code=${encodeURIComponent(code)}`;
+      }
+    }
+
+    function handlePhotoSelectionClick(e) {
+      if (e) e.preventDefault();
+      window.location.href = 'login.html';
+    }
+
+    function switchMainTab(tabId, event) {
+      if (tabId === 'photo-selection') {
+        handlePhotoSelectionClick(event);
+        return;
+      }
+      if (event) event.preventDefault();
+
+      // Hide all panels
+      document.querySelectorAll('.main-tab-panel').forEach(panel => {
+        panel.style.display = 'none';
+      });
+
+      // Deactivate all nav links
+      document.querySelectorAll('.main-nav-tab').forEach(link => {
+        link.classList.remove('active');
+      });
+
+      // Show target panel
+      const targetPanel = document.getElementById(`main-tab-${tabId}`);
+      if (targetPanel) {
+        targetPanel.style.display = 'block';
+      }
+
+      // Activate nav link
+      const targetNav = document.querySelector(`.main-nav-tab[data-tab="${tabId}"]`);
+      if (targetNav) {
+        targetNav.classList.add('active');
+      }
+
+      history.replaceState(null, null, `#${tabId}`);
+    }
+
+    // Auto-detect tab from URL hash on load
+    document.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+
+      const initialTab = hash || tabParam || 'home';
+      if (initialTab === 'photo-selection') {
+        handlePhotoSelectionClick();
+        return;
+      }
+      switchMainTab(initialTab);
+
+      // Fetch dynamic studio website configuration
+      fetch('/api/public/website-config')
+        .then(r => r.json())
+        .then(cfg => {
+          if (!cfg) return;
+
+          const setTxt = (id, txt) => {
+            const el = document.getElementById(id) || document.querySelector(id);
+            if (el && txt) el.textContent = txt;
+          };
+
+          if (cfg.mainWebsiteTitle || cfg.studioName) {
+            const bTitles = document.querySelectorAll('.brand-title');
+            bTitles.forEach(b => b.textContent = cfg.mainWebsiteTitle || 'DM FILMS MAKER');
+          }
+
+          if (cfg.heroBadge) {
+            const b = document.getElementById('dyn-hero-badge');
+            if (b) b.innerHTML = `<span>✨</span> ${cfg.heroBadge.replace(/^✨\s*/, '')}`;
+          }
+
+          if (cfg.heroTitle) {
+            const ht = document.getElementById('dyn-hero-title');
+            if (ht) {
+              const parts = cfg.heroTitle.split(',');
+              if (parts.length > 1) {
+                ht.innerHTML = `${parts[0]}, <br><span class="gold-gradient-text">${parts.slice(1).join(',')}</span>`;
+              } else {
+                ht.innerHTML = `<span class="gold-gradient-text">${cfg.heroTitle}</span>`;
+              }
+            }
+          }
+
+          setTxt('dyn-hero-subtitle', cfg.heroSubtitle);
+          setTxt('dyn-portal-heading', cfg.portalBoxHeading);
+
+          const inp = document.getElementById('access-code-input');
+          if (inp && cfg.portalBoxPlaceholder) inp.placeholder = cfg.portalBoxPlaceholder;
+
+          const btn = document.getElementById('dyn-portal-btn');
+          if (btn && cfg.portalBtnText) btn.innerHTML = cfg.portalBtnText;
+
+          if (cfg.footerText) {
+            const ft = document.getElementById('dyn-footer');
+            if (ft) ft.textContent = cfg.footerText;
+          }
+
+          if (cfg.sliderImages && Array.isArray(cfg.sliderImages) && cfg.sliderImages.length > 0) {
+            renderSliSlides(cfg.sliderImages);
+          }
+
+          if (cfg.accentColor) {
+            document.documentElement.style.setProperty('--gold-400', cfg.accentColor);
+            document.documentElement.style.setProperty('--border-gold', cfg.accentColor + '80');
+          }
+        })
+        .catch(console.warn);
+    });
+
+    // Luxury 9:16 Portrait Continuous Smooth Queue Slider Engine (Exact User Photos Only)
+    let sliAnimId = null;
+    let sliOffset = 0;
+    let sliIsPaused = false;
+    const SLI_SPEED = 0.85; // 60 FPS silky-smooth continuous glide
+    let sliderImagesList = [];
+
+    function renderSliSlides(images) {
+      if (images && Array.isArray(images)) {
+        sliderImagesList = images.filter(u => u && typeof u === 'string' && u.trim().length > 0);
+      }
+      const track = document.getElementById('sliSlidesTrack');
+      if (!track) return;
+
+      if (!sliderImagesList.length) {
+        track.innerHTML = '';
+        return;
+      }
+
+      // Render ONLY the exact user photos (Clean portrait photographs)
+      track.innerHTML = sliderImagesList.map((img, i) => `
+        <div class="sli-slide-portrait" data-index="${i}">
+          <img src="${img}" alt="Wedding Portrait #${i + 1}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=720&h=1280&q=85'">
+        </div>
+      `).join('');
+
+      startContinuousQueueSlide();
+    }
+
+    function startContinuousQueueSlide() {
+      if (sliAnimId) cancelAnimationFrame(sliAnimId);
+      sliOffset = 0;
+      sliIsPaused = false;
+
+      const track = document.getElementById('sliSlidesTrack');
+      if (!track || track.children.length <= 1) return;
+
+      function step() {
+        if (!sliIsPaused && track.children.length > 1) {
+          sliOffset -= SLI_SPEED;
+          
+          const firstCard = track.firstElementChild;
+          if (firstCard) {
+            const gap = parseFloat(window.getComputedStyle(track).gap) || 24;
+            const cardWidth = firstCard.offsetWidth;
+            const totalStep = cardWidth + gap;
+
+            // When first card has moved off left edge, move it to the back seamlessly
+            if (sliOffset <= -totalStep) {
+              track.appendChild(firstCard);
+              sliOffset += totalStep;
+            }
+          }
+          track.style.transform = `translateX(${sliOffset}px)`;
+        }
+        sliAnimId = requestAnimationFrame(step);
+      }
+
+      sliAnimId = requestAnimationFrame(step);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const wrapper = document.getElementById('sliSliderWrapper');
+      if (wrapper) {
+        wrapper.addEventListener('mouseenter', () => {
+          sliIsPaused = true;
+        });
+        wrapper.addEventListener('mouseleave', () => {
+          sliIsPaused = false;
+        });
+      }
+    });
+  </script>
+</body>
+</html>
