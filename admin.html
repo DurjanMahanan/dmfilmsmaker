@@ -431,18 +431,26 @@
   <!-- Site Header -->
   <header class="site-header">
     <div class="nav-container">
-      <a href="admin.html" class="brand-logo" id="admin-brand-link" style="display:flex;align-items:center;gap:0.85rem;text-decoration:none;">
-        <div id="admin-brand-icon-box" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:8px;overflow:hidden;">
-          <svg id="admin-brand-default-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;color:var(--gold-400);">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-          </svg>
-        </div>
-        <div>
-          <div class="brand-title" id="admin-brand-title">DM FILMS & PHOTOGRAPHY</div>
-          <div class="brand-subtitle">Photo & Client Management</div>
-        </div>
-      </a>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <!-- Mobile Sidebar Hamburger Toggle Button -->
+        <button type="button" class="mobile-sidebar-toggle-btn" onclick="toggleMobileSidebar()" aria-label="Open Studio Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:22px;height:22px;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+
+        <a href="admin.html" class="brand-logo" id="admin-brand-link" style="display:flex;align-items:center;gap:0.85rem;text-decoration:none;">
+          <div id="admin-brand-icon-box" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border-radius:8px;overflow:hidden;">
+            <svg id="admin-brand-default-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;color:var(--gold-400);">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title" id="admin-brand-title">DM FILMS & PHOTOGRAPHY</div>
+            <div class="brand-subtitle">Photo & Client Management</div>
+          </div>
+        </a>
+      </div>
+
       <div style="display:flex;gap:0.85rem;align-items:center;">
         <!-- TOP ACTIVE PLAN & EXPIRY BADGE -->
         <div id="top-plan-status-badge" onclick="openUpgradeModal()" style="background:linear-gradient(135deg, rgba(30,22,56,0.95) 0%, rgba(15,10,30,0.98) 100%);border:1.5px solid #a855f7;border-radius:10px;padding:5px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 0 15px rgba(168,85,247,0.3);transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
@@ -466,11 +474,20 @@
     </div>
   </header>
 
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
   <!-- Admin 2-Column Layout -->
   <div class="admin-layout">
     
     <!-- Sidebar Navigation -->
-    <aside class="admin-sidebar">
+    <aside class="admin-sidebar" id="admin-sidebar">
+      <!-- Mobile Close Header -->
+      <div class="sidebar-mobile-close-header" style="display:none;align-items:center;justify-content:space-between;padding-bottom:1rem;margin-bottom:0.5rem;border-bottom:1px solid rgba(255,255,255,0.1);">
+        <span style="font-weight:900;color:var(--gold-400);font-size:1.05rem;letter-spacing:0.05em;">📸 STUDIO MENU</span>
+        <button type="button" onclick="closeMobileSidebar()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:1.3rem;width:32px;height:32px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">&times;</button>
+      </div>
+
       <a class="nav-item active" data-view="dashboard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         <span>Dashboard</span>
