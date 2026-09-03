@@ -383,8 +383,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
-  z-index: 9998;
+  z-index: 99998;
 }
 .sidebar-backdrop.active {
   display: block;
@@ -401,12 +400,13 @@
     left: -320px !important;
     width: 290px !important;
     height: 100vh !important;
-    z-index: 9999 !important;
+    z-index: 99999999 !important;
     background: #0d121f !important;
-    box-shadow: 5px 0 40px rgba(0,0,0,0.9) !important;
+    box-shadow: 10px 0 50px rgba(0,0,0,0.95) !important;
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     display: flex !important;
     padding-top: 1.25rem !important;
+    border-right: 2px solid rgba(212, 175, 55, 0.4) !important;
   }
 
   .admin-sidebar.mobile-open {
@@ -430,7 +430,7 @@ html, body {
   scroll-behavior: smooth;
 }
 
-.admin-main, .view-panel, .admin-layout {
+.admin-main, .view-panel {
   transform: translateZ(0);
   backface-visibility: hidden;
   will-change: transform;
