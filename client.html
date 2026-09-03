@@ -13,6 +13,36 @@
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/client.css">
+
+  <style>
+    /* Mobile Touch & Swipe Optimizations */
+    .lightbox-stage {
+      touch-action: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
+    .lightbox-image-container {
+      touch-action: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      will-change: transform;
+    }
+    .lightbox-img {
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      -webkit-user-drag: none !important;
+      pointer-events: auto;
+    }
+    @media (max-width: 768px) {
+      .lightbox-nav-btn {
+        width: 44px !important;
+        height: 44px !important;
+        background: rgba(10, 14, 26, 0.75) !important;
+      }
+      .lightbox-prev { left: 0.75rem !important; }
+      .lightbox-next { right: 0.75rem !important; }
+    }
+  </style>
 </head>
 <body>
 
