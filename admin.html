@@ -555,15 +555,38 @@
     function toggleMobileSidebar() {
       const sb = document.getElementById('admin-sidebar');
       const bd = document.getElementById('sidebar-backdrop');
-      if (sb) sb.classList.toggle('mobile-open');
-      if (bd) bd.classList.toggle('active');
+      if (!sb) return;
+      const isOpen = sb.classList.contains('mobile-open') || sb.style.left === '0px';
+      if (isOpen) {
+        closeMobileSidebar();
+      } else {
+        sb.classList.add('mobile-open');
+        sb.style.setProperty('display', 'flex', 'important');
+        sb.style.setProperty('left', '0px', 'important');
+        sb.style.setProperty('z-index', '99999999', 'important');
+        sb.style.setProperty('visibility', 'visible', 'important');
+        sb.style.setProperty('opacity', '1', 'important');
+        if (bd) {
+          bd.classList.add('active');
+          bd.style.setProperty('display', 'block', 'important');
+          bd.style.setProperty('z-index', '99999990', 'important');
+        }
+      }
     }
+
     function closeMobileSidebar() {
       const sb = document.getElementById('admin-sidebar');
       const bd = document.getElementById('sidebar-backdrop');
-      if (sb) sb.classList.remove('mobile-open');
-      if (bd) bd.classList.remove('active');
+      if (sb) {
+        sb.classList.remove('mobile-open');
+        sb.style.setProperty('left', '-320px', 'important');
+      }
+      if (bd) {
+        bd.classList.remove('active');
+        bd.style.setProperty('display', 'none', 'important');
+      }
     }
+
     function switchMobileView(viewName, e) {
       if (e) e.preventDefault();
       closeMobileSidebar();
