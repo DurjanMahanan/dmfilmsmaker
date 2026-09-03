@@ -424,7 +424,157 @@
       0% { transform: scale(1); opacity: 1; }
       100% { transform: scale(2.8); opacity: 0; }
     }
+    /* ========================================================== */
+    /* MOBILE RESPONSIVE SIDEBAR DRAWER & HORIZONTAL MENU DOCK     */
+    /* ========================================================== */
+    .mobile-sidebar-toggle-btn {
+      display: none;
+      background: rgba(212, 175, 55, 0.15);
+      border: 1.5px solid #d4af37;
+      color: #fde047;
+      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .mobile-sidebar-toggle-btn:hover {
+      background: rgba(212, 175, 55, 0.3);
+      box-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 99998;
+    }
+    .sidebar-backdrop.active {
+      display: block !important;
+    }
+
+    /* Horizontal Mobile Quick Navigation Pill Bar */
+    .mobile-quick-nav {
+      display: none;
+      background: #080b14;
+      border-bottom: 1.5px solid rgba(212, 175, 55, 0.3);
+      padding: 0.6rem 0.75rem;
+      overflow-x: auto;
+      white-space: nowrap;
+      gap: 0.5rem;
+      position: sticky;
+      top: 60px;
+      z-index: 90;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    }
+
+    .mobile-quick-nav::-webkit-scrollbar {
+      height: 3px;
+    }
+    .mobile-quick-nav::-webkit-scrollbar-thumb {
+      background: rgba(212, 175, 55, 0.4);
+      border-radius: 4px;
+    }
+
+    .mobile-nav-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #cbd5e1;
+      padding: 0.45rem 0.85rem;
+      border-radius: 30px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .mobile-nav-pill:hover, .mobile-nav-pill.active {
+      background: linear-gradient(135deg, #fde047 0%, #d4af37 100%) !important;
+      color: #000000 !important;
+      border-color: #ffffff !important;
+      font-weight: 800 !important;
+      box-shadow: 0 0 12px rgba(253, 224, 71, 0.5);
+    }
+
+    @media (max-width: 1024px) {
+      .admin-layout { 
+        grid-template-columns: 1fr !important; 
+        display: block !important;
+      }
+      .mobile-sidebar-toggle-btn { 
+        display: flex !important; 
+      }
+      .mobile-quick-nav {
+        display: flex !important;
+      }
+      .sidebar-mobile-close-header { 
+        display: flex !important; 
+      }
+      
+      .admin-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: -320px !important;
+        width: 290px !important;
+        height: 100vh !important;
+        z-index: 99999 !important;
+        background: #0d121f !important;
+        box-shadow: 5px 0 40px rgba(0,0,0,0.9) !important;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 1.25rem 1rem !important;
+      }
+
+      .admin-sidebar.mobile-open {
+        left: 0 !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .admin-main { padding: 1rem !important; }
+      .site-header { padding: 0.6rem 0.85rem !important; }
+      .brand-title { font-size: 1rem !important; }
+      .brand-subtitle { font-size: 0.62rem !important; }
+    }
   </style>
+
+  <script>
+    function toggleMobileSidebar() {
+      const sb = document.getElementById('admin-sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (sb) sb.classList.toggle('mobile-open');
+      if (bd) bd.classList.toggle('active');
+    }
+    function closeMobileSidebar() {
+      const sb = document.getElementById('admin-sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (sb) sb.classList.remove('mobile-open');
+      if (bd) bd.classList.remove('active');
+    }
+    function switchMobileView(viewName, e) {
+      if (e) e.preventDefault();
+      closeMobileSidebar();
+      if (typeof window.switchView === 'function') {
+        window.switchView(viewName);
+      }
+      document.querySelectorAll('.mobile-nav-pill').forEach(pill => {
+        pill.classList.toggle('active', pill.dataset.view === viewName);
+      });
+    }
+  </script>
 </head>
 <body>
 
@@ -473,6 +623,19 @@
       </div>
     </div>
   </header>
+
+  <!-- MOBILE HORIZONTAL QUICK NAVIGATION BAR (Always accessible on phones) -->
+  <nav class="mobile-quick-nav" id="mobile-quick-nav">
+    <button type="button" class="mobile-nav-pill active" data-view="dashboard" onclick="switchMobileView('dashboard', event)">📊 Dashboard</button>
+    <button type="button" class="mobile-nav-pill" data-view="clients" onclick="switchMobileView('clients', event)">👥 Clients &amp; Events</button>
+    <button type="button" class="mobile-nav-pill" data-view="upload" onclick="switchMobileView('upload', event)">📤 Upload Photos</button>
+    <button type="button" class="mobile-nav-pill" data-view="selections" onclick="switchMobileView('selections', event)">⭐ Selections</button>
+    <button type="button" class="mobile-nav-pill" data-view="flipbook" onclick="switchMobileView('flipbook', event)">📖 3D Flipbooks</button>
+    <button type="button" class="mobile-nav-pill" data-view="my-flipbooks" onclick="switchMobileView('my-flipbooks', event)">📚 My Flipbooks</button>
+    <button type="button" class="mobile-nav-pill" data-view="invoices" onclick="switchMobileView('invoices', event)">📄 Invoices</button>
+    <button type="button" class="mobile-nav-pill" data-view="profile-settings" onclick="switchMobileView('profile-settings', event)">⚙️ Profile</button>
+    <button type="button" class="mobile-nav-pill" data-view="contact-us" onclick="switchMobileView('contact-us', event)">📞 Contact</button>
+  </nav>
 
   <!-- Mobile Sidebar Backdrop Overlay -->
   <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
