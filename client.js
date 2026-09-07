@@ -381,6 +381,7 @@ function updateSelectionCounter() {
 }
 
 // --- Lightbox Fullscreen Viewer & Zoom/Pan Engine ---
+// --- Lightbox Fullscreen Viewer & Zoom/Pan/Swipe Engine ---
 function resetLightboxTransform() {
   zoomScale = 1.0;
   panX = 0;
@@ -394,11 +395,11 @@ function applyLightboxTransform() {
   const badge = document.getElementById('lightbox-zoom-badge');
   if (container) {
     container.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
-    container.style.cursor = zoomScale > 1.0 ? (isPanning ? 'grabbing' : 'grab') : 'default';
+    container.style.cursor = zoomScale > 1.05 ? (isPanning ? 'grabbing' : 'grab') : 'default';
   }
   if (badge) {
     const percent = Math.round(zoomScale * 100);
-    badge.textContent = `🔍 ${percent}% ${zoomScale > 1.0 ? '(Drag to Pan)' : '(Scroll wheel to Zoom &bull; Drag to Pan)'}`;
+    badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
   }
 }
 
@@ -407,7 +408,7 @@ function initLightboxZoomEvents() {
   const container = document.getElementById('lightbox-image-stage');
   if (!stage || !container) return;
 
-  // 1. Mouse Scroll Wheel Zoom In / Out
+  // 1. Mouse Scroll Wheel Zoom In / Out (Desktop)
   stage.addEventListener('wheel', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || !modal.classList.contains('active')) return;
@@ -416,11 +417,13 @@ function initLightboxZoomEvents() {
     const delta = e.deltaY < 0 ? 0.25 : -0.25;
     const newScale = Math.min(4.0, Math.max(1.0, zoomScale + delta));
 
-    if (newScale === 1.0) {
+    if (newScale <= 1.05) {
+      zoomScale = 1.0;
       panX = 0;
       panY = 0;
+    } else {
+      zoomScale = newScale;
     }
-    zoomScale = newScale;
     applyLightboxTransform();
   }, { passive: false });
 
@@ -438,13 +441,15 @@ function initLightboxZoomEvents() {
       panY = 0;
     } else {
       zoomScale = 2.5;
+      panX = 0;
+      panY = 0;
     }
     applyLightboxTransform();
   }
 
-  // 3. Mouse Click & Drag Pan
+  // 3. Mouse Click & Drag Pan (Desktop)
   stage.addEventListener('mousedown', (e) => {
-    if (zoomScale <= 1.0) return;
+    if (zoomScale <= 1.05) return;
     isPanning = true;
     startPanX = e.clientX - panX;
     startPanY = e.clientY - panY;
@@ -452,7 +457,7 @@ function initLightboxZoomEvents() {
   });
 
   window.addEventListener('mousemove', (e) => {
-    if (!isPanning || zoomScale <= 1.0) return;
+    if (!isPanning || zoomScale <= 1.05) return;
     panX = e.clientX - startPanX;
     panY = e.clientY - startPanY;
     applyLightboxTransform();
@@ -465,16 +470,17 @@ function initLightboxZoomEvents() {
     }
   });
 
-  // 4. Touch & Mobile Finger Swipe / Pinch-to-Zoom Engine
+  // 4. Ultra-Smooth Mobile 2-Finger Pinch Zoom & 1-Finger Pan / Swipe Controller
   let touchStartX = 0;
   let touchStartY = 0;
   let touchStartTime = 0;
-  let isSwiping = false;
-  let isTouchPanning = false;
-  let touchStartPanX = 0;
-  let touchStartPanY = 0;
-  let initialPinchDistance = 0;
+  let startPanTouchX = 0;
+  let startPanTouchY = 0;
+  let initialPinchDist = 0;
   let initialPinchScale = 1.0;
+  let isPinching = false;
+  let isTouchPanning = false;
+  let isSwiping = false;
 
   stage.addEventListener('touchstart', (e) => {
     const modal = document.getElementById('lightbox-modal');
@@ -493,18 +499,25 @@ function initLightboxZoomEvents() {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
+      isPinching = false;
 
-      if (zoomScale > 1.0) {
+      if (zoomScale > 1.05) {
+        // Zoomed in: 1-finger panning active (Pan Left, Right, Up, Down)
         isTouchPanning = true;
-        touchStartPanX = touchStartX - panX;
-        touchStartPanY = touchStartY - panY;
+        isSwiping = false;
+        startPanTouchX = touchStartX - panX;
+        startPanTouchY = touchStartY - panY;
       } else {
+        // Normal scale: swipe detection
         isSwiping = true;
+        isTouchPanning = false;
       }
     } else if (e.touches.length === 2) {
+      // 2 Fingers: Pinch to zoom start
+      isPinching = true;
       isSwiping = false;
       isTouchPanning = false;
-      initialPinchDistance = Math.hypot(
+      initialPinchDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
@@ -522,29 +535,27 @@ function initLightboxZoomEvents() {
       const diffX = currentX - touchStartX;
       const diffY = currentY - touchStartY;
 
-      if (zoomScale > 1.0 && isTouchPanning) {
+      if (zoomScale > 1.05 && isTouchPanning) {
+        // Smooth 1-Finger Pan (Left, Right, Up, Down)
         e.preventDefault();
-        panX = currentX - touchStartPanX;
-        panY = currentY - touchStartPanY;
+        panX = currentX - startPanTouchX;
+        panY = currentY - startPanTouchY;
         applyLightboxTransform();
-      } else if (isSwiping && zoomScale === 1.0) {
-        if (Math.abs(diffX) > Math.abs(diffY)) {
+      } else if (isSwiping && zoomScale <= 1.05) {
+        // Swipe gesture lock (prevent browser vertical pull)
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
           e.preventDefault();
-          container.style.transform = `translate(${diffX * 0.35}px, 0px) scale(1)`;
         }
       }
-    } else if (e.touches.length === 2 && initialPinchDistance > 0) {
+    } else if (e.touches.length === 2 && isPinching && initialPinchDist > 0) {
+      // Smooth 2-Finger Pinch Zoom In / Out
       e.preventDefault();
       const currentDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      const scaleFactor = currentDist / initialPinchDistance;
-      zoomScale = Math.min(4.0, Math.max(1.0, initialPinchScale * scaleFactor));
-      if (zoomScale === 1.0) {
-        panX = 0;
-        panY = 0;
-      }
+      const scaleFactor = currentDist / initialPinchDist;
+      zoomScale = Math.min(4.0, Math.max(0.9, initialPinchScale * scaleFactor));
       applyLightboxTransform();
     }
   }, { passive: false });
@@ -553,26 +564,30 @@ function initLightboxZoomEvents() {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || !modal.classList.contains('active')) return;
 
-    if (isSwiping && zoomScale === 1.0 && e.changedTouches && e.changedTouches.length > 0) {
+    if (isPinching) {
+      isPinching = false;
+      initialPinchDist = 0;
+      if (zoomScale <= 1.05) {
+        zoomScale = 1.0;
+        panX = 0;
+        panY = 0;
+        applyLightboxTransform();
+      }
+      return;
+    }
+
+    if (isSwiping && zoomScale <= 1.05 && e.changedTouches && e.changedTouches.length > 0) {
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
       const totalDiffX = touchEndX - touchStartX;
       const totalDiffY = touchEndY - touchStartY;
       const swipeDuration = Date.now() - touchStartTime;
 
-      container.style.transition = 'transform 0.2s ease-out';
-      container.style.transform = 'translate(0px, 0px) scale(1)';
-      setTimeout(() => {
-        container.style.transition = '';
-      }, 200);
-
-      // Trigger swipe if finger moved >= 40px horizontally
-      if (Math.abs(totalDiffX) > 40 && Math.abs(totalDiffX) > Math.abs(totalDiffY) * 1.1 && swipeDuration < 750) {
+      // Swipe threshold: 35px horizontal movement
+      if (Math.abs(totalDiffX) > 35 && Math.abs(totalDiffX) > Math.abs(totalDiffY) * 1.1 && swipeDuration < 800) {
         if (totalDiffX < 0) {
-          // Swipe Left -> Next Photo
           nextLightboxPhoto();
         } else {
-          // Swipe Right -> Previous Photo
           prevLightboxPhoto();
         }
       }
@@ -580,7 +595,6 @@ function initLightboxZoomEvents() {
 
     isSwiping = false;
     isTouchPanning = false;
-    initialPinchDistance = 0;
   });
 
   // 5. Keyboard Navigation (Arrow keys & Escape)
@@ -1113,6 +1127,7 @@ window.saveCurrentLightboxComment = saveCurrentLightboxComment;
 window.openSubmitModal = openSubmitModal;
 window.confirmSubmitSelection = confirmSubmitSelection;
 window.closeModal = closeModal;
-window.setFolderFilter = setFolderFilter;
-window.setStatusFilter = setStatusFilter;
 window.verifyClientPin = verifyClientPin;
+window.initLightboxZoomEvents = initLightboxZoomEvents;
+window.resetLightboxTransform = resetLightboxTransform;
+window.applyLightboxTransform = applyLightboxTransform;
