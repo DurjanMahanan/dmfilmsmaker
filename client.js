@@ -487,15 +487,6 @@ function initLightboxZoomEvents() {
     if (!modal || !modal.classList.contains('active')) return;
 
     if (e.touches.length === 1) {
-      const now = Date.now();
-      if (now - lastTapTime < 300) {
-        e.preventDefault();
-        toggleDoubleZoom();
-        lastTapTime = 0;
-        return;
-      }
-      lastTapTime = now;
-
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
@@ -508,7 +499,7 @@ function initLightboxZoomEvents() {
         startPanTouchX = touchStartX - panX;
         startPanTouchY = touchStartY - panY;
       } else {
-        // Normal scale: swipe detection
+        // Normal scale: 1-finger swipe active (NO ACCIDENTAL ZOOM)
         isSwiping = true;
         isTouchPanning = false;
       }

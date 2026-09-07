@@ -340,7 +340,7 @@
         // Reset transform whenever modal opens or photo changes
         const observer = new MutationObserver(() => {
           if (modal && modal.classList.contains('active')) {
-            // Keep active state
+            // Active
           } else {
             resetTransform();
           }
@@ -352,26 +352,19 @@
           if (!modal || !modal.classList.contains('active')) return;
 
           if (e.touches.length === 1) {
-            const now = Date.now();
-            if (now - lastTapTime < 320) {
-              e.preventDefault();
-              toggleZoom();
-              lastTapTime = 0;
-              return;
-            }
-            lastTapTime = now;
-
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
             touchStartTime = Date.now();
             isPinching = false;
 
             if (zoomScale > 1.05) {
+              // Zoomed in: 1-finger pan active
               isTouchPanning = true;
               isSwiping = false;
               startPanTouchX = touchStartX - panX;
               startPanTouchY = touchStartY - panY;
             } else {
+              // Normal scale: 1-finger swipe active (NO ACCIDENTAL ZOOM)
               isSwiping = true;
               isTouchPanning = false;
             }
@@ -406,7 +399,7 @@
               applyTransform();
             } else if (isSwiping && zoomScale <= 1.05) {
               if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
-                e.preventDefault(); // Lock browser pull
+                e.preventDefault(); // Prevent vertical bounce
               }
             }
           } else if (e.touches.length === 2 && isPinching && initialPinchDist > 0) {
@@ -417,7 +410,7 @@
               e.touches[0].clientY - e.touches[1].clientY
             );
             const scaleFactor = currentDist / initialPinchDist;
-            zoomScale = Math.min(4.0, Math.max(1.0, initialPinchScale * scaleFactor));
+            zoomScale = Math.min(4.0, Math.max(0.9, initialPinchScale * scaleFactor));
             applyTransform();
           }
         }, { passive: false });
