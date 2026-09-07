@@ -15,24 +15,64 @@
   <link rel="stylesheet" href="css/client.css">
 
   <style>
-    /* Mobile Touch & Swipe Optimizations */
+    /* 60FPS Hardware-Accelerated Smooth Swipe & Slide Engine */
     .lightbox-stage {
       touch-action: none !important;
       user-select: none !important;
       -webkit-user-select: none !important;
+      overflow: hidden !important;
     }
     .lightbox-image-container {
       touch-action: none !important;
       user-select: none !important;
       -webkit-user-select: none !important;
       will-change: transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
     }
     .lightbox-img {
       user-select: none !important;
       -webkit-user-select: none !important;
       -webkit-user-drag: none !important;
       pointer-events: auto;
+      will-change: transform, opacity;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      max-width: 100%;
+      max-height: 80vh;
+      object-fit: contain;
     }
+
+    /* Silky-Smooth 60FPS Slide In Animations */
+    .lightbox-img.slide-in-right {
+      animation: smoothSlideInRight 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .lightbox-img.slide-in-left {
+      animation: smoothSlideInLeft 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes smoothSlideInRight {
+      0% {
+        opacity: 0.2;
+        transform: translateX(40px) scale(0.96);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0px) scale(1);
+      }
+    }
+
+    @keyframes smoothSlideInLeft {
+      0% {
+        opacity: 0.2;
+        transform: translateX(-40px) scale(0.96);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0px) scale(1);
+      }
+    }
+
     @media (max-width: 768px) {
       .lightbox-nav-btn {
         width: 44px !important;
@@ -278,12 +318,9 @@
           const diffX = currentX - touchStartX;
           const diffY = currentY - touchStartY;
 
+          // If horizontal swipe detected, lock page scroll for smooth gesture
           if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
             isHorizontalSwipe = true;
-            const container = document.getElementById('lightbox-image-stage');
-            if (container && (!window.zoomScale || window.zoomScale <= 1.05)) {
-              container.style.transform = `translateX(${diffX * 0.4}px)`;
-            }
           }
         }
       }
@@ -292,15 +329,6 @@
         const modal = document.getElementById('lightbox-modal');
         if (!modal || !modal.classList.contains('active')) return;
 
-        const container = document.getElementById('lightbox-image-stage');
-        if (container && (!window.zoomScale || window.zoomScale <= 1.05)) {
-          container.style.transition = 'transform 0.2s ease-out';
-          container.style.transform = 'translateX(0px)';
-          setTimeout(() => {
-            if (container) container.style.transition = '';
-          }, 200);
-        }
-
         if (e.changedTouches && e.changedTouches.length > 0) {
           const touchEndX = e.changedTouches[0].clientX;
           const touchEndY = e.changedTouches[0].clientY;
@@ -308,8 +336,8 @@
           const totalDiffY = touchEndY - touchStartY;
           const duration = Date.now() - touchStartTime;
 
-          // Swipe threshold: 30px horizontal movement within 800ms
-          if (Math.abs(totalDiffX) > 30 && Math.abs(totalDiffX) > Math.abs(totalDiffY) && duration < 800) {
+          // Swipe threshold: 35px horizontal movement within 800ms (No shaking)
+          if (Math.abs(totalDiffX) > 35 && Math.abs(totalDiffX) > Math.abs(totalDiffY) * 1.1 && duration < 800) {
             if (totalDiffX < 0) {
               // Swipe LEFT -> NEXT Photo
               if (typeof window.nextLightboxPhoto === 'function') {

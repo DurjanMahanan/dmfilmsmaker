@@ -606,7 +606,7 @@ function initLightboxZoomEvents() {
   });
 }
 
-function openLightbox(index) {
+function openLightbox(index, direction) {
   const photos = currentClient.photos || [];
   if (index < 0 || index >= photos.length) return;
 
@@ -622,7 +622,14 @@ function openLightbox(index) {
   resetLightboxTransform();
 
   if (img) {
-    img.src = '';
+    img.classList.remove('slide-in-right', 'slide-in-left');
+    if (direction === 'next') {
+      void img.offsetWidth; // Trigger reflow for smooth animation
+      img.classList.add('slide-in-right');
+    } else if (direction === 'prev') {
+      void img.offsetWidth; // Trigger reflow for smooth animation
+      img.classList.add('slide-in-left');
+    }
     img.src = photo.url || photo.thumbnailUrl;
   }
   if (title) title.textContent = photo.name;
@@ -648,14 +655,14 @@ function nextLightboxPhoto() {
   const photos = currentClient.photos || [];
   if (photos.length === 0) return;
   const nextIdx = (currentLightboxIndex + 1) % photos.length;
-  openLightbox(nextIdx);
+  openLightbox(nextIdx, 'next');
 }
 
 function prevLightboxPhoto() {
   const photos = currentClient.photos || [];
   if (photos.length === 0) return;
   const prevIdx = (currentLightboxIndex - 1 + photos.length) % photos.length;
-  openLightbox(prevIdx);
+  openLightbox(prevIdx, 'prev');
 }
 
 function updateLightboxSelectButton() {
