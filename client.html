@@ -273,5 +273,202 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/client.js"></script>
+
+  <!-- Complete Standalone Mobile Gesture Engine: Pinch-to-Zoom, 1-Finger Pan & Smooth Swipe -->
+  <script>
+    (function() {
+      let zoomScale = 1.0;
+      let panX = 0;
+      let panY = 0;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
+      let startPanTouchX = 0;
+      let startPanTouchY = 0;
+      let initialPinchDist = 0;
+      let initialPinchScale = 1.0;
+      let isPinching = false;
+      let isTouchPanning = false;
+      let isSwiping = false;
+      let lastTapTime = 0;
+
+      function applyTransform() {
+        const container = document.getElementById('lightbox-image-stage');
+        const badge = document.getElementById('lightbox-zoom-badge');
+        if (container) {
+          container.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+          container.style.cursor = zoomScale > 1.05 ? 'grab' : 'default';
+        }
+        if (badge) {
+          const percent = Math.round(zoomScale * 100);
+          badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
+        }
+      }
+
+      function resetTransform() {
+        zoomScale = 1.0;
+        panX = 0;
+        panY = 0;
+        isPinching = false;
+        isTouchPanning = false;
+        isSwiping = false;
+        applyTransform();
+      }
+
+      function toggleZoom() {
+        if (zoomScale > 1.2) {
+          zoomScale = 1.0;
+          panX = 0;
+          panY = 0;
+        } else {
+          zoomScale = 2.5;
+          panX = 0;
+          panY = 0;
+        }
+        applyTransform();
+      }
+
+      // Expose globally so photo change resets zoom
+      window.resetLightboxTransform = resetTransform;
+
+      function initGestures() {
+        const modal = document.getElementById('lightbox-modal');
+        const stage = document.querySelector('.lightbox-stage') || modal;
+        const container = document.getElementById('lightbox-image-stage');
+        if (!stage) return;
+
+        // Reset transform whenever modal opens or photo changes
+        const observer = new MutationObserver(() => {
+          if (modal && modal.classList.contains('active')) {
+            // Keep active state
+          } else {
+            resetTransform();
+          }
+        });
+        if (modal) observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+
+        // Touch Start
+        stage.addEventListener('touchstart', (e) => {
+          if (!modal || !modal.classList.contains('active')) return;
+
+          if (e.touches.length === 1) {
+            const now = Date.now();
+            if (now - lastTapTime < 320) {
+              e.preventDefault();
+              toggleZoom();
+              lastTapTime = 0;
+              return;
+            }
+            lastTapTime = now;
+
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+            isPinching = false;
+
+            if (zoomScale > 1.05) {
+              isTouchPanning = true;
+              isSwiping = false;
+              startPanTouchX = touchStartX - panX;
+              startPanTouchY = touchStartY - panY;
+            } else {
+              isSwiping = true;
+              isTouchPanning = false;
+            }
+          } else if (e.touches.length === 2) {
+            // 2-Finger Pinch Zoom Start
+            isPinching = true;
+            isSwiping = false;
+            isTouchPanning = false;
+            initialPinchDist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+            initialPinchScale = zoomScale;
+          }
+        }, { passive: false });
+
+        // Touch Move
+        stage.addEventListener('touchmove', (e) => {
+          if (!modal || !modal.classList.contains('active')) return;
+
+          if (e.touches.length === 1) {
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const diffX = currentX - touchStartX;
+            const diffY = currentY - touchStartY;
+
+            if (zoomScale > 1.05 && isTouchPanning) {
+              // Smooth 1-Finger Pan in any direction
+              e.preventDefault();
+              panX = currentX - startPanTouchX;
+              panY = currentY - startPanTouchY;
+              applyTransform();
+            } else if (isSwiping && zoomScale <= 1.05) {
+              if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+                e.preventDefault(); // Lock browser pull
+              }
+            }
+          } else if (e.touches.length === 2 && isPinching && initialPinchDist > 0) {
+            // Smooth 2-Finger Pinch Zoom Scaling
+            e.preventDefault();
+            const currentDist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+            const scaleFactor = currentDist / initialPinchDist;
+            zoomScale = Math.min(4.0, Math.max(1.0, initialPinchScale * scaleFactor));
+            applyTransform();
+          }
+        }, { passive: false });
+
+        // Touch End
+        stage.addEventListener('touchend', (e) => {
+          if (!modal || !modal.classList.contains('active')) return;
+
+          if (isPinching) {
+            isPinching = false;
+            initialPinchDist = 0;
+            if (zoomScale <= 1.05) {
+              resetTransform();
+            }
+            return;
+          }
+
+          if (isSwiping && zoomScale <= 1.05 && e.changedTouches && e.changedTouches.length > 0) {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const totalDiffX = touchEndX - touchStartX;
+            const totalDiffY = touchEndY - touchStartY;
+            const duration = Date.now() - touchStartTime;
+
+            // 35px horizontal swipe threshold
+            if (Math.abs(totalDiffX) > 35 && Math.abs(totalDiffX) > Math.abs(totalDiffY) * 1.1 && duration < 800) {
+              resetTransform();
+              if (totalDiffX < 0) {
+                if (typeof window.nextLightboxPhoto === 'function') window.nextLightboxPhoto();
+              } else {
+                if (typeof window.prevLightboxPhoto === 'function') window.prevLightboxPhoto();
+              }
+            }
+          }
+
+          isSwiping = false;
+          isTouchPanning = false;
+        });
+
+        // Desktop Double Click
+        if (container) {
+          container.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            toggleZoom();
+          });
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', initGestures);
+      window.addEventListener('load', initGestures);
+    })();
+  </script>
 </body>
 </html>
