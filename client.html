@@ -233,5 +233,101 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/client.js"></script>
+
+  <!-- Self-Contained Mobile Touch Swipe & Gesture Engine (Zero-Cache Dependency) -->
+  <script>
+    (function() {
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
+      let isHorizontalSwipe = false;
+
+      function attachSwipeHandlers() {
+        const stage = document.querySelector('.lightbox-stage') || document.getElementById('lightbox-modal');
+        const container = document.getElementById('lightbox-image-stage');
+        const img = document.getElementById('lightbox-image');
+        if (!stage) return;
+
+        // Clean any existing handlers
+        stage.removeEventListener('touchstart', onTouchStart);
+        stage.removeEventListener('touchmove', onTouchMove);
+        stage.removeEventListener('touchend', onTouchEnd);
+
+        stage.addEventListener('touchstart', onTouchStart, { passive: true });
+        stage.addEventListener('touchmove', onTouchMove, { passive: true });
+        stage.addEventListener('touchend', onTouchEnd, { passive: true });
+      }
+
+      function onTouchStart(e) {
+        const modal = document.getElementById('lightbox-modal');
+        if (!modal || !modal.classList.contains('active')) return;
+        if (e.touches && e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchStartTime = Date.now();
+          isHorizontalSwipe = false;
+        }
+      }
+
+      function onTouchMove(e) {
+        const modal = document.getElementById('lightbox-modal');
+        if (!modal || !modal.classList.contains('active')) return;
+        if (e.touches && e.touches.length === 1) {
+          const currentX = e.touches[0].clientX;
+          const currentY = e.touches[0].clientY;
+          const diffX = currentX - touchStartX;
+          const diffY = currentY - touchStartY;
+
+          if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+            isHorizontalSwipe = true;
+            const container = document.getElementById('lightbox-image-stage');
+            if (container && (!window.zoomScale || window.zoomScale <= 1.05)) {
+              container.style.transform = `translateX(${diffX * 0.4}px)`;
+            }
+          }
+        }
+      }
+
+      function onTouchEnd(e) {
+        const modal = document.getElementById('lightbox-modal');
+        if (!modal || !modal.classList.contains('active')) return;
+
+        const container = document.getElementById('lightbox-image-stage');
+        if (container && (!window.zoomScale || window.zoomScale <= 1.05)) {
+          container.style.transition = 'transform 0.2s ease-out';
+          container.style.transform = 'translateX(0px)';
+          setTimeout(() => {
+            if (container) container.style.transition = '';
+          }, 200);
+        }
+
+        if (e.changedTouches && e.changedTouches.length > 0) {
+          const touchEndX = e.changedTouches[0].clientX;
+          const touchEndY = e.changedTouches[0].clientY;
+          const totalDiffX = touchEndX - touchStartX;
+          const totalDiffY = touchEndY - touchStartY;
+          const duration = Date.now() - touchStartTime;
+
+          // Swipe threshold: 30px horizontal movement within 800ms
+          if (Math.abs(totalDiffX) > 30 && Math.abs(totalDiffX) > Math.abs(totalDiffY) && duration < 800) {
+            if (totalDiffX < 0) {
+              // Swipe LEFT -> NEXT Photo
+              if (typeof window.nextLightboxPhoto === 'function') {
+                window.nextLightboxPhoto();
+              }
+            } else {
+              // Swipe RIGHT -> PREVIOUS Photo
+              if (typeof window.prevLightboxPhoto === 'function') {
+                window.prevLightboxPhoto();
+              }
+            }
+          }
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', attachSwipeHandlers);
+      window.addEventListener('load', attachSwipeHandlers);
+    })();
+  </script>
 </body>
 </html>
