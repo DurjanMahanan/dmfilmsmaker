@@ -16782,19 +16782,8 @@
       "tagline": "Wedding & Cinematic Photography",
       "driveFolderId": "1qad8pbzv31Kl6aD-TVQ4VaUyalMdhy9z",
       "createdAt": "2026-08-10T16:48:37.482Z",
-      "subscription": {
-        "planName": "Silver Edition",
-        "planCode": "MONTHLY",
-        "amount": 199,
-        "utr": "UPI41796620",
-        "paymentMethod": "PhonePe Standard Gateway",
-        "status": "ACTIVE",
-        "upiId": "9668584247@ybl",
-        "activatedAt": "2026-09-29T15:43:43.925Z",
-        "expiresAt": "2026-10-29T15:43:43.925Z",
-        "durationDays": 30
-      },
-      "claimedTrial": true
+      "subscription": null,
+      "claimedTrial": false
     }
   ],
   "flipbooks": [
@@ -16878,19 +16867,35 @@
       "studioContact": "8249861208 | durjan.mahanand123@gmail.com"
     }
   ],
-  "subscription": {
-    "planName": "Silver Edition",
-    "planCode": "MONTHLY",
-    "amount": 199,
-    "utr": "UPI41796620",
-    "paymentMethod": "PhonePe Standard Gateway (9668584247@ybl)",
-    "status": "ACTIVE",
-    "upiId": "9668584247@ybl",
-    "activatedAt": "2026-09-29T15:43:43.925Z",
-    "expiresAt": "2026-10-29T15:43:43.925Z",
-    "durationDays": 30
-  },
+  "subscription": null,
   "paymentHistory": [
+    {
+      "id": "PAY_1790701949427",
+      "planName": "Silver Edition",
+      "amount": 199,
+      "utr": "UPI01949418",
+      "paymentMethod": "UPI",
+      "status": "SUCCESS",
+      "timestamp": "2026-09-29T17:12:29.427Z"
+    },
+    {
+      "id": "PAY_1790701943028",
+      "planName": "Free Trial",
+      "amount": 199,
+      "utr": "UPI01943021",
+      "paymentMethod": "Free Trial",
+      "status": "SUCCESS",
+      "timestamp": "2026-09-29T17:12:23.027Z"
+    },
+    {
+      "id": "PAY_1790701834186",
+      "planName": "Free Trial",
+      "amount": 199,
+      "utr": "UPI01834179",
+      "paymentMethod": "Free Trial",
+      "status": "SUCCESS",
+      "timestamp": "2026-09-29T17:10:34.185Z"
+    },
     {
       "id": "PAY_1787241796620",
       "orderId": "DM_1787241789585_523999",
@@ -17017,5 +17022,11 @@
       "durationDays": 30,
       "utr": "UPI39392251"
     }
+  ],
+  "claimedTrialEmails": [
+    "test_studio_1790701826716@example.com"
+  ],
+  "claimedTrialStudioIds": [
+    "studio_dujiblt"
   ]
 }

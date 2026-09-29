@@ -27,6 +27,17 @@
     }
 
     function closeModal(id) {
+      if (id === 'upgrade-plan-modal') {
+        const sub = window.currentActiveSubscription;
+        if (sub && (sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED')) {
+          if (window.api && window.api.showToast) {
+            window.api.showToast('🔒 Please claim your 7-Day Free Trial or choose a plan to unlock your workspace!', 'warning');
+          } else {
+            alert('🔒 Active Plan Required: Please claim your 7-Day Free Trial or upgrade to continue!');
+          }
+          return;
+        }
+      }
       const m = document.getElementById(id);
       if (m) {
         m.classList.remove('active');
@@ -134,6 +145,131 @@
       const topName = document.getElementById('top-plan-name');
       const topExpiry = document.getElementById('top-plan-expiry');
       const topDays = document.getElementById('top-plan-days');
+      const lockOverlay = document.getElementById('admin-workspace-lock-overlay');
+      const modalCloseBtn = document.querySelector('#upgrade-plan-modal .modal-close');
+      const modalAlertBanner = document.getElementById('modal-plan-alert-banner');
+      const trialCard = document.getElementById('pricing-card-trial');
+      const trialBtn = document.getElementById('btn-claim-free-trial');
+
+      const isLocked = Boolean(sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED');
+
+      // 1. CONFIGURE LOCKED STATE
+      if (isLocked) {
+        if (lockOverlay) {
+          lockOverlay.style.display = 'block';
+          const titleEl = document.getElementById('lock-overlay-title');
+          const msgEl = document.getElementById('lock-overlay-msg');
+          const btnTextEl = document.getElementById('lock-overlay-btn-text');
+
+          if (sub.status === 'NO_PLAN') {
+            if (titleEl) titleEl.textContent = 'Workspace Locked — Active Plan Required';
+            if (msgEl) msgEl.textContent = sub.trialClaimed 
+              ? 'Your trial has ended. Please upgrade to Silver Edition or Gold Pro to unlock your workspace!' 
+              : 'Welcome! Please claim your 7-Day Free Trial (₹0) or Upgrade to unlock your studio workspace.';
+            if (btnTextEl) btnTextEl.textContent = sub.trialClaimed ? 'Upgrade Plan Now' : 'Claim Free Trial & Unlock';
+          } else {
+            if (titleEl) titleEl.textContent = `Workspace Locked — ${(sub.planName || 'Plan')} Expired`;
+            if (msgEl) msgEl.textContent = 'Your subscription period has ended. Please renew or upgrade to continue managing your galleries.';
+            if (btnTextEl) btnTextEl.textContent = 'Renew / Upgrade Plan Now';
+          }
+        }
+
+        // Hide close button so user MUST pick trial or paid plan to enter
+        if (modalCloseBtn) modalCloseBtn.style.display = 'none';
+
+        // Auto-open modal if user has no active plan
+        openModal('upgrade-plan-modal');
+
+        // Alert Banner inside modal
+        if (modalAlertBanner) {
+          modalAlertBanner.style.display = 'block';
+          if (sub.status === 'NO_PLAN') {
+            modalAlertBanner.style.background = 'rgba(168, 85, 247, 0.2)';
+            modalAlertBanner.style.border = '1px solid #c084fc';
+            modalAlertBanner.style.color = '#f1f5f9';
+            modalAlertBanner.innerHTML = sub.trialClaimed 
+              ? '⚠️ <strong>Plan Required:</strong> Please upgrade to Silver or Gold Pro to unlock your studio dashboard.'
+              : '✨ <strong>Welcome!</strong> Start with a <strong>7-Day Free Trial (₹0)</strong> or choose an unlimited plan to unlock your studio dashboard.';
+          } else {
+            modalAlertBanner.style.background = 'rgba(239, 68, 68, 0.2)';
+            modalAlertBanner.style.border = '1px solid #ef4444';
+            modalAlertBanner.style.color = '#fecaca';
+            modalAlertBanner.innerHTML = `⚠️ <strong>Plan Expired:</strong> Your ${sub.planName || 'subscription'} has ended. Please upgrade below to restore access!`;
+          }
+        }
+
+        // Configure Free Trial Card state
+        if (sub.trialClaimed) {
+          if (trialCard) {
+            trialCard.style.opacity = '0.45';
+            trialCard.style.filter = 'grayscale(0.9)';
+            trialCard.style.cursor = 'not-allowed';
+            trialCard.onclick = () => {
+              if (window.api && window.api.showToast) {
+                window.api.showToast('⚠️ Free Trial already used on this account. Please select Silver or Gold Pro! 💎', 'warning');
+              } else {
+                alert('⚠️ Free Trial already used on this account. Please select Silver or Gold Pro!');
+              }
+            };
+          }
+          if (trialBtn) {
+            trialBtn.textContent = '🔒 Already Used';
+            trialBtn.disabled = true;
+            trialBtn.style.background = 'rgba(255,255,255,0.05)';
+            trialBtn.style.color = '#94a3b8';
+            trialBtn.style.cursor = 'not-allowed';
+          }
+        } else {
+          if (trialCard) {
+            trialCard.style.opacity = '1';
+            trialCard.style.filter = 'none';
+            trialCard.style.cursor = 'pointer';
+            trialCard.onclick = handleFreeTrialClick;
+          }
+          if (trialBtn) {
+            trialBtn.textContent = '🎁 Start 7-Day Free Trial';
+            trialBtn.disabled = false;
+            trialBtn.style.background = 'rgba(255,255,255,0.08)';
+            trialBtn.style.color = '#ffffff';
+            trialBtn.style.cursor = 'pointer';
+          }
+        }
+
+        // Top Badge when locked
+        if (topName) topName.textContent = sub.status === 'NO_PLAN' ? 'NO PLAN ACTIVE' : `${sub.planName || 'Plan'} (Expired)`;
+        if (topIcon) topIcon.textContent = '🔒';
+        if (topExpiry) topExpiry.textContent = sub.status === 'NO_PLAN' ? 'Upgrade Required' : 'Expired';
+        if (topDays) topDays.textContent = 'LOCKED';
+        if (topBadge) {
+          topBadge.style.border = '1.5px solid #ef4444';
+          topBadge.style.boxShadow = '0 0 18px rgba(239,68,68,0.35)';
+          topBadge.style.background = 'linear-gradient(135deg, rgba(40,10,10,0.95) 0%, rgba(20,5,5,0.98) 100%)';
+        }
+
+        const clientsTrend = document.getElementById('stat-clients-plan-trend');
+        if (clientsTrend) {
+          clientsTrend.innerHTML = `<span style="color:#ef4444;font-weight:700;">Locked — Active Subscription Required</span>`;
+        }
+        return;
+      }
+
+      // 2. UNLOCKED ACTIVE STATE
+      if (lockOverlay) lockOverlay.style.display = 'none';
+      if (modalCloseBtn) modalCloseBtn.style.display = 'flex';
+      if (modalAlertBanner) modalAlertBanner.style.display = 'none';
+
+      // Restore Free Trial Card if claimed
+      if (sub.trialClaimed) {
+        if (trialCard) {
+          trialCard.style.opacity = '0.45';
+          trialCard.style.filter = 'grayscale(0.9)';
+          trialCard.style.cursor = 'not-allowed';
+        }
+        if (trialBtn) {
+          trialBtn.textContent = '🔒 Already Used';
+          trialBtn.disabled = true;
+        }
+      }
 
       const isGold = (sub.planName && sub.planName.includes('Gold')) || sub.amount === 999;
       const isSilver = (sub.planName && sub.planName.includes('Silver')) || sub.amount === 199;
@@ -162,9 +298,9 @@
           topBadge.style.boxShadow = '0 0 18px rgba(168,85,247,0.35)';
           topBadge.style.background = 'linear-gradient(135deg, rgba(30,22,56,0.95) 0%, rgba(15,10,30,0.98) 100%)';
         } else {
-          topBadge.style.border = '1.5px solid rgba(255,255,255,0.2)';
-          topBadge.style.boxShadow = 'none';
-          topBadge.style.background = 'rgba(255,255,255,0.05)';
+          topBadge.style.border = '1.5px solid #22c55e';
+          topBadge.style.boxShadow = '0 0 18px rgba(34,197,94,0.3)';
+          topBadge.style.background = 'linear-gradient(135deg, rgba(10,30,15,0.95) 0%, rgba(5,20,10,0.98) 100%)';
         }
       }
 
@@ -181,7 +317,7 @@
 
     function handleFreeTrialClick() {
       const sub = window.currentActiveSubscription;
-      if (sub && (sub.trialClaimed || sub.amount > 0 || (sub.planName && sub.planName !== 'Free Trial'))) {
+      if (sub && sub.trialClaimed) {
         const msg = '⚠️ Free Trial Already Claimed!\n\nYou have already used your 7-Day Free Trial on this registered account.\n\nPlease select Silver Edition (₹199 / Month) or Gold Pro (₹999 / Year) to continue! 💎';
         if (window.api && window.api.showToast) {
           window.api.showToast('⚠️ Free Trial already claimed on this account. Please select a paid plan! 💎', 'warning');
@@ -195,6 +331,12 @@
       const headers = { 'Content-Type': 'application/json' };
       if (studio && studio.id) headers['X-Studio-Id'] = studio.id;
 
+      const trialBtn = document.getElementById('btn-claim-free-trial');
+      if (trialBtn) {
+        trialBtn.disabled = true;
+        trialBtn.innerHTML = 'Activating Trial...';
+      }
+
       fetch('/api/subscription/activate', {
         method: 'POST',
         headers,
@@ -203,20 +345,47 @@
       .then(r => r.json())
       .then(data => {
         if (data.success) {
-          closeModal('upgrade-plan-modal');
-          if (window.api && window.api.showToast) window.api.showToast('🎉 Free Trial Activated for 7 Days!', 'success');
+          window.currentActiveSubscription = data.subscription;
+          if (window.currentActiveSubscription) {
+            window.currentActiveSubscription.isLocked = false;
+            window.currentActiveSubscription.status = 'ACTIVE';
+          }
+          const m = document.getElementById('upgrade-plan-modal');
+          if (m) {
+            m.classList.remove('active');
+            m.style.setProperty('display', 'none', 'important');
+            m.style.setProperty('opacity', '0', 'important');
+            m.style.setProperty('visibility', 'hidden', 'important');
+          }
+          if (window.api && window.api.showToast) window.api.showToast('🎉 Free Trial Activated for 7 Days! Workspace Unlocked ✨', 'success');
           loadCurrentSubscription();
         } else {
+          if (trialBtn) {
+            trialBtn.disabled = false;
+            trialBtn.innerHTML = 'Start Free Trial';
+          }
           const errMsg = data.error || 'Free Trial already used on this account. Please choose a paid plan!';
           if (window.api && window.api.showToast) window.api.showToast('⚠️ ' + errMsg, 'warning');
           else alert(errMsg);
         }
       })
-      .catch(() => alert('Error activating Free Trial'));
+      .catch(() => {
+        if (trialBtn) {
+          trialBtn.disabled = false;
+          trialBtn.innerHTML = 'Start Free Trial';
+        }
+        alert('Error activating Free Trial');
+      });
     }
 
     function openCreateClientModal() {
       const sub = window.currentActiveSubscription;
+      if (!sub || sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED') {
+        if (window.api && window.api.showToast) window.api.showToast('🔒 Active Plan Required: Please claim Free Trial or Upgrade to create clients!', 'error');
+        else alert('🔒 Active Plan Required: Please claim Free Trial or Upgrade to create clients!');
+        openUpgradeModal();
+        return;
+      }
       const clientsList = window.allClients || [];
       if (sub && sub.limits && !sub.limits.unlimited) {
         const maxClients = sub.limits.maxClients || (sub.amount === 199 ? 10 : 3);
@@ -233,6 +402,13 @@
 
     function checkFlipbookLimit() {
       const sub = window.currentActiveSubscription;
+      if (!sub || sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED') {
+        const msg = '🔒 Active Plan Required: Please claim Free Trial or Upgrade to create 3D Flipbooks!';
+        if (window.api && window.api.showToast) window.api.showToast(msg, 'error');
+        else alert(msg);
+        openUpgradeModal();
+        return false;
+      }
       const flipbooksList = window.allFlipbooks || [];
       if (sub && sub.limits && !sub.limits.unlimited) {
         const maxFlipbooks = sub.limits.maxFlipbooks || (sub.amount === 199 ? 50 : 5);
@@ -762,6 +938,31 @@
 
     <!-- Main Content Area -->
     <main class="admin-main">
+
+      <!-- WORKSPACE LOCK OVERLAY BANNER (Visible when trial/plan is expired or no plan is active) -->
+      <div id="admin-workspace-lock-overlay" style="display:none;background:linear-gradient(135deg, rgba(30,12,24,0.95) 0%, rgba(18,6,12,0.98) 100%);border:2px solid #ef4444;border-radius:16px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;box-shadow:0 0 35px rgba(239,68,68,0.25);">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+          <div style="display:flex;align-items:center;gap:1.2rem;">
+            <div style="width:50px;height:50px;border-radius:50%;background:rgba(239,68,68,0.18);border:1.5px solid rgba(239,68,68,0.4);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;">
+              🔒
+            </div>
+            <div>
+              <h3 id="lock-overlay-title" style="margin:0 0 4px 0;font-size:1.15rem;font-weight:800;color:#ffffff;font-family:'Outfit',sans-serif;">
+                Workspace Locked — Active Plan Required
+              </h3>
+              <p id="lock-overlay-msg" style="margin:0;font-size:0.85rem;color:#cbd5e1;">
+                Please claim your 7-Day Free Trial or upgrade to Silver / Gold Edition to unlock your studio workspace.
+              </p>
+            </div>
+          </div>
+          <div>
+            <button type="button" class="btn" onclick="openUpgradeModal()" style="background:linear-gradient(135deg, #a855f7 0%, #ec4899 100%);color:#fff;font-weight:800;font-size:0.88rem;padding:0.65rem 1.4rem;border-radius:10px;border:none;cursor:pointer;box-shadow:0 0 20px rgba(168,85,247,0.4);display:flex;align-items:center;gap:0.5rem;transition:all 0.2s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
+              <span>👑</span>
+              <span id="lock-overlay-btn-text">Claim Free Trial / Upgrade</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- VIEW 1: DASHBOARD OVERVIEW -->
       <div id="view-dashboard" class="view-panel">
@@ -2508,11 +2709,14 @@
           </p>
         </div>
 
+        <!-- Modal Alert Banner -->
+        <div id="modal-plan-alert-banner" style="display:none;margin-bottom:1rem;padding:0.75rem 1rem;border-radius:12px;font-size:0.85rem;line-height:1.4;text-align:center;"></div>
+
         <!-- 3 Pricing Cards Grid (All Content + Buttons Fit on Screen!) -->
         <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:1.25rem;align-items:stretch;">
           
           <!-- CARD 1: FREE TRIAL -->
-          <div class="pricing-tier-card free" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:1.25rem 1.25rem;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;" onclick="handleFreeTrialClick()">
+          <div id="pricing-card-trial" class="pricing-tier-card free" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:1.25rem 1.25rem;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;" onclick="handleFreeTrialClick()">
             <div>
               <div style="font-size:0.75rem;color:#94a3b8;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;text-align:center;margin-bottom:0.5rem;">
                 FREE TRIAL
@@ -2551,8 +2755,8 @@
               </div>
             </div>
 
-            <button type="button" class="btn" style="width:100%;height:40px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);color:#ffffff;font-weight:700;font-size:0.85rem;border-radius:10px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'" onclick="event.stopPropagation();handleFreeTrialClick()">
-              Start Free Trial
+            <button id="btn-claim-free-trial" type="button" class="btn" style="width:100%;height:40px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);color:#ffffff;font-weight:700;font-size:0.85rem;border-radius:10px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'" onclick="event.stopPropagation();handleFreeTrialClick()">
+              🎁 Start 7-Day Free Trial
             </button>
           </div>
 

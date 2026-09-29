@@ -1089,6 +1089,15 @@ function handleFilesSelected(files) {
 }
 
 function startBatchUpload() {
+  const sub = window.currentActiveSubscription;
+  if (!sub || sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED') {
+    const msg = '🔒 Active Plan Required: Please claim Free Trial or Upgrade to upload photos!';
+    if (window.api && window.api.showToast) window.api.showToast(msg, 'error');
+    else alert(msg);
+    if (typeof window.openUpgradeModal === 'function') window.openUpgradeModal();
+    return;
+  }
+
   const clientSelect = document.getElementById('upload-client-select');
   if (clientSelect && clientSelect.value) {
     currentUploadClientId = clientSelect.value;
@@ -4568,6 +4577,15 @@ function displayFilteredInvoices(queryText = '') {
 }
 
 function openCreateInvoiceModal() {
+  const sub = window.currentActiveSubscription;
+  if (!sub || sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED') {
+    const msg = '🔒 Active Plan Required: Please claim Free Trial or Upgrade to generate Invoices!';
+    if (window.api && window.api.showToast) window.api.showToast(msg, 'error');
+    else alert(msg);
+    if (typeof window.openUpgradeModal === 'function') window.openUpgradeModal();
+    return;
+  }
+
   const heading = document.getElementById('invoice-modal-heading');
   const formId = document.getElementById('inv-form-id');
   const invNumber = document.getElementById('inv-form-number');

@@ -87,6 +87,24 @@ function getSubscriptionLimits(studioOrSub) {
   };
 }
 
+function getStudioIdFromRequest(req) {
+  if (!req || !req.headers) return null;
+  const sId = req.headers['x-studio-id'];
+  if (sId && typeof sId === 'string' && sId.trim()) return sId.trim();
+
+  const authHeader = req.headers['authorization'];
+  if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    if (token.startsWith('token_studio_')) {
+      const lastUnderscore = token.lastIndexOf('_');
+      if (lastUnderscore > 6) {
+        return token.substring(6, lastUnderscore); // extracts studio_xyz from token_studio_xyz_timestamp
+      }
+    }
+  }
+  return null;
+}
+
 function loadOAuth() {
   try {
     if (fs.existsSync(OAUTH_FILE)) return JSON.parse(fs.readFileSync(OAUTH_FILE, 'utf8'));
@@ -508,7 +526,6 @@ const server = http.createServer(async (req, res) => {
 
           const studioId = 'studio_' + Math.random().toString(36).substring(2, 9);
           const regNow = new Date();
-          const trialExpiry = new Date(Date.now() + 7 * 24 * 3600 * 1000);
 
           const newStudio = {
             id: studioId,
@@ -520,23 +537,14 @@ const server = http.createServer(async (req, res) => {
             tagline: tagline || 'Wedding & Cinematic Photography',
             driveFolderId: studioDriveFolderId,
             createdAt: regNow.toISOString(),
-            subscription: {
-              planName: 'Free Trial',
-              planCode: 'TRIAL',
-              status: 'ACTIVE',
-              amount: 0,
-              upiId: '9668584247@ybl',
-              activatedAt: regNow.toISOString(),
-              expiresAt: trialExpiry.toISOString(),
-              durationDays: 7
-            },
-            claimedTrial: true
+            subscription: null,
+            claimedTrial: false
           };
 
           db.studios.push(newStudio);
           saveDB(db);
 
-          console.log(`✨ [New Studio Registered] "${newStudio.studioName}" (${newStudio.email}) with 7-Day Free Trial`);
+          console.log(`✨ [New Studio Registered] "${newStudio.studioName}" (${newStudio.email}) - Requires Plan Selection`);
           sendJSON({
             success: true,
             token: 'token_' + studioId + '_' + Date.now(),
@@ -548,7 +556,8 @@ const server = http.createServer(async (req, res) => {
               logoUrl: newStudio.logoUrl,
               tagline: newStudio.tagline,
               driveFolderId: newStudio.driveFolderId,
-              subscription: newStudio.subscription
+              subscription: null,
+              claimedTrial: false
             }
           });
         } catch (e) { sendJSON({ error: 'Bad Request' }, 400); }
@@ -731,7 +740,7 @@ const server = http.createServer(async (req, res) => {
 
     // 5. Clients API
     if (pathname === '/api/clients' || pathname.startsWith('/api/clients/')) {
-      const studioId = req.headers['x-studio-id'];
+      const studioId = getStudioIdFromRequest(req);
 
       // 5.1 Studio Owner Control: Unlock / Re-open Client Selection Gallery
       if (pathname.endsWith('/unlock-selection') && req.method === 'POST') {
@@ -854,8 +863,21 @@ const server = http.createServer(async (req, res) => {
           try {
             const clientData = JSON.parse(body);
             const db = loadDB();
-            const targetStudioId = studioId || clientData.studioId || 'studio_jsm736s';
-            const studio = (db.studios || []).find(s => s.id === targetStudioId) || db.studios?.[0];
+            const targetStudioId = studioId || clientData.studioId;
+            const studio = (db.studios || []).find(s => s.id === targetStudioId);
+
+            // Active Subscription Check
+            const sub = studio?.subscription;
+            const isLocked = !sub || (new Date(sub.expiresAt).getTime() <= Date.now()) || sub.status !== 'ACTIVE';
+            if (isLocked) {
+              console.warn(`⚠️ [ACTION BLOCKED] Studio: ${studio?.studioName || targetStudioId} has no active plan or is expired!`);
+              sendJSON({
+                error: 'Active Plan Required: Please claim your 7-Day Free Trial or upgrade your plan to create client galleries!',
+                isLocked: true,
+                requiresUpgrade: true
+              }, 403);
+              return;
+            }
 
             // Plan Limit Enforcement for Photo Selection Projects (Clients) for THIS Studio
             const limits = getSubscriptionLimits(studio);
@@ -889,17 +911,28 @@ const server = http.createServer(async (req, res) => {
               console.warn('[Google Drive] Could not get/create studio selection folder:', e.message);
             }
 
-            console.log(`[Google Drive] Creating event folders for client: ${clientData.name} inside Photo Selection -> Studio folder (${studioFolderId})...`);
-            const folderTitle = `${clientData.name} - ${clientData.eventName || 'Wedding'} (${clientData.code})`;
-            const mainFolder = await createDriveFolder(folderTitle, studioFolderId, token);
-            const originalFolder = await createDriveFolder('01_Original_Photos', mainFolder.id, token);
-            const selectedFolder = await createDriveFolder('02_Selected_Photos', mainFolder.id, token);
-            const thumbFolder = await createDriveFolder('03_Thumbnails', mainFolder.id, token);
+            const clientCode = (clientData.code || ('PS' + Math.floor(100 + Math.random() * 900))).toUpperCase();
+            const folderTitle = `${clientData.name} - ${clientData.eventName || 'Wedding'} (${clientCode})`;
+
+            let mainFolder = { id: 'folder_' + Date.now() };
+            let originalFolder = { id: 'folder_orig_' + Date.now() };
+            let selectedFolder = { id: 'folder_sel_' + Date.now() };
+            let thumbFolder = { id: 'folder_thumb_' + Date.now() };
+
+            try {
+              console.log(`[Google Drive] Creating event folders for client: ${clientData.name} inside Photo Selection -> Studio folder (${studioFolderId})...`);
+              mainFolder = await createDriveFolder(folderTitle, studioFolderId, token);
+              originalFolder = await createDriveFolder('01_Original_Photos', mainFolder.id, token);
+              selectedFolder = await createDriveFolder('02_Selected_Photos', mainFolder.id, token);
+              thumbFolder = await createDriveFolder('03_Thumbnails', mainFolder.id, token);
+            } catch (driveErr) {
+              console.warn('[Google Drive] Drive folder creation warning:', driveErr.message);
+            }
 
             const newClient = {
               id: mainFolder.id,
               studioId: targetStudioId,
-              code: clientData.code.toUpperCase(),
+              code: clientCode,
               name: clientData.name,
               mobile: clientData.mobile || '',
               email: clientData.email || '',
@@ -2330,7 +2363,7 @@ async function syncClientPhotosFromDrive(client, db) {
     // 11.6 3D Virtual Flipbook Management API
     if (pathname === '/api/flipbooks') {
       const db = loadDB();
-      const studioId = req.headers['x-studio-id'];
+      const studioId = getStudioIdFromRequest(req);
 
       if (req.method === 'GET') {
         if (!studioId) {
@@ -2347,14 +2380,27 @@ async function syncClientPhotosFromDrive(client, db) {
         req.on('end', () => {
           try {
             const payload = JSON.parse(body || '{}');
-            const targetStudioId = req.headers['x-studio-id'] || payload.studioId || 'studio_jsm736s';
-            const studio = (db.studios || []).find(s => s.id === targetStudioId) || db.studios?.[0];
+            const targetStudioId = studioId || payload.studioId;
+            const studio = (db.studios || []).find(s => s.id === targetStudioId);
             const targetCode = payload.clientCode || payload.code || ('FB' + Math.floor(1000 + Math.random() * 9000));
             const id = payload.id || ('fb_' + targetCode);
             db.flipbooks = db.flipbooks || [];
             
             const existingIdx = db.flipbooks.findIndex(f => f.id === id || f.code === targetCode || (f.clientCode && f.clientCode === targetCode));
             
+            // Active Subscription Check
+            const sub = studio?.subscription;
+            const isLocked = !sub || (new Date(sub.expiresAt).getTime() <= Date.now()) || sub.status !== 'ACTIVE';
+            if (isLocked) {
+              console.warn(`⚠️ [ACTION BLOCKED] Studio: ${studio?.studioName || targetStudioId} has no active plan or is expired!`);
+              sendJSON({
+                error: 'Active Plan Required: Please claim your 7-Day Free Trial or upgrade your plan to create 3D flipbooks!',
+                isLocked: true,
+                requiresUpgrade: true
+              }, 403);
+              return;
+            }
+
             // Plan Limit Enforcement for 3D Flipbooks for THIS studio
             if (existingIdx === -1) {
               const limits = getSubscriptionLimits(studio);
@@ -2521,7 +2567,7 @@ async function syncClientPhotosFromDrive(client, db) {
       db.invoices = db.invoices || [];
 
       if (req.method === 'GET') {
-        const studioId = req.headers['x-studio-id'];
+        const studioId = getStudioIdFromRequest(req);
         let list = db.invoices || [];
         if (studioId) {
           list = list.filter(inv => inv.studioId === studioId);
@@ -2540,8 +2586,21 @@ async function syncClientPhotosFromDrive(client, db) {
             const payload = JSON.parse(body || '{}');
             const now = new Date();
             const year = now.getFullYear();
-            const targetStudioId = req.headers['x-studio-id'] || payload.studioId || '';
+            const targetStudioId = getStudioIdFromRequest(req) || payload.studioId || '';
             const studioObj = (db.studios || []).find(s => s.id === targetStudioId);
+
+            // Active Subscription Check
+            const sub = studioObj?.subscription;
+            const isLocked = !sub || (new Date(sub.expiresAt).getTime() <= Date.now()) || sub.status !== 'ACTIVE';
+            if (isLocked) {
+              console.warn(`⚠️ [ACTION BLOCKED] Studio: ${studioObj?.studioName || targetStudioId} has no active plan or is expired!`);
+              sendJSON({
+                error: 'Active Plan Required: Please claim your 7-Day Free Trial or upgrade your plan to create invoices!',
+                isLocked: true,
+                requiresUpgrade: true
+              }, 403);
+              return;
+            }
             
             // Auto generate Invoice Number if not provided: INV-YYYY-001
             const count = ((db.invoices || []).filter(i => i.studioId === targetStudioId).length + 1).toString().padStart(3, '0');
@@ -3112,68 +3171,75 @@ async function syncClientPhotosFromDrive(client, db) {
     // 4. Current Active Subscription API (Strict Multi-tenant Per-Studio)
     if (pathname === '/api/subscription/current' && req.method === 'GET') {
       const db = loadDB();
-      const studioId = req.headers['x-studio-id'] || 'studio_master_dm';
+      const studioId = getStudioIdFromRequest(req) || 'studio_master_dm';
       const studio = (db.studios || []).find(s => s.id === studioId);
       
-      let sub = studio?.subscription;
-      if (!sub) {
-        if (studio) {
-          const now = new Date();
-          const trialExpiry = new Date(Date.now() + 7 * 24 * 3600 * 1000);
-          sub = {
-            planName: 'Free Trial',
-            planCode: 'TRIAL',
-            status: 'ACTIVE',
-            amount: 0,
-            upiId: '9668584247@ybl',
-            activatedAt: now.toISOString(),
-            expiresAt: trialExpiry.toISOString(),
-            durationDays: 7
-          };
-          studio.subscription = sub;
-          studio.claimedTrial = true;
-          saveDB(db);
-        } else {
-          sub = db.subscription || {
-            planName: 'Free Trial',
-            planCode: 'TRIAL',
-            status: 'ACTIVE',
-            amount: 0,
-            upiId: '9668584247@ybl',
-            activatedAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-            durationDays: 7
-          };
-        }
+      if (!studio || !studio.subscription) {
+        const userEmail = (studio?.email || '').toLowerCase().trim();
+        const trialClaimed = Boolean(studio?.claimedTrial) || 
+                             (userEmail && (db.claimedTrialEmails || []).includes(userEmail)) || 
+                             (db.claimedTrialStudioIds || []).includes(studioId);
+        sendJSON({
+          status: 'NO_PLAN',
+          planName: 'No Plan',
+          isExpired: true,
+          isActive: false,
+          isLocked: true,
+          daysLeft: 0,
+          trialClaimed,
+          upiId: '9668584247@ybl',
+          limits: {
+            planName: 'No Plan',
+            maxClients: 0,
+            maxFlipbooks: 0,
+            usedClients: (db.clients || []).filter(c => c.studioId === studioId).length,
+            usedFlipbooks: (db.flipbooks || []).filter(f => f.studioId === studioId).length,
+            remainingClients: 0,
+            remainingFlipbooks: 0,
+            unlimited: false
+          }
+        });
+        return;
       }
-      
+
+      const sub = studio.subscription;
       const now = Date.now();
       const expTime = new Date(sub.expiresAt).getTime();
-      const daysLeft = Math.max(0, Math.ceil((expTime - now) / (1000 * 60 * 60 * 24)));
-      
-      const limits = getSubscriptionLimits(studio || sub);
-      const usedClients = (db.clients || []).filter(c => c.studioId === studioId).length;
-      const usedFlipbooks = (db.flipbooks || []).filter(f => f.studioId === studioId).length;
+      const isExpired = now >= expTime;
+      const daysLeft = isExpired ? 0 : Math.ceil((expTime - now) / (1000 * 60 * 60 * 24));
+      const status = isExpired ? 'EXPIRED' : (sub.status || 'ACTIVE');
+      const isLocked = isExpired || status !== 'ACTIVE';
+      const limits = getSubscriptionLimits(studio);
 
       const userEmail = (studio?.email || '').toLowerCase().trim();
-      const trialClaimed = studio?.claimedTrial || 
+      const trialClaimed = Boolean(studio?.claimedTrial) || 
                            (userEmail && (db.claimedTrialEmails || []).includes(userEmail)) || 
                            (db.claimedTrialStudioIds || []).includes(studioId);
 
       sendJSON({
         ...sub,
+        status,
         daysLeft,
-        isExpired: now > expTime,
+        isExpired,
+        isActive: !isExpired && status === 'ACTIVE',
+        isLocked,
         upiId: '9668584247@ybl',
-        trialClaimed: Boolean(trialClaimed),
-        limits: {
-          planName: limits.planName,
-          maxClients: limits.maxClients,
-          maxFlipbooks: limits.maxFlipbooks,
-          usedClients,
-          usedFlipbooks,
-          remainingClients: limits.unlimited ? 'Unlimited' : Math.max(0, limits.maxClients - usedClients),
-          remainingFlipbooks: limits.unlimited ? 'Unlimited' : Math.max(0, limits.maxFlipbooks - usedFlipbooks),
+        trialClaimed,
+        limits: isLocked ? {
+          planName: (sub.planName || 'Plan') + ' (Expired)',
+          maxClients: 0,
+          maxFlipbooks: 0,
+          usedClients: (db.clients || []).filter(c => c.studioId === studioId).length,
+          usedFlipbooks: (db.flipbooks || []).filter(f => f.studioId === studioId).length,
+          remainingClients: 0,
+          remainingFlipbooks: 0,
+          unlimited: false
+        } : {
+          ...limits,
+          usedClients: (db.clients || []).filter(c => c.studioId === studioId).length,
+          usedFlipbooks: (db.flipbooks || []).filter(f => f.studioId === studioId).length,
+          remainingClients: limits.unlimited ? 'Unlimited' : Math.max(0, limits.maxClients - ((db.clients || []).filter(c => c.studioId === studioId).length)),
+          remainingFlipbooks: limits.unlimited ? 'Unlimited' : Math.max(0, limits.maxFlipbooks - ((db.flipbooks || []).filter(f => f.studioId === studioId).length)),
           unlimited: limits.unlimited
         }
       });
@@ -3192,7 +3258,7 @@ async function syncClientPhotosFromDrive(client, db) {
           const paymentMethod = data.paymentMethod || 'PhonePe / UPI QR';
 
           const db = loadDB();
-          const studioId = data.studioId || req.headers['x-studio-id'] || 'studio_master_dm';
+          const studioId = data.studioId || getStudioIdFromRequest(req) || 'studio_master_dm';
           const studio = (db.studios || []).find(s => s.id === studioId);
           const userEmail = (data.email || studio?.email || '').toLowerCase().trim();
 
@@ -3206,9 +3272,9 @@ async function syncClientPhotosFromDrive(client, db) {
             // Strict check: Free trial only ONCE per registered email / studio account
             const alreadyClaimed = (studio && studio.claimedTrial) || 
                                    (userEmail && db.claimedTrialEmails.includes(userEmail)) || 
-                                   db.claimedTrialStudioIds.includes(studioId);
+                                   (studioId && db.claimedTrialStudioIds.includes(studioId));
             
-            if (alreadyClaimed && studio?.subscription?.planName !== 'Free Trial') {
+            if (alreadyClaimed) {
               console.warn(`⚠️ [FREE TRIAL REJECTED] Already claimed for account: ${userEmail || studioId}`);
               sendJSON({
                 error: 'Free Trial has already been claimed on this account. Please upgrade to Silver Edition or Gold Pro to continue!',
@@ -3237,7 +3303,10 @@ async function syncClientPhotosFromDrive(client, db) {
             upiId: '9668584247@ybl',
             activatedAt: now.toISOString(),
             expiresAt: expires.toISOString(),
-            durationDays
+            durationDays,
+            daysLeft: durationDays,
+            isLocked: false,
+            isExpired: false
           };
 
           if (studio) {
@@ -3252,10 +3321,6 @@ async function syncClientPhotosFromDrive(client, db) {
               status: 'SUCCESS',
               timestamp: now.toISOString()
             });
-          }
-
-          if (!studioId || studioId === 'studio_master_dm') {
-            db.subscription = subObj;
           }
 
           if (!db.paymentHistory) db.paymentHistory = [];
