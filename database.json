@@ -16757,7 +16757,20 @@
           "/uploads/Slideshow/slide_1788030179914_643.jpg",
           "/uploads/Slideshow/slide_1788030184818_92.jpg"
         ]
-      }
+      },
+      "subscription": {
+        "planName": "Gold (Pro)",
+        "planCode": "YEARLY",
+        "amount": 999,
+        "utr": "UPI39392362",
+        "paymentMethod": "PhonePe Gateway",
+        "status": "ACTIVE",
+        "upiId": "9668584247@ybl",
+        "activatedAt": "2026-09-29T15:43:43.922Z",
+        "expiresAt": "2027-09-29T15:43:43.925Z",
+        "durationDays": 365
+      },
+      "claimedTrial": true
     },
     {
       "id": "studio_fotaidh",
@@ -16768,7 +16781,20 @@
       "logoUrl": "",
       "tagline": "Wedding & Cinematic Photography",
       "driveFolderId": "1qad8pbzv31Kl6aD-TVQ4VaUyalMdhy9z",
-      "createdAt": "2026-08-10T16:48:37.482Z"
+      "createdAt": "2026-08-10T16:48:37.482Z",
+      "subscription": {
+        "planName": "Silver Edition",
+        "planCode": "MONTHLY",
+        "amount": 199,
+        "utr": "UPI41796620",
+        "paymentMethod": "PhonePe Standard Gateway",
+        "status": "ACTIVE",
+        "upiId": "9668584247@ybl",
+        "activatedAt": "2026-09-29T15:43:43.925Z",
+        "expiresAt": "2026-10-29T15:43:43.925Z",
+        "durationDays": 30
+      },
+      "claimedTrial": true
     }
   ],
   "flipbooks": [
@@ -16799,7 +16825,8 @@
       "bgMusic": "/audio/1786981851530_Bombai_Ki_Ranu_X_Annana_Pathiya_-_Dj_Shiv_Chauhan___Pilaga_Suresh___Run_It_Up___Cycle_Akki_Nuvve_128k_.mp3",
       "soundEffects": true,
       "createdAt": "2026-08-17T17:24:36.408Z",
-      "updatedAt": "2026-08-17T17:24:36.408Z"
+      "updatedAt": "2026-08-17T17:24:36.408Z",
+      "studioId": "studio_fotaidh"
     }
   ],
   "customAudios": [
@@ -16859,8 +16886,8 @@
     "paymentMethod": "PhonePe Standard Gateway (9668584247@ybl)",
     "status": "ACTIVE",
     "upiId": "9668584247@ybl",
-    "activatedAt": "2026-08-20T16:03:16.620Z",
-    "expiresAt": "2026-09-19T16:03:16.620Z",
+    "activatedAt": "2026-09-29T15:43:43.925Z",
+    "expiresAt": "2026-10-29T15:43:43.925Z",
     "durationDays": 30
   },
   "paymentHistory": [

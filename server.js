@@ -50,12 +50,17 @@ function saveDB(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-// Plan Limit Tiers Config: Free Trial, Silver Edition (₹199), Gold (Pro) (₹999)
-function getSubscriptionLimits(db) {
-  const sub = db.subscription || { status: 'ACTIVE', planName: 'Silver Edition', durationDays: 30 };
-  const planName = (sub.planName || '').toLowerCase();
+// Plan Limit Tiers Config: Free Trial, Silver Edition (₹199), Gold (Pro) (₹999) - Multi-tenant Per-Studio
+function getSubscriptionLimits(studioOrSub) {
+  let sub = null;
+  if (studioOrSub && studioOrSub.subscription) {
+    sub = studioOrSub.subscription;
+  } else if (studioOrSub && (studioOrSub.planName || studioOrSub.amount !== undefined)) {
+    sub = studioOrSub;
+  }
+  const planName = (sub?.planName || '').toLowerCase();
   
-  if (planName.includes('gold') || planName.includes('pro') || sub.amount === 999) {
+  if (planName.includes('gold') || planName.includes('pro') || sub?.amount === 999) {
     return {
       planName: 'Gold (Pro)',
       maxClients: Infinity,
@@ -64,7 +69,7 @@ function getSubscriptionLimits(db) {
     };
   }
   
-  if (planName.includes('silver') || sub.amount === 199) {
+  if (planName.includes('silver') || sub?.amount === 199) {
     return {
       planName: 'Silver Edition',
       maxClients: 10,
@@ -502,6 +507,9 @@ const server = http.createServer(async (req, res) => {
           }
 
           const studioId = 'studio_' + Math.random().toString(36).substring(2, 9);
+          const regNow = new Date();
+          const trialExpiry = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+
           const newStudio = {
             id: studioId,
             studioName: studioName.trim(),
@@ -511,13 +519,24 @@ const server = http.createServer(async (req, res) => {
             logoUrl: logoUrl || '',
             tagline: tagline || 'Wedding & Cinematic Photography',
             driveFolderId: studioDriveFolderId,
-            createdAt: new Date().toISOString()
+            createdAt: regNow.toISOString(),
+            subscription: {
+              planName: 'Free Trial',
+              planCode: 'TRIAL',
+              status: 'ACTIVE',
+              amount: 0,
+              upiId: '9668584247@ybl',
+              activatedAt: regNow.toISOString(),
+              expiresAt: trialExpiry.toISOString(),
+              durationDays: 7
+            },
+            claimedTrial: true
           };
 
           db.studios.push(newStudio);
           saveDB(db);
 
-          console.log(`✨ [New Studio Registered] "${newStudio.studioName}" (${newStudio.email})`);
+          console.log(`✨ [New Studio Registered] "${newStudio.studioName}" (${newStudio.email}) with 7-Day Free Trial`);
           sendJSON({
             success: true,
             token: 'token_' + studioId + '_' + Date.now(),
@@ -528,7 +547,8 @@ const server = http.createServer(async (req, res) => {
               phone: newStudio.phone,
               logoUrl: newStudio.logoUrl,
               tagline: newStudio.tagline,
-              driveFolderId: newStudio.driveFolderId
+              driveFolderId: newStudio.driveFolderId,
+              subscription: newStudio.subscription
             }
           });
         } catch (e) { sendJSON({ error: 'Bad Request' }, 400); }
@@ -561,7 +581,8 @@ const server = http.createServer(async (req, res) => {
                 email: studio.email,
                 phone: studio.phone,
                 logoUrl: studio.logoUrl,
-                tagline: studio.tagline
+                tagline: studio.tagline,
+                subscription: studio.subscription
               }
             });
             return;
@@ -755,7 +776,12 @@ const server = http.createServer(async (req, res) => {
           if (client) sendJSON(client);
           else sendJSON({ error: 'Client not found' }, 404);
         } else {
-          sendJSON(db.clients || []);
+          if (!studioId) {
+            sendJSON([]);
+            return;
+          }
+          const studioClients = (db.clients || []).filter(c => c.studioId === studioId);
+          sendJSON(studioClients);
         }
         return;
       }
@@ -828,12 +854,14 @@ const server = http.createServer(async (req, res) => {
           try {
             const clientData = JSON.parse(body);
             const db = loadDB();
+            const targetStudioId = studioId || clientData.studioId || 'studio_jsm736s';
+            const studio = (db.studios || []).find(s => s.id === targetStudioId) || db.studios?.[0];
 
-            // Plan Limit Enforcement for Photo Selection Projects (Clients)
-            const limits = getSubscriptionLimits(db);
-            const currentClientsCount = (db.clients || []).length;
+            // Plan Limit Enforcement for Photo Selection Projects (Clients) for THIS Studio
+            const limits = getSubscriptionLimits(studio);
+            const currentClientsCount = (db.clients || []).filter(c => c.studioId === targetStudioId).length;
             if (currentClientsCount >= limits.maxClients) {
-              console.warn(`⚠️ [LIMIT REACHED] Plan: ${limits.planName} | Max Allowed: ${limits.maxClients} | Current: ${currentClientsCount}`);
+              console.warn(`⚠️ [LIMIT REACHED] Studio: ${studio?.studioName} | Plan: ${limits.planName} | Max Allowed: ${limits.maxClients} | Current: ${currentClientsCount}`);
               sendJSON({
                 error: `Limit Reached: Your ${limits.planName} plan allows a maximum of ${limits.maxClients} Photo Selection Projects. Please upgrade your plan to create more projects!`,
                 limitReached: true,
@@ -847,7 +875,6 @@ const server = http.createServer(async (req, res) => {
             const token = await getDriveAccessToken();
 
             // Find Studio's parent folder inside WAPSITE -> Photo Selection in Google Drive
-            const studio = db.studios.find(s => s.id === (studioId || clientData.studioId));
             const studioName = studio ? studio.studioName : 'DM STUDIO';
             let studioFolderId = studio?.driveFolderId;
 
@@ -871,7 +898,7 @@ const server = http.createServer(async (req, res) => {
 
             const newClient = {
               id: mainFolder.id,
-              studioId: studioId || clientData.studioId || 'studio_master_dm',
+              studioId: targetStudioId,
               code: clientData.code.toUpperCase(),
               name: clientData.name,
               mobile: clientData.mobile || '',
@@ -2303,8 +2330,15 @@ async function syncClientPhotosFromDrive(client, db) {
     // 11.6 3D Virtual Flipbook Management API
     if (pathname === '/api/flipbooks') {
       const db = loadDB();
+      const studioId = req.headers['x-studio-id'];
+
       if (req.method === 'GET') {
-        sendJSON(db.flipbooks || []);
+        if (!studioId) {
+          sendJSON([]);
+          return;
+        }
+        const studioFlipbooks = (db.flipbooks || []).filter(f => f.studioId === studioId);
+        sendJSON(studioFlipbooks);
         return;
       }
       if (req.method === 'POST') {
@@ -2313,18 +2347,20 @@ async function syncClientPhotosFromDrive(client, db) {
         req.on('end', () => {
           try {
             const payload = JSON.parse(body || '{}');
+            const targetStudioId = req.headers['x-studio-id'] || payload.studioId || 'studio_jsm736s';
+            const studio = (db.studios || []).find(s => s.id === targetStudioId) || db.studios?.[0];
             const targetCode = payload.clientCode || payload.code || ('FB' + Math.floor(1000 + Math.random() * 9000));
             const id = payload.id || ('fb_' + targetCode);
             db.flipbooks = db.flipbooks || [];
             
             const existingIdx = db.flipbooks.findIndex(f => f.id === id || f.code === targetCode || (f.clientCode && f.clientCode === targetCode));
             
-            // Plan Limit Enforcement for 3D Flipbooks
+            // Plan Limit Enforcement for 3D Flipbooks for THIS studio
             if (existingIdx === -1) {
-              const limits = getSubscriptionLimits(db);
-              const currentFlipbooksCount = (db.flipbooks || []).length;
+              const limits = getSubscriptionLimits(studio);
+              const currentFlipbooksCount = (db.flipbooks || []).filter(f => f.studioId === targetStudioId).length;
               if (currentFlipbooksCount >= limits.maxFlipbooks) {
-                console.warn(`⚠️ [FLIPBOOK LIMIT REACHED] Plan: ${limits.planName} | Max Allowed: ${limits.maxFlipbooks} | Current: ${currentFlipbooksCount}`);
+                console.warn(`⚠️ [FLIPBOOK LIMIT REACHED] Studio: ${studio?.studioName} | Plan: ${limits.planName} | Max Allowed: ${limits.maxFlipbooks} | Current: ${currentFlipbooksCount}`);
                 sendJSON({
                   error: `Limit Reached: Your ${limits.planName} plan allows a maximum of ${limits.maxFlipbooks} 3D Flipbooks. Please upgrade your plan to create more flipbooks!`,
                   limitReached: true,
@@ -2338,6 +2374,7 @@ async function syncClientPhotosFromDrive(client, db) {
 
             const flipbookObj = {
               id,
+              studioId: targetStudioId,
               code: targetCode,
               clientCode: targetCode,
               title: payload.title || 'Wedding Photo Album',
@@ -2485,9 +2522,11 @@ async function syncClientPhotosFromDrive(client, db) {
 
       if (req.method === 'GET') {
         const studioId = req.headers['x-studio-id'];
-        let list = db.invoices;
+        let list = db.invoices || [];
         if (studioId) {
-          list = list.filter(inv => !inv.studioId || inv.studioId === studioId);
+          list = list.filter(inv => inv.studioId === studioId);
+        } else {
+          list = [];
         }
         sendJSON(list);
         return;
@@ -2501,9 +2540,11 @@ async function syncClientPhotosFromDrive(client, db) {
             const payload = JSON.parse(body || '{}');
             const now = new Date();
             const year = now.getFullYear();
+            const targetStudioId = req.headers['x-studio-id'] || payload.studioId || '';
+            const studioObj = (db.studios || []).find(s => s.id === targetStudioId);
             
             // Auto generate Invoice Number if not provided: INV-YYYY-001
-            const count = (db.invoices.length + 1).toString().padStart(3, '0');
+            const count = ((db.invoices || []).filter(i => i.studioId === targetStudioId).length + 1).toString().padStart(3, '0');
             const invoiceNumber = payload.invoiceNumber || `INV-${year}-${count}`;
             const id = payload.id || `inv_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`;
 
@@ -2554,10 +2595,10 @@ async function syncClientPhotosFromDrive(client, db) {
               paymentMethod: payload.paymentMethod || 'UPI / Bank Transfer',
               notes: payload.notes || 'Thank you for choosing our photography services!',
               terms: payload.terms || '1. 50% advance on booking.\n2. Balance payment on album / final delivery.\n3. Raw files and final edits will be delivered via high-speed cloud gallery.',
-              studioId: payload.studioId || '',
-              studioName: payload.studioName || 'DM STUDIO',
-              studioTagline: payload.studioTagline || 'Wedding & Cinematic Photography',
-              studioContact: payload.studioContact || '',
+              studioId: targetStudioId,
+              studioName: payload.studioName || studioObj?.studioName || 'DM STUDIO',
+              studioTagline: payload.studioTagline || studioObj?.tagline || 'Wedding & Cinematic Photography',
+              studioContact: payload.studioContact || studioObj?.phone || '',
               createdAt: payload.createdAt || now.toISOString(),
               updatedAt: now.toISOString()
             };
@@ -2584,12 +2625,19 @@ async function syncClientPhotosFromDrive(client, db) {
     if (pathname.startsWith('/api/invoices/')) {
       const rawId = pathname.replace('/api/invoices/', '').trim();
       const invId = decodeURIComponent(rawId).trim();
+      const studioId = req.headers['x-studio-id'];
       const db = loadDB();
       db.invoices = db.invoices || [];
 
       if (req.method === 'DELETE') {
         const initialLen = db.invoices.length;
-        db.invoices = db.invoices.filter(inv => inv.id !== invId && inv.invoiceNumber !== invId);
+        db.invoices = db.invoices.filter(inv => {
+          if (inv.id === invId || inv.invoiceNumber === invId) {
+            if (studioId && inv.studioId && inv.studioId !== studioId) return true; // keep if owned by another studio
+            return false;
+          }
+          return true;
+        });
         if (db.invoices.length < initialLen) {
           saveDB(db);
           sendJSON({ success: true, message: 'Invoice deleted successfully' });
@@ -2675,7 +2723,8 @@ async function syncClientPhotosFromDrive(client, db) {
       
       if (fb) {
         const client = db.clients.find(c => c.code === fb.clientCode || c.id === fb.clientCode || (c.name && c.name.toLowerCase() === fb.clientCode.toLowerCase()));
-        const studio = db.studios[0] || {};
+        const targetStudioId = fb.studioId || client?.studioId;
+        const studio = (db.studios || []).find(s => s.id === targetStudioId) || db.studios?.[0] || {};
         
         let pages = fb.pages || [];
         if (pages.length === 0 && client && client.photos && client.photos.length > 0) {
@@ -2696,7 +2745,7 @@ async function syncClientPhotosFromDrive(client, db) {
         // Auto Fallback: Look up client by code directly and generate instant 3D Flipbook!
         const client = db.clients.find(c => c.code.toLowerCase() === queryCode.toLowerCase() || c.id === queryCode);
         if (client && client.photos && client.photos.length > 0) {
-          const studio = db.studios[0] || {};
+          const studio = (db.studios || []).find(s => s.id === client.studioId) || db.studios?.[0] || {};
           const selectedSet = new Set(client.selectedPhotoIds || []);
           const selPhotos = client.photos.filter(p => selectedSet.has(p.id));
           const listToUse = selPhotos.length > 0 ? selPhotos : client.photos;
@@ -2946,7 +2995,8 @@ async function syncClientPhotosFromDrive(client, db) {
                 order.phonepeTransactionId = decodedPayload.data?.transactionId || 'TXN_' + Date.now();
                 order.utr = utr;
 
-                db.subscription = {
+                const targetStudio = (db.studios || []).find(s => s.id === order.studioId);
+                const subObj = {
                   planName: order.planName,
                   planCode: order.plan,
                   amount: order.amount,
@@ -2958,6 +3008,25 @@ async function syncClientPhotosFromDrive(client, db) {
                   expiresAt: expires.toISOString(),
                   durationDays: planDuration
                 };
+
+                if (targetStudio) {
+                  targetStudio.subscription = subObj;
+                  targetStudio.paymentHistory = targetStudio.paymentHistory || [];
+                  targetStudio.paymentHistory.unshift({
+                    id: 'PAY_' + Date.now(),
+                    orderId,
+                    planName: order.planName,
+                    amount: order.amount,
+                    utr,
+                    paymentMethod: 'PhonePe Webhook',
+                    status: 'SUCCESS',
+                    timestamp: now.toISOString()
+                  });
+                }
+
+                if (!order.studioId || order.studioId === 'studio_master_dm') {
+                  db.subscription = subObj;
+                }
 
                 if (!db.paymentHistory) db.paymentHistory = [];
                 db.paymentHistory.unshift({
@@ -2974,7 +3043,7 @@ async function syncClientPhotosFromDrive(client, db) {
                 saveDB(db);
                 if (global.activePaymentOrders) global.activePaymentOrders[orderId] = order;
 
-                console.log(`🎉 [PHONEPE WEBHOOK ACTIVATED] Plan: ${order.planName} for 30/365 Days!`);
+                console.log(`🎉 [PHONEPE WEBHOOK ACTIVATED] Studio: ${targetStudio?.studioName || order.studioId} | Plan: ${order.planName} for ${planDuration} Days!`);
                 sendJSON({ success: true, message: 'Subscription activated' });
                 return;
               } else if (status === 'PAYMENT_ERROR' || status === 'FAILED') {
@@ -3014,7 +3083,8 @@ async function syncClientPhotosFromDrive(client, db) {
       }
 
       if (order.status === 'SUCCESS' || order.status === 'PAID') {
-        const sub = db.subscription || {};
+        const studio = (db.studios || []).find(s => s.id === order.studioId);
+        const sub = studio?.subscription || db.subscription || {};
         sendJSON({
           status: 'SUCCESS',
           orderId: order.orderId,
@@ -3039,35 +3109,56 @@ async function syncClientPhotosFromDrive(client, db) {
       return;
     }
 
-    // 4. Current Active Subscription API
+    // 4. Current Active Subscription API (Strict Multi-tenant Per-Studio)
     if (pathname === '/api/subscription/current' && req.method === 'GET') {
       const db = loadDB();
       const studioId = req.headers['x-studio-id'] || 'studio_master_dm';
-      const studio = (db.studios || []).find(s => s.id === studioId) || db.studios?.[0] || {};
-      const userEmail = (studio.email || '').toLowerCase().trim();
-
-      const sub = db.subscription || {
-        planName: 'Free Trial',
-        planCode: 'TRIAL',
-        status: 'ACTIVE',
-        amount: 0,
-        upiId: '9668584247@ybl',
-        activatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-        durationDays: 7
-      };
+      const studio = (db.studios || []).find(s => s.id === studioId);
+      
+      let sub = studio?.subscription;
+      if (!sub) {
+        if (studio) {
+          const now = new Date();
+          const trialExpiry = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+          sub = {
+            planName: 'Free Trial',
+            planCode: 'TRIAL',
+            status: 'ACTIVE',
+            amount: 0,
+            upiId: '9668584247@ybl',
+            activatedAt: now.toISOString(),
+            expiresAt: trialExpiry.toISOString(),
+            durationDays: 7
+          };
+          studio.subscription = sub;
+          studio.claimedTrial = true;
+          saveDB(db);
+        } else {
+          sub = db.subscription || {
+            planName: 'Free Trial',
+            planCode: 'TRIAL',
+            status: 'ACTIVE',
+            amount: 0,
+            upiId: '9668584247@ybl',
+            activatedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+            durationDays: 7
+          };
+        }
+      }
       
       const now = Date.now();
       const expTime = new Date(sub.expiresAt).getTime();
       const daysLeft = Math.max(0, Math.ceil((expTime - now) / (1000 * 60 * 60 * 24)));
       
-      const limits = getSubscriptionLimits(db);
-      const usedClients = (db.clients || []).length;
-      const usedFlipbooks = (db.flipbooks || []).length;
+      const limits = getSubscriptionLimits(studio || sub);
+      const usedClients = (db.clients || []).filter(c => c.studioId === studioId).length;
+      const usedFlipbooks = (db.flipbooks || []).filter(f => f.studioId === studioId).length;
 
-      const trialClaimed = (userEmail && (db.claimedTrialEmails || []).includes(userEmail)) || 
-                           (db.claimedTrialStudioIds || []).includes(studioId) ||
-                           (db.paymentHistory || []).some(p => p.planName && p.planName.includes('Free Trial'));
+      const userEmail = (studio?.email || '').toLowerCase().trim();
+      const trialClaimed = studio?.claimedTrial || 
+                           (userEmail && (db.claimedTrialEmails || []).includes(userEmail)) || 
+                           (db.claimedTrialStudioIds || []).includes(studioId);
 
       sendJSON({
         ...sub,
@@ -3102,8 +3193,8 @@ async function syncClientPhotosFromDrive(client, db) {
 
           const db = loadDB();
           const studioId = data.studioId || req.headers['x-studio-id'] || 'studio_master_dm';
-          const studio = (db.studios || []).find(s => s.id === studioId) || db.studios?.[0] || {};
-          const userEmail = (data.email || studio.email || '').toLowerCase().trim();
+          const studio = (db.studios || []).find(s => s.id === studioId);
+          const userEmail = (data.email || studio?.email || '').toLowerCase().trim();
 
           db.claimedTrialEmails = db.claimedTrialEmails || [];
           db.claimedTrialStudioIds = db.claimedTrialStudioIds || [];
@@ -3113,11 +3204,11 @@ async function syncClientPhotosFromDrive(client, db) {
             durationDays = 365;
           } else if (planName.includes('Free') || amount === 0) {
             // Strict check: Free trial only ONCE per registered email / studio account
-            const alreadyClaimed = (userEmail && db.claimedTrialEmails.includes(userEmail)) || 
-                                   db.claimedTrialStudioIds.includes(studioId) || 
-                                   (db.paymentHistory || []).some(p => p.planName && p.planName.includes('Free Trial'));
+            const alreadyClaimed = (studio && studio.claimedTrial) || 
+                                   (userEmail && db.claimedTrialEmails.includes(userEmail)) || 
+                                   db.claimedTrialStudioIds.includes(studioId);
             
-            if (alreadyClaimed) {
+            if (alreadyClaimed && studio?.subscription?.planName !== 'Free Trial') {
               console.warn(`⚠️ [FREE TRIAL REJECTED] Already claimed for account: ${userEmail || studioId}`);
               sendJSON({
                 error: 'Free Trial has already been claimed on this account. Please upgrade to Silver Edition or Gold Pro to continue!',
@@ -3130,13 +3221,14 @@ async function syncClientPhotosFromDrive(client, db) {
             // Record claim
             if (userEmail) db.claimedTrialEmails.push(userEmail);
             if (studioId) db.claimedTrialStudioIds.push(studioId);
+            if (studio) studio.claimedTrial = true;
             durationDays = 7;
           }
 
           const now = new Date();
           const expires = new Date(Date.now() + durationDays * 24 * 3600 * 1000);
 
-          db.subscription = {
+          const subObj = {
             planName,
             amount,
             utr,
@@ -3147,6 +3239,24 @@ async function syncClientPhotosFromDrive(client, db) {
             expiresAt: expires.toISOString(),
             durationDays
           };
+
+          if (studio) {
+            studio.subscription = subObj;
+            studio.paymentHistory = studio.paymentHistory || [];
+            studio.paymentHistory.unshift({
+              id: 'PAY_' + Date.now(),
+              planName,
+              amount,
+              utr,
+              paymentMethod,
+              status: 'SUCCESS',
+              timestamp: now.toISOString()
+            });
+          }
+
+          if (!studioId || studioId === 'studio_master_dm') {
+            db.subscription = subObj;
+          }
 
           if (!db.paymentHistory) db.paymentHistory = [];
           db.paymentHistory.unshift({
@@ -3161,12 +3271,12 @@ async function syncClientPhotosFromDrive(client, db) {
 
           saveDB(db);
 
-          console.log(`🎉 [SUBSCRIPTION ACTIVATED] Plan: ${planName} | Amount: ₹${amount} | UTR: ${utr} | Expires: ${expires.toLocaleDateString()}`);
+          console.log(`🎉 [SUBSCRIPTION ACTIVATED] Studio: ${studio?.studioName || studioId} | Plan: ${planName} | Amount: ₹${amount} | UTR: ${utr} | Expires: ${expires.toLocaleDateString()}`);
 
           sendJSON({
             success: true,
             message: `🎉 ${planName} is successfully activated for ${durationDays} days!`,
-            subscription: db.subscription
+            subscription: subObj
           });
         } catch (e) {
           sendJSON({ error: 'Failed to activate subscription: ' + e.message }, 400);

@@ -17,6 +17,21 @@ let currentStudio = null;
 let autoCopyTargetClientId = null;
 let selectedLocalDirHandle = null;
 
+function getAdminStudioHeaders(extraHeaders = {}) {
+  const headers = { ...extraHeaders };
+  try {
+    const studio = currentStudio || JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
+    if (studio && studio.id) {
+      headers['X-Studio-Id'] = studio.id;
+    }
+    const token = localStorage.getItem('dm_admin_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  } catch (e) {}
+  return headers;
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   initAdminDashboard();
@@ -2129,6 +2144,10 @@ function logoutAdmin() {
   if (confirm('Are you sure you want to log out of Studio Admin?')) {
     localStorage.removeItem('dm_admin_token');
     localStorage.removeItem('dm_current_studio');
+    localStorage.removeItem('dm_clients');
+    localStorage.removeItem('dm_flipbooks');
+    localStorage.removeItem('dm_invoices');
+    localStorage.removeItem('dm_selected_studio_plan');
     sessionStorage.clear();
     window.location.href = 'login.html';
   }
@@ -2142,7 +2161,7 @@ async function renderFlipbooksView() {
   if (!grid) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/flipbooks`);
+    const res = await fetch(`${API_BASE}/api/flipbooks`, { headers: getAdminStudioHeaders() });
     if (res.ok) {
       allFlipbooks = await res.json();
     }
@@ -2331,7 +2350,7 @@ async function renderMyFlipbooksGallery(filterText = '') {
   `;
 
   try {
-    const res = await fetch(`${API_BASE}/api/flipbooks`);
+    const res = await fetch(`${API_BASE}/api/flipbooks`, { headers: getAdminStudioHeaders() });
     allMyFlipbooks = await res.json();
     displayFilteredFlipbooks(filterText);
   } catch (err) {
@@ -2551,7 +2570,7 @@ function openShareModalPreview() {
 async function deleteFlipbookItemPrompt(id, title) {
   if (!confirm(`Are you sure you want to delete 3D Flipbook "${title}"?\n\n⚠️ This will permanently delete the album.`)) return;
   try {
-    const res = await fetch(`${API_BASE}/api/flipbooks/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/api/flipbooks/${encodeURIComponent(id)}`, { method: 'DELETE', headers: getAdminStudioHeaders() });
     if (res.ok) {
       window.api.showToast(`🗑️ "${title}" permanently deleted!`, 'success');
       renderMyFlipbooksGallery();
@@ -3030,8 +3049,9 @@ async function executeCreate3DFlipbookPro() {
   try {
     const res = await fetch(`${API_BASE}/api/flipbooks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAdminStudioHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
+        studioId: currentStudio?.id,
         code: clientCode,
         clientCode: clientCode,
         title,
@@ -4369,7 +4389,7 @@ async function renderInvoicesView() {
   `;
 
   try {
-    const res = await fetch(`${API_BASE}/api/invoices`);
+    const res = await fetch(`${API_BASE}/api/invoices`, { headers: getAdminStudioHeaders() });
     allInvoices = await res.json();
     updateInvoiceStats();
     displayFilteredInvoices();
@@ -4838,7 +4858,7 @@ async function handleSaveInvoice(e) {
 
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAdminStudioHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload)
     });
     const data = await res.json();
@@ -4859,7 +4879,7 @@ async function deleteInvoicePrompt(id, invoiceNumber) {
   if (!confirm(`Are you sure you want to delete invoice ${invoiceNumber}?`)) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/invoices/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/api/invoices/${encodeURIComponent(id)}`, { method: 'DELETE', headers: getAdminStudioHeaders() });
     if (res.ok) {
       window.api.showToast(`🗑️ Invoice ${invoiceNumber} deleted!`, 'success');
       renderInvoicesView();
@@ -5330,8 +5350,9 @@ async function executeActivateSubscription(planName, amount, utr) {
   try {
     const res = await fetch('/api/subscription/activate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAdminStudioHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
+        studioId: currentStudio?.id,
         planName,
         amount,
         utr: utr || ('UPI' + Date.now().toString().slice(-8)),
@@ -5420,7 +5441,7 @@ function triggerCelebrationConfetti() {
 
 async function loadCurrentSubscription() {
   try {
-    const res = await fetch('/api/subscription/current');
+    const res = await fetch('/api/subscription/current', { headers: getAdminStudioHeaders() });
     const data = await res.json();
     if (data && data.status === 'ACTIVE') {
       currentActiveSubscription = data;

@@ -576,6 +576,12 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
+          // Clear any previous session caches
+          localStorage.removeItem('dm_clients');
+          localStorage.removeItem('dm_flipbooks');
+          localStorage.removeItem('dm_invoices');
+          localStorage.removeItem('dm_selected_studio_plan');
+
           localStorage.setItem('dm_admin_token', data.token || 'studio_token');
           if (data.studio) {
             localStorage.setItem('dm_current_studio', JSON.stringify(data.studio));
@@ -595,6 +601,9 @@
       } catch (err) {
         // Fallback for offline / instant master login
         if (password === 'admin123' || password === 'dmfilms') {
+          localStorage.removeItem('dm_clients');
+          localStorage.removeItem('dm_flipbooks');
+          localStorage.removeItem('dm_invoices');
           localStorage.setItem('dm_admin_token', 'local_token_master');
           localStorage.setItem('dm_saved_email', email);
           localStorage.setItem('dm_saved_password', password);
@@ -637,6 +646,12 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
+          // Clear previous caches
+          localStorage.removeItem('dm_clients');
+          localStorage.removeItem('dm_flipbooks');
+          localStorage.removeItem('dm_invoices');
+          localStorage.removeItem('dm_selected_studio_plan');
+
           // Save credentials safely for auto-fill
           localStorage.setItem('dm_saved_email', email);
           localStorage.setItem('dm_saved_password', password);

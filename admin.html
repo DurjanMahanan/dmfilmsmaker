@@ -114,7 +114,9 @@
 
     async function loadCurrentSubscription() {
       try {
-        const res = await fetch('/api/subscription/current');
+        const studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
+        const headers = (studio && studio.id) ? { 'X-Studio-Id': studio.id } : {};
+        const res = await fetch('/api/subscription/current', { headers });
         const sub = await res.json();
         if (sub) {
           window.currentActiveSubscription = sub;
@@ -189,10 +191,14 @@
         return;
       }
 
+      const studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
+      const headers = { 'Content-Type': 'application/json' };
+      if (studio && studio.id) headers['X-Studio-Id'] = studio.id;
+
       fetch('/api/subscription/activate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planName: 'Free Trial', amount: 0, utr: 'FREE_TRIAL_START' })
+        headers,
+        body: JSON.stringify({ studioId: studio?.id, planName: 'Free Trial', amount: 0, utr: 'FREE_TRIAL_START' })
       })
       .then(r => r.json())
       .then(data => {
@@ -3962,11 +3968,16 @@
       const utrVal = (utrInput?.value || '').trim() || ('UPI' + Date.now().toString().slice(-8));
 
       const plan = window.currentCheckoutPlan || { name: 'Silver Edition', amount: 199 };
+      const studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
+      const headers = { 'Content-Type': 'application/json' };
+      if (studio && studio.id) headers['X-Studio-Id'] = studio.id;
+
       try {
         const res = await fetch('/api/subscription/activate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
+            studioId: studio?.id,
             planName: plan.name,
             amount: plan.amount,
             utr: utrVal,
