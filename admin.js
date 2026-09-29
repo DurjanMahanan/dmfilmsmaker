@@ -5461,8 +5461,12 @@ async function loadCurrentSubscription() {
   try {
     const res = await fetch('/api/subscription/current', { headers: getAdminStudioHeaders() });
     const data = await res.json();
-    if (data && data.status === 'ACTIVE') {
+    if (data) {
       currentActiveSubscription = data;
+      window.currentActiveSubscription = data;
+      if (typeof window.updateTopAndSidebarSubscriptionBadges === 'function') {
+        window.updateTopAndSidebarSubscriptionBadges(data);
+      }
       updateSidebarSubscriptionBadge(data);
     }
   } catch (err) {
@@ -5474,13 +5478,27 @@ function updateSidebarSubscriptionBadge(sub) {
   const banner = document.querySelector('.upgrade-sidebar-card');
   if (!banner || !sub) return;
 
+  if (sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED') {
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:0.6rem;">
+        <div class="upgrade-crown-icon" style="background:#ef4444;color:#fff;">🔒</div>
+        <div>
+          <div style="color:#ef4444;font-weight:900;font-size:0.8rem;line-height:1.1;letter-spacing:0.04em;">NO PLAN ACTIVE</div>
+          <div style="color:#f87171;font-weight:800;font-size:0.64rem;letter-spacing:0.08em;margin-top:2px;">CLICK TO UNLOCK</div>
+        </div>
+      </div>
+      <div class="upgrade-arrow-icon" style="color:#ef4444;">›</div>
+    `;
+    return;
+  }
+
   if (sub.planName === 'Free Trial' || sub.amount === 0) {
     banner.innerHTML = `
       <div style="display:flex;align-items:center;gap:0.6rem;">
-        <div class="upgrade-crown-icon">👑</div>
+        <div class="upgrade-crown-icon">🎁</div>
         <div>
-          <div style="color:#000;font-weight:900;font-size:0.8rem;line-height:1.1;letter-spacing:0.04em;">UPGRADE YOUR PLAN</div>
-          <div style="color:#3a2903;font-weight:800;font-size:0.64rem;letter-spacing:0.08em;margin-top:2px;">UNLIMITED ACCESS</div>
+          <div style="color:#000;font-weight:900;font-size:0.8rem;line-height:1.1;letter-spacing:0.04em;">FREE TRIAL ACTIVE</div>
+          <div style="color:#3a2903;font-weight:800;font-size:0.64rem;letter-spacing:0.08em;margin-top:2px;">${sub.daysLeft || 7} DAYS LEFT</div>
         </div>
       </div>
       <div class="upgrade-arrow-icon">›</div>

@@ -474,7 +474,7 @@
 
   <script src="js/config.js"></script>
   <script>
-    const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.WORKER_API_URL) ? window.APP_CONFIG.WORKER_API_URL : 'http://localhost:3000';
+    const API_BASE = (window.APP_CONFIG && window.APP_CONFIG.WORKER_API_URL) ? window.APP_CONFIG.WORKER_API_URL : '';
 
     function switchAuthView(view) {
       const signinView = document.getElementById('view-signin');
@@ -647,37 +647,17 @@
 
         if (res.ok && data.success) {
           // Clear previous caches
-          localStorage.removeItem('dm_clients');
-          localStorage.removeItem('dm_flipbooks');
-          localStorage.removeItem('dm_invoices');
-          localStorage.removeItem('dm_selected_studio_plan');
+          localStorage.clear();
 
-          // Save credentials safely for auto-fill
+          // Save session for newly registered studio
+          if (data.token) localStorage.setItem('dm_admin_token', data.token);
+          if (data.studio) localStorage.setItem('dm_current_studio', JSON.stringify(data.studio));
           localStorage.setItem('dm_saved_email', email);
           localStorage.setItem('dm_saved_password', password);
 
-          // Switch to Sign In view
-          switchAuthView('signin');
-
-          // Auto-fill newly created email and password into Sign In boxes
-          const emailInput = document.getElementById('input-email');
-          const passInput = document.getElementById('input-password');
-          if (emailInput) emailInput.value = email;
-          if (passInput) passInput.value = password;
-
-          // Update subtitle with studio name
-          const subtitleEl = document.getElementById('portal-subtitle');
-          if (subtitleEl) subtitleEl.textContent = `${studioName} User Portal`;
-
-          // Show success banner
-          const banner = document.getElementById('reg-success-banner');
-          if (banner) {
-            banner.style.display = 'block';
-            banner.innerHTML = `✔ Studio Account Created for <strong>${studioName}</strong>!<br>Click <strong>Sign In</strong> below to enter.`;
-          }
-
-          // Clear register form
-          document.getElementById('register-form')?.reset();
+          // Direct redirect into admin dashboard to choose plan / claim trial
+          window.location.href = 'admin.html';
+          return;
         } else {
           alert(data.error || 'Registration failed');
         }

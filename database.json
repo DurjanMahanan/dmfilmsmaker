@@ -16870,6 +16870,24 @@
   "subscription": null,
   "paymentHistory": [
     {
+      "id": "PAY_1790704112300",
+      "planName": "Silver Edition",
+      "amount": 199,
+      "utr": "UPI04112288",
+      "paymentMethod": "UPI",
+      "status": "SUCCESS",
+      "timestamp": "2026-09-29T17:48:32.300Z"
+    },
+    {
+      "id": "PAY_1790704102357",
+      "planName": "Free Trial",
+      "amount": 199,
+      "utr": "UPI04102350",
+      "paymentMethod": "Free Trial",
+      "status": "SUCCESS",
+      "timestamp": "2026-09-29T17:48:22.357Z"
+    },
+    {
       "id": "PAY_1790701949427",
       "planName": "Silver Edition",
       "amount": 199,

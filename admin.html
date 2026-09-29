@@ -145,6 +145,7 @@
       const topName = document.getElementById('top-plan-name');
       const topExpiry = document.getElementById('top-plan-expiry');
       const topDays = document.getElementById('top-plan-days');
+      const topPill = document.getElementById('top-plan-pill');
       const lockOverlay = document.getElementById('admin-workspace-lock-overlay');
       const modalCloseBtn = document.querySelector('#upgrade-plan-modal .modal-close');
       const modalAlertBanner = document.getElementById('modal-plan-alert-banner');
@@ -240,6 +241,10 @@
         if (topIcon) topIcon.textContent = '🔒';
         if (topExpiry) topExpiry.textContent = sub.status === 'NO_PLAN' ? 'Upgrade Required' : 'Expired';
         if (topDays) topDays.textContent = 'LOCKED';
+        if (topPill) {
+          topPill.textContent = 'LOCKED';
+          topPill.style.background = '#ef4444';
+        }
         if (topBadge) {
           topBadge.style.border = '1.5px solid #ef4444';
           topBadge.style.boxShadow = '0 0 18px rgba(239,68,68,0.35)';
@@ -287,6 +292,10 @@
       if (topIcon) topIcon.textContent = isGold ? '👑' : (isSilver ? '💎' : '🎁');
       if (topExpiry) topExpiry.textContent = expDateStr;
       if (topDays) topDays.textContent = `${daysLeft} Days Left`;
+      if (topPill) {
+        topPill.textContent = 'ACTIVE';
+        topPill.style.background = '#22c55e';
+      }
 
       if (topBadge) {
         if (isGold) {
@@ -819,19 +828,19 @@
 
       <div style="display:flex;gap:0.85rem;align-items:center;">
         <!-- TOP ACTIVE PLAN & EXPIRY BADGE -->
-        <div id="top-plan-status-badge" onclick="openUpgradeModal()" style="background:linear-gradient(135deg, rgba(30,22,56,0.95) 0%, rgba(15,10,30,0.98) 100%);border:1.5px solid #a855f7;border-radius:10px;padding:5px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 0 15px rgba(168,85,247,0.3);transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
-          <div style="font-size:1.2rem;" id="top-plan-icon">💎</div>
+        <div id="top-plan-status-badge" onclick="openUpgradeModal()" style="background:linear-gradient(135deg, rgba(40,10,10,0.95) 0%, rgba(20,5,5,0.98) 100%);border:1.5px solid #ef4444;border-radius:10px;padding:5px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 0 15px rgba(239,68,68,0.3);transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+          <div style="font-size:1.2rem;" id="top-plan-icon">🔒</div>
           <div style="line-height:1.2;">
             <div style="font-size:0.8rem;font-weight:900;color:#ffffff;display:flex;align-items:center;gap:6px;">
-              <span id="top-plan-name">Silver Edition</span>
-              <span style="background:#22c55e;color:#fff;font-size:0.6rem;font-weight:800;padding:1px 5px;border-radius:4px;">ACTIVE</span>
+              <span id="top-plan-name">NO PLAN ACTIVE</span>
+              <span id="top-plan-pill" style="background:#ef4444;color:#fff;font-size:0.6rem;font-weight:800;padding:1px 5px;border-radius:4px;">LOCKED</span>
             </div>
             <div style="font-size:0.7rem;color:#cbd5e1;font-weight:600;margin-top:1px;">
-              Expires: <span id="top-plan-expiry" style="color:#fde047;font-weight:700;">20 Sep 2026</span> &bull; <span id="top-plan-days" style="color:#86efac;font-weight:800;">30 Days Left</span>
+              <span id="top-plan-expiry" style="color:#fde047;font-weight:700;">Active Plan Required</span> &bull; <span id="top-plan-days" style="color:#ef4444;font-weight:800;">LOCKED</span>
             </div>
           </div>
           <div style="font-size:0.68rem;color:#c084fc;font-weight:800;background:rgba(168,85,247,0.2);padding:3px 7px;border-radius:6px;border:1px solid rgba(168,85,247,0.4);margin-left:4px;white-space:nowrap;">
-            Upgrade 👑
+            Choose Plan 👑
           </div>
         </div>
 
