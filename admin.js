@@ -5381,6 +5381,10 @@ async function executeActivateSubscription(planName, amount, utr) {
     const data = await res.json();
     if (data.success) {
       currentActiveSubscription = data.subscription;
+      window.currentActiveSubscription = data.subscription;
+      if (typeof window.updateTopAndSidebarSubscriptionBadges === 'function') {
+        window.updateTopAndSidebarSubscriptionBadges(data.subscription);
+      }
       updateSidebarSubscriptionBadge(data.subscription);
 
       if (checkoutTimerInterval) clearInterval(checkoutTimerInterval);

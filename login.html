@@ -581,6 +581,8 @@
           localStorage.removeItem('dm_flipbooks');
           localStorage.removeItem('dm_invoices');
           localStorage.removeItem('dm_selected_studio_plan');
+          localStorage.removeItem('dm_current_studio');
+          localStorage.removeItem('dm_admin_token');
 
           localStorage.setItem('dm_admin_token', data.token || 'studio_token');
           if (data.studio) {
@@ -647,16 +649,39 @@
 
         if (res.ok && data.success) {
           // Clear previous caches
-          localStorage.clear();
+          localStorage.removeItem('dm_clients');
+          localStorage.removeItem('dm_flipbooks');
+          localStorage.removeItem('dm_invoices');
+          localStorage.removeItem('dm_selected_studio_plan');
+          localStorage.removeItem('dm_current_studio');
+          localStorage.removeItem('dm_admin_token');
 
-          // Save session for newly registered studio
-          if (data.token) localStorage.setItem('dm_admin_token', data.token);
-          if (data.studio) localStorage.setItem('dm_current_studio', JSON.stringify(data.studio));
+          // Save credentials safely for auto-fill
           localStorage.setItem('dm_saved_email', email);
           localStorage.setItem('dm_saved_password', password);
 
-          // Direct redirect into admin dashboard to choose plan / claim trial
-          window.location.href = 'admin.html';
+          // Switch to Sign In view (User will click Sign In to enter)
+          switchAuthView('signin');
+
+          // Auto-fill newly created email and password into Sign In boxes
+          const emailInput = document.getElementById('input-email');
+          const passInput = document.getElementById('input-password');
+          if (emailInput) emailInput.value = email;
+          if (passInput) passInput.value = password;
+
+          // Update subtitle with studio name
+          const subtitleEl = document.getElementById('portal-subtitle');
+          if (subtitleEl) subtitleEl.textContent = `${studioName} User Portal`;
+
+          // Show success banner
+          const banner = document.getElementById('reg-success-banner');
+          if (banner) {
+            banner.style.display = 'block';
+            banner.innerHTML = `✔ Studio Account Created for <strong>${studioName}</strong>!<br>Click <strong>Sign In</strong> below to enter your workspace.`;
+          }
+
+          // Clear register form
+          document.getElementById('register-form')?.reset();
           return;
         } else {
           alert(data.error || 'Registration failed');

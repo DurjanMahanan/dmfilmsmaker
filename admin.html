@@ -366,6 +366,10 @@
             m.style.setProperty('opacity', '0', 'important');
             m.style.setProperty('visibility', 'hidden', 'important');
           }
+          updateTopAndSidebarSubscriptionBadges(data.subscription);
+          if (typeof updateSidebarSubscriptionBadge === 'function') {
+            updateSidebarSubscriptionBadge(data.subscription);
+          }
           if (window.api && window.api.showToast) window.api.showToast('🎉 Free Trial Activated for 7 Days! Workspace Unlocked ✨', 'success');
           loadCurrentSubscription();
         } else {
