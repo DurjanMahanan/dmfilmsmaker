@@ -2007,15 +2007,29 @@ function openModal(modalId) {
   const el = document.getElementById(modalId);
   if (el) {
     el.classList.add('active');
-    el.style.display = 'flex';
+    el.style.setProperty('display', 'flex', 'important');
+    el.style.setProperty('opacity', '1', 'important');
+    el.style.setProperty('visibility', 'visible', 'important');
+    el.style.setProperty('z-index', '9999999', 'important');
   }
 }
 
 function closeModal(modalId) {
+  if (modalId === 'upgrade-plan-modal') {
+    const sub = window.currentActiveSubscription;
+    if (sub && (sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED')) {
+      const msg = '🔒 Active Plan Required: Please claim your 7-Day Free Trial or upgrade to continue!';
+      if (window.api && window.api.showToast) window.api.showToast(msg, 'warning');
+      else alert(msg);
+      return;
+    }
+  }
   const el = document.getElementById(modalId);
   if (el) {
     el.classList.remove('active');
-    el.style.display = 'none';
+    el.style.setProperty('display', 'none', 'important');
+    el.style.setProperty('opacity', '0', 'important');
+    el.style.setProperty('visibility', 'hidden', 'important');
   }
 }
 
@@ -3557,24 +3571,7 @@ window.openShareModalPreview = openShareModalPreview;
 window.deleteFlipbookItemPrompt = deleteFlipbookItemPrompt;
 window.scrollInnerSheetsTray = scrollInnerSheetsTray;
 
-// Global Modal Helpers
-function openModal(modalId) {
-  const el = document.getElementById(modalId);
-  if (el) {
-    el.classList.add('active');
-    el.style.opacity = '1';
-    el.style.visibility = 'visible';
-  }
-}
-
-function closeModal(modalId) {
-  const el = document.getElementById(modalId);
-  if (el) {
-    el.classList.remove('active');
-    el.style.opacity = '0';
-    el.style.visibility = 'hidden';
-  }
-}
+// (Modal helpers defined in top of script)
 
 // Click on modal backdrop to close
 document.addEventListener('DOMContentLoaded', () => {
@@ -5211,6 +5208,10 @@ let checkoutTimerSeconds = 15 * 60;
 let currentActiveSubscription = null;
 
 function openUpgradeModal() {
+  const sub = window.currentActiveSubscription;
+  if (sub && typeof window.updateTopAndSidebarSubscriptionBadges === 'function') {
+    window.updateTopAndSidebarSubscriptionBadges(sub);
+  }
   openModal('upgrade-plan-modal');
 }
 

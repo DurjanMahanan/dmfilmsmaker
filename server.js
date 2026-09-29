@@ -2941,53 +2941,6 @@ async function syncClientPhotosFromDrive(client, db) {
           // Construct direct UPI QR URI linked to Durjan Mahanand (9668584247@ybl)
           const upiUri = `upi://pay?pa=9668584247@ybl&pn=DURJAN%20MAHANAND&am=${selectedPlan.amount}&cu=INR&tn=${encodeURIComponent('DM Photo SaaS ' + selectedPlan.name + ' ' + orderId)}`;
 
-          // Real-Time Simulator for Sandbox / Immediate Auto-Verification (Triggers within 6-7s of QR presentation)
-          setTimeout(() => {
-            if (global.activePaymentOrders[orderId] && global.activePaymentOrders[orderId].status === 'PENDING') {
-              const currentDb = loadDB();
-              const existingOrder = (currentDb.paymentOrders || []).find(o => o.orderId === orderId);
-              if (existingOrder && existingOrder.status === 'PENDING') {
-                const now = new Date();
-                const expires = new Date(Date.now() + selectedPlan.durationDays * 24 * 3600 * 1000);
-                const autoUtr = 'UPI' + Date.now().toString().slice(-8);
-
-                existingOrder.status = 'SUCCESS';
-                existingOrder.paidAt = now.toISOString();
-                existingOrder.phonepeTransactionId = 'T240820' + Date.now().toString().slice(-6);
-                existingOrder.utr = autoUtr;
-
-                currentDb.subscription = {
-                  planName: selectedPlan.name,
-                  planCode: selectedPlan.code,
-                  amount: selectedPlan.amount,
-                  utr: autoUtr,
-                  paymentMethod: 'PhonePe Standard Gateway (9668584247@ybl)',
-                  status: 'ACTIVE',
-                  upiId: '9668584247@ybl',
-                  activatedAt: now.toISOString(),
-                  expiresAt: expires.toISOString(),
-                  durationDays: selectedPlan.durationDays
-                };
-
-                if (!currentDb.paymentHistory) currentDb.paymentHistory = [];
-                currentDb.paymentHistory.unshift({
-                  id: 'PAY_' + Date.now(),
-                  orderId,
-                  planName: selectedPlan.name,
-                  amount: selectedPlan.amount,
-                  utr: autoUtr,
-                  paymentMethod: 'PhonePe Gateway',
-                  status: 'SUCCESS',
-                  timestamp: now.toISOString()
-                });
-
-                saveDB(currentDb);
-                global.activePaymentOrders[orderId] = existingOrder;
-                console.log(`⚡ [PHONEPE AUTO-VERIFIED] Order: ${orderId} | Plan: ${selectedPlan.name} | ₹${selectedPlan.amount} Active until ${expires.toLocaleDateString()}`);
-              }
-            }
-          }, 7000);
-
           sendJSON({
             success: true,
             orderId,

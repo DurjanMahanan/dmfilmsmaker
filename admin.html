@@ -48,6 +48,9 @@
     }
 
     function openUpgradeModal() {
+      if (typeof updateSubscriptionBadge === 'function') {
+        try { updateSubscriptionBadge(); } catch(e){}
+      }
       openModal('upgrade-plan-modal');
     }
 
@@ -202,23 +205,22 @@
         // Configure Free Trial Card state
         if (sub.trialClaimed) {
           if (trialCard) {
-            trialCard.style.opacity = '0.45';
-            trialCard.style.filter = 'grayscale(0.9)';
-            trialCard.style.cursor = 'not-allowed';
-            trialCard.onclick = () => {
-              if (window.api && window.api.showToast) {
-                window.api.showToast('⚠️ Free Trial already used on this account. Please select Silver or Gold Pro! 💎', 'warning');
-              } else {
-                alert('⚠️ Free Trial already used on this account. Please select Silver or Gold Pro!');
-              }
-            };
+            trialCard.style.opacity = '0.55';
+            trialCard.style.filter = 'grayscale(0.85)';
+            trialCard.style.cursor = 'pointer';
+            trialCard.onclick = handleFreeTrialClick;
           }
           if (trialBtn) {
-            trialBtn.textContent = '🔒 Already Used';
-            trialBtn.disabled = true;
-            trialBtn.style.background = 'rgba(255,255,255,0.05)';
-            trialBtn.style.color = '#94a3b8';
-            trialBtn.style.cursor = 'not-allowed';
+            trialBtn.textContent = '🔒 Already Used (1 per studio)';
+            trialBtn.disabled = false;
+            trialBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+            trialBtn.style.color = '#fca5a5';
+            trialBtn.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+            trialBtn.style.cursor = 'pointer';
+            trialBtn.onclick = (e) => {
+              if (e) e.stopPropagation();
+              handleFreeTrialClick();
+            };
           }
         } else {
           if (trialCard) {
@@ -266,13 +268,22 @@
       // Restore Free Trial Card if claimed
       if (sub.trialClaimed) {
         if (trialCard) {
-          trialCard.style.opacity = '0.45';
-          trialCard.style.filter = 'grayscale(0.9)';
-          trialCard.style.cursor = 'not-allowed';
+          trialCard.style.opacity = '0.55';
+          trialCard.style.filter = 'grayscale(0.85)';
+          trialCard.style.cursor = 'pointer';
+          trialCard.onclick = handleFreeTrialClick;
         }
         if (trialBtn) {
-          trialBtn.textContent = '🔒 Already Used';
-          trialBtn.disabled = true;
+          trialBtn.textContent = '🔒 Already Used (1 per studio)';
+          trialBtn.disabled = false;
+          trialBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+          trialBtn.style.color = '#fca5a5';
+          trialBtn.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+          trialBtn.style.cursor = 'pointer';
+          trialBtn.onclick = (e) => {
+            if (e) e.stopPropagation();
+            handleFreeTrialClick();
+          };
         }
       }
 
@@ -327,11 +338,10 @@
     function handleFreeTrialClick() {
       const sub = window.currentActiveSubscription;
       if (sub && sub.trialClaimed) {
-        const msg = '⚠️ Free Trial Already Claimed!\n\nYou have already used your 7-Day Free Trial on this registered account.\n\nPlease select Silver Edition (₹199 / Month) or Gold Pro (₹999 / Year) to continue! 💎';
+        const msg = '⚠️ Free Trial Already Used!\n\nAapne is studio account par pehle hi 7-Day Free Trial use kar liya hai (1 Free Trial per studio).\n\nStudio workspace continue rakhne ke liye kripya Silver Edition (₹199 / Month) ya Gold Pro (₹999 / Year) plan select karein! 💎';
+        alert(msg);
         if (window.api && window.api.showToast) {
-          window.api.showToast('⚠️ Free Trial already claimed on this account. Please select a paid plan! 💎', 'warning');
-        } else {
-          alert(msg);
+          window.api.showToast('⚠️ Free Trial already used on this account. Please select Silver or Gold plan! 👑', 'warning');
         }
         return;
       }
@@ -3983,6 +3993,14 @@
     }
 
     function closeModal(id) {
+      if (id === 'upgrade-plan-modal' && window.__currentSubscription && window.__currentSubscription.isLocked) {
+        if (typeof showToast === 'function') {
+          showToast('⚠️ Plan expired! Kripya continue karne ke liye plan upgrade karein.', 'warning');
+        } else {
+          alert('⚠️ Plan expired! Kripya continue karne ke liye plan upgrade karein.');
+        }
+        return;
+      }
       const m = document.getElementById(id);
       if (m) {
         m.classList.remove('active');
@@ -3997,7 +4015,12 @@
     function openChangePasswordModal() { toggleInlinePassEdit(true); }
     function openUpdateFilesModal() { toggleInlineFilesEdit(true); }
     function openEditPaymentModal() { toggleInlinePayEdit(true); }
-    function openUpgradeModal() { openModal('upgrade-plan-modal'); }
+    function openUpgradeModal() { 
+      if (typeof updateSubscriptionBadge === 'function') {
+        try { updateSubscriptionBadge(); } catch(e){}
+      }
+      openModal('upgrade-plan-modal'); 
+    }
 
     window.openModal = openModal;
     window.closeModal = closeModal;
