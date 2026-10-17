@@ -1205,6 +1205,20 @@
 
           </div>
 
+          <!-- Google Drive Disconnected Warning Banner in Upload View -->
+          <div id="upload-drive-status-banner" style="display:none;margin-bottom:1rem;padding:0.85rem 1.25rem;background:linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(153,27,27,0.2) 100%);border:1.5px solid #ef4444;border-radius:12px;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;box-shadow:0 0 15px rgba(239,68,68,0.2);">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+              <span style="font-size:1.4rem;">⚠️</span>
+              <div>
+                <div style="color:#ffffff;font-weight:800;font-size:0.9rem;">Google Drive Disconnected / Expired!</div>
+                <div style="color:#fca5a5;font-size:0.78rem;">Service Account quota is 0 MB. Please connect your personal Google Drive to upload photos.</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm" onclick="connectGoogleOAuth()" style="background:#ef4444;color:#fff;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;">
+              ⚡ Connect Google Drive
+            </button>
+          </div>
+
           <!-- Fixed Action Row (Permanently Fixed in place with consistent dimensions) -->
           <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
             <button class="btn btn-primary" type="button" id="btn-start-upload" onclick="startBatchUpload()" style="flex:1;min-width:220px;height:48px;font-size:1.05rem;font-weight:700;border-radius:10px;box-shadow:0 0 25px rgba(212,175,55,0.3);display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:all 0.2s ease;" disabled>
@@ -1966,18 +1980,29 @@
                 Open Storage ↗
               </a>
             </div>
-            <h4 style="font-size:1.05rem;color:var(--text-gold);margin-bottom:0.5rem;">🔗 Link Dedicated Cloud Account</h4>
-            <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem;">
-              Connect your dedicated high-speed cloud infrastructure for unlimited photo delivery and fast downloads.
-            </p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
-              <input type="text" id="oauth-client-id" class="form-control" placeholder="Cloud Storage Access Key">
-              <input type="password" id="oauth-client-secret" class="form-control" placeholder="Cloud Storage Secret Key">
+            <div style="background:rgba(15,23,42,0.6);border:1.5px solid rgba(212,175,55,0.3);border-radius:12px;padding:1.25rem;margin-top:1.25rem;">
+              <h4 style="font-size:1.05rem;color:var(--text-gold);margin-bottom:0.4rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <span>🔗 Google Drive Storage Status:</span>
+                <span id="google-drive-status-badge" style="font-size:0.75rem;padding:3px 9px;border-radius:6px;background:rgba(239,68,68,0.2);color:#ef4444;font-weight:800;border:1px solid rgba(239,68,68,0.4);">CHECKING...</span>
+              </h4>
+              <p id="google-drive-status-desc" style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.9rem;">
+                Personal Google Drive must be authorized so high-resolution photos are uploaded to your Drive with unlimited storage.
+              </p>
+
+              <div id="google-drive-user-info" style="display:none;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;">
+                <div style="color:#86efac;font-size:0.9rem;font-weight:700;" id="drive-user-display-name">DM Music Zone</div>
+                <div style="color:#94a3b8;font-size:0.8rem;" id="drive-user-email">durjan.mahanand123@gmail.com</div>
+              </div>
+
+              <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="connectGoogleOAuth()" style="padding:0.6rem 1.25rem;font-weight:700;">
+                  ⚡ Connect / Re-Authorize Google Drive
+                </button>
+                <button type="button" class="btn btn-sm" onclick="cleanDummyPhotosPrompt()" style="padding:0.6rem 1rem;font-size:0.82rem;background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);border-radius:8px;cursor:pointer;">
+                  🧹 Clean Broken / Dummy Photos
+                </button>
+              </div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="connectGoogleOAuth()">
-              ⚡ Authorize & Connect Cloud Storage
-            </button>
-            <span id="oauth-status-text" style="font-size:0.85rem;margin-left:1rem;color:var(--success);"></span>
           </div>
 
           <button class="btn btn-primary" onclick="window.api.showToast('Settings saved successfully!', 'success')">Save Configuration</button>

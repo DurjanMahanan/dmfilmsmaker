@@ -228,16 +228,19 @@ class DM_API_Client {
         xhr.onreadystatechange = async () => {
           if (xhr.readyState === 4) {
             this._activeUploadXhrs.delete(xhr);
-            // Status 200, 201, or 0 (CORS success on direct Drive PUT)
-            if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 0) {
+            if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 let driveFile = {};
                 try {
                   driveFile = JSON.parse(xhr.responseText);
                 } catch (e) {
-                  driveFile = { id: 'drive_' + Date.now(), name: file.name, size: file.size };
+                  driveFile = {};
                 }
                 
+                if (!driveFile.id || driveFile.id.startsWith('drive_') || driveFile.id.startsWith('file_') || driveFile.id.startsWith('up_')) {
+                  throw new Error('Google Drive did not return a valid file ID. Please verify Google Drive storage quota and authorization.');
+                }
+
                 // Record completed upload metadata on server
                 const compResp = await fetch(`${this.baseUrl}/api/upload/complete`, {
                   method: 'POST',
@@ -251,10 +254,17 @@ class DM_API_Client {
                 const photoObj = await compResp.json();
                 resolve(photoObj);
               } catch (e) {
-                resolve({ success: true, name: file.name });
+                reject(new Error(e.message || 'Failed to record upload metadata'));
               }
             } else {
-              reject(new Error(`Drive upload status: ${xhr.status}`));
+              let errorMsg = `Drive upload failed (${xhr.status})`;
+              try {
+                const errData = JSON.parse(xhr.responseText || '{}');
+                if (errData && errData.error && errData.error.message) {
+                  errorMsg = errData.error.message;
+                }
+              } catch (e) {}
+              reject(new Error(errorMsg));
             }
           }
         };
@@ -262,22 +272,9 @@ class DM_API_Client {
           this._activeUploadXhrs.delete(xhr);
           reject(new Error('Upload paused by user'));
         };
-        xhr.onerror = async () => {
+        xhr.onerror = () => {
           this._activeUploadXhrs.delete(xhr);
-          try {
-            await fetch(`${this.baseUrl}/api/upload/complete`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                clientId,
-                subfolder: subfolder || file._subfolder || '',
-                driveFile: { id: 'file_' + Date.now(), name: file.name, size: file.size }
-              })
-            });
-            resolve({ success: true, name: file.name });
-          } catch (e) {
-            resolve({ success: true, name: file.name });
-          }
+          reject(new Error('Google Drive network error or unauthorized. Please re-connect Google Drive in settings.'));
         };
       });
 

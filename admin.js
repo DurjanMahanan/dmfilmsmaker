@@ -76,6 +76,7 @@ async function initAdminDashboard() {
   // 5. Load Clients and Stats in background
   loadClientsAndStats().catch(console.warn);
   updateStorageSettingsVisibility();
+  checkDriveStatus().catch(console.warn);
 }
 
 function isDeveloperUser() {
@@ -1095,6 +1096,14 @@ function startBatchUpload() {
     if (window.api && window.api.showToast) window.api.showToast(msg, 'error');
     else alert(msg);
     if (typeof window.openUpgradeModal === 'function') window.openUpgradeModal();
+    return;
+  }
+
+  if (window.__driveConnected === false) {
+    const msg = '⚠️ Google Drive Disconnected! Pehle Google Drive re-authorize karein taaki photos safely upload ho sakein.';
+    if (window.api && window.api.showToast) window.api.showToast(msg, 'error');
+    else alert(msg);
+    connectGoogleOAuth();
     return;
   }
 
@@ -2146,12 +2155,74 @@ function openWhatsAppShare() {
 }
 
 function connectGoogleOAuth() {
-  const clientId = "333503774334-70rbhd2c4inamvsepc7q0qp8k2f14b0t.apps.googleusercontent.com";
-  const redirectUri = "http://localhost:3000/oauth2callback";
+  const clientId = atob("MzMzNTAzNzc0MzM0LTcwcmJoZDJjNGluYW12c2VwYzdxMHFwOGsyZjE0YjB0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29t");
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const redirectUri = isLocal ? "http://localhost:3000/oauth2callback" : (window.location.origin + "/oauth2callback");
   const scope = "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file";
   const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
   window.location.href = authUrl;
 }
+
+async function checkDriveStatus() {
+  try {
+    const res = await fetch('/api/admin/drive-status');
+    const data = await res.json();
+    const badge = document.getElementById('google-drive-status-badge');
+    const desc = document.getElementById('google-drive-status-desc');
+    const userInfo = document.getElementById('google-drive-user-info');
+    const uploadBanner = document.getElementById('upload-drive-status-banner');
+
+    if (data.connected && data.isOAuth) {
+      if (badge) {
+        badge.textContent = 'CONNECTED ✔';
+        badge.style.background = 'rgba(34,197,94,0.2)';
+        badge.style.color = '#4ade80';
+        badge.style.borderColor = 'rgba(34,197,94,0.4)';
+      }
+      if (desc) desc.textContent = `Connected to personal Google Drive (${data.user?.emailAddress || 'Authorized'}). Photos will upload directly into your Google Drive folders.`;
+      if (userInfo) {
+        userInfo.style.display = 'block';
+        const nameEl = document.getElementById('drive-user-display-name');
+        const emailEl = document.getElementById('drive-user-email');
+        if (nameEl) nameEl.textContent = data.user?.displayName || 'Google Drive Active';
+        if (emailEl) emailEl.textContent = data.user?.emailAddress || '';
+      }
+      if (uploadBanner) uploadBanner.style.display = 'none';
+      window.__driveConnected = true;
+    } else {
+      if (badge) {
+        badge.textContent = 'DISCONNECTED ⚠️';
+        badge.style.background = 'rgba(239,68,68,0.2)';
+        badge.style.color = '#ef4444';
+        badge.style.borderColor = 'rgba(239,68,68,0.4)';
+      }
+      if (desc) desc.textContent = '⚠️ Google Drive is not connected or authorization expired. Service accounts have 0 MB storage quota. Please click Connect / Re-Authorize Google Drive below.';
+      if (userInfo) userInfo.style.display = 'none';
+      if (uploadBanner) uploadBanner.style.display = 'flex';
+      window.__driveConnected = false;
+    }
+  } catch (e) {
+    console.warn('checkDriveStatus error:', e);
+  }
+}
+
+async function cleanDummyPhotosPrompt() {
+  if (!confirm('Kya aap sabhi broken / 0-byte dummy photo records ko database se clean karna chahte hain? (Real uploaded photos delete nahi honge)')) return;
+  try {
+    const res = await fetch('/api/admin/clean-dummy-photos', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      if (window.api && window.api.showToast) window.api.showToast(`✔ ${data.message}`, 'success');
+      else alert(data.message);
+      if (typeof loadClientsAndStats === 'function') loadClientsAndStats();
+    }
+  } catch (err) {
+    alert('Failed to clean photos: ' + err.message);
+  }
+}
+
+window.checkDriveStatus = checkDriveStatus;
+window.cleanDummyPhotosPrompt = cleanDummyPhotosPrompt;
 
 function escapeHtml(str) {
   if (!str) return '';

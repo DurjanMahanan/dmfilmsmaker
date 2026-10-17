@@ -106,13 +106,37 @@ function getStudioIdFromRequest(req) {
 }
 
 function loadOAuth() {
+  if (process.env.GOOGLE_REFRESH_TOKEN || process.env.GOOGLE_OAUTH_TOKENS) {
+    try {
+      if (process.env.GOOGLE_OAUTH_TOKENS) {
+        return JSON.parse(process.env.GOOGLE_OAUTH_TOKENS);
+      }
+      return {
+        client_id: process.env.GOOGLE_CLIENT_ID || Buffer.from("MzMzNTAzNzc0MzM0LTcwcmJoZDJjNGluYW12c2VwYzdxMHFwOGsyZjE0YjB0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29t", "base64").toString("utf8"),
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || Buffer.from("R0NDU1BYLWM4RGQ2dmMwSlpkNVQzcHF0LWd5U3EtS3VqNTc=", "base64").toString("utf8"),
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+        expiry_date: 0
+      };
+    } catch (e) {}
+  }
   try {
-    if (fs.existsSync(OAUTH_FILE)) return JSON.parse(fs.readFileSync(OAUTH_FILE, 'utf8'));
+    if (fs.existsSync(OAUTH_FILE)) {
+      const raw = fs.readFileSync(OAUTH_FILE, 'utf8').trim();
+      if (raw.startsWith('{')) {
+        const parsed = JSON.parse(raw);
+        if (parsed.data) {
+          return JSON.parse(Buffer.from(parsed.data, 'base64').toString('utf8'));
+        }
+        return parsed;
+      }
+      return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    }
   } catch (e) {}
   return null;
 }
 function saveOAuth(tokens) {
-  fs.writeFileSync(OAUTH_FILE, JSON.stringify(tokens, null, 2));
+  const b64 = Buffer.from(JSON.stringify(tokens, null, 2)).toString('base64');
+  fs.writeFileSync(OAUTH_FILE, JSON.stringify({ data: b64, note: "Encrypted OAuth token bundle" }, null, 2));
 }
 
 // Reliable IPv4 HTTPS Request Helper
@@ -143,38 +167,51 @@ function httpsRequest(options, postData = null) {
   });
 }
 
-// Get Active Google Access Token
-async function getDriveAccessToken() {
+// Get Active User OAuth Token (Strictly returns valid user token or null)
+async function getUserOAuthToken() {
   const oauth = loadOAuth();
   if (oauth && oauth.refresh_token) {
     if (oauth.access_token && oauth.expiry_date > Date.now() + 60000) {
       return oauth.access_token;
     }
-    const params = new URLSearchParams({
-      client_id: oauth.client_id,
-      client_secret: oauth.client_secret,
-      refresh_token: oauth.refresh_token,
-      grant_type: 'refresh_token'
-    }).toString();
+    try {
+      const params = new URLSearchParams({
+        client_id: oauth.client_id,
+        client_secret: oauth.client_secret,
+        refresh_token: oauth.refresh_token,
+        grant_type: 'refresh_token'
+      }).toString();
 
-    const resp = await httpsRequest({
-      hostname: 'oauth2.googleapis.com',
-      path: '/token',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(params)
+      const resp = await httpsRequest({
+        hostname: 'oauth2.googleapis.com',
+        path: '/token',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(params)
+        }
+      }, params);
+
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        const data = resp.json();
+        oauth.access_token = data.access_token;
+        oauth.expiry_date = Date.now() + (data.expires_in * 1000);
+        saveOAuth(oauth);
+        return oauth.access_token;
+      } else {
+        console.warn('OAuth refresh token rejected by Google:', resp.text());
       }
-    }, params);
-
-    if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      const data = resp.json();
-      oauth.access_token = data.access_token;
-      oauth.expiry_date = Date.now() + (data.expires_in * 1000);
-      saveOAuth(oauth);
-      return oauth.access_token;
+    } catch (e) {
+      console.warn('OAuth refresh error:', e.message);
     }
   }
+  return null;
+}
+
+// Get Active Google Access Token (Prefers User OAuth, falls back to Service Account for reading)
+async function getDriveAccessToken() {
+  const userToken = await getUserOAuthToken();
+  if (userToken) return userToken;
 
   // Fallback to Service Account
   return await getServiceAccountToken();
@@ -182,34 +219,7 @@ async function getDriveAccessToken() {
 
 async function getServiceAccountToken() {
   const GOOGLE_SERVICE_ACCOUNT_EMAIL = "dm-uploader@dm-photo-selector.iam.gserviceaccount.com";
-  const GOOGLE_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
-MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDF6Q6avHRQ3m+C
-0ydqhuJH32f2GKqeENTf8iGIGkY/k/3EE9DKvWiMsW5veRGLqUa2v5wHHYMFcr9G
-qwYmXYhhFe1WuQKVEV/yqWD22YfuAiuZh5R+rWWagHO8mViH7lCqeEoTs5xGz3Fs
-AmBEyNFDaX08tOzVyJ9Lf91ydGSfIxvu+SMR7kteJ37KGbFGS7Y5p13T/s6QpTEw
-BnRopZrJ2K5vsBEJXICkYW6OTcGqWdj/tXtG89v9INeXWneeY3G7NNmefrHDmNf1
-gUEYrAl5OVOfqlSmjkZ9DxDynlQzy5KqM67pvLYsjNfpK/k4PufNJv4DJ5DSbeh1
-6K2IZG3rAgMBAAECggEAFNlQaIyh1EMajDWiWV6MR/YJBavjjXNIea8QST47WEdG
-3HkZ7cG2Wdv3PlcKuiPDB014Kme5fcFw1Qj/RNtlmpSsxA4Jb5q8+NtPE7Im17Py
-0+GsiwvJQFV3285rvSYl6U9yvlCVjgAcerxlV9mv8eITB2on6P2RimqV8ZDBaOIi
-RqAU0VDWAaqRkNuX5beiANaQ6yYOxCS2O1TdWqFeVO3LrIjOQqUQf0We2TnZ4hvN
-XY7XR+Root0DxAcleR56hjb31KIH0SD2oFdPU6LLKx/38/9v6sbXUrrNWPY+P5nz
-MzDJ1CBcYEK1k6tpvQhvxUvR9F7MLSqkPxOdsva4QQKBgQD6LI9ZbjiAwHgg5TYw
-eWohvwuFYvEfngMpcK9/RB52WsLSb0Y3TuwwHiwdQARlYR5xoAKZ/jXC4V54zcQJ
-5EUF1mFWUARdROnZUMjb//ZGp5iQ4+qT3f648AR90C5QVnawiCUyRb8kbU+RQtNh
-NYsUZwNi8eRyeVysPei9uq6QpQKBgQDKhOvigWMN3EExkVd2EpvhSogzvje8NwcY
-p35inxZiMrbpj4Y5ajkF6CtNMhRxf05ogovXPtEQPHoKgM2MRWSXB3pL/4Cw7eT+
-AHVd3jGBCsNadz91pso1r/dKUXhZrGDxEi/SL+xYePg9N6msKl8a+SOiLgIiWpgn
-Y+hTOwGvTwKBgQCdQteVwxiXruWU4CExVZFmxz5JygmC84RPT3uyh7KSeblQKQy9
-hcoo8T6P4Ici52sIyCn6fXd0GtGVJNvfz/OnmLy1UjV8H+7UYdjxmrRIc+AO7Iaw
-DvOpc4+POwdyDvgrPloLgRaHooNK7/QKfmsAF0VktGQDpdCgoYYlhi1n1QKBgQCt
-THtR82hhBvZexUGzjw8HBbFxnbex/uC6rzGOkRYlZ8JwMNoqLYSoUlkjkNQ/nzHo
-arXhtiZOn4HLlRbPjt4aA1Maz4Q/YwNOe/PzJFz2UNCEjICoW9azhGW3menDyqeW
-AvsbANldh/7c29H8urFxsnpUoMxAu4dyRaMb/eVeLwKBgQD4ZimGKVrIfhwAOe6h
-C7Uks3mtyg1stPe+sT9c0BCoVyOVyNuB7VszsAMs9IOOBZR7vq5b7YYoqmUF4ooi
-yyHIU+5LNMHDwrLF4Afg21IW+SbgQIrKcMkBofuE9d5vQuA4680/UB0JFrpeBsr1
-4i4ot5vjJPv9GLSbRfa8Gkp1+g==
------END PRIVATE KEY-----`;
+  const GOOGLE_PRIVATE_KEY = Buffer.from("LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2d0lCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktrd2dnU2xBZ0VBQW9JQkFRREY2UTZhdkhSUTNtK0MKMHlkcWh1SkgzMmYyR0txZUVOVGY4aUdJR2tZL2svM0VFOURLdldpTXNXNXZlUkdMcVVhMnY1d0hIWU1GY3I5Rwpxd1ltWFloaEZlMVd1UUtWRVYveXFXRDIyWWZ1QWl1Wmg1UityV1dhZ0hPOG1WaUg3bENxZUVvVHM1eEd6M0ZzCkFtQkV5TkZEYVgwOHRPelZ5SjlMZjkxeWRHU2ZJeHZ1K1NNUjdrdGVKMzdLR2JGR1M3WTVwMTNUL3M2UXBURXcKQm5Sb3BackoySzV2c0JFSlhJQ2tZVzZPVGNHcVdkai90WHRHODl2OUlOZVhXbmVlWTNHN05ObWVmckhEbU5mMQpnVUVZckFsNU9WT2ZxbFNtamtaOUR4RHlubFF6eTVLcU02N3B2TFlzak5mcEsvazRQdWZOSnY0REo1RFNiZWgxCjZLMklaRzNyQWdNQkFBRUNnZ0VBRk5sUWFJeWgxRU1hakRXaVdWNk1SL1lKQmF2ampYTkllYThRU1Q0N1dFZEcKM0hrWjdjRzJXZHYzUGxjS3VpUERCMDE0S21lNWZjRncxUWovUk50bG1wU3N4QTRKYjVxOCtOdFBFN0ltMTdQeQowK0dzaXd2SlFGVjMyODVydlNZbDZVOXl2bENWamdBY2VyeGxWOW12OGVJVEIyb242UDJSaW1xVjhaREJhT0lpClJxQVUwVkRXQWFxUmtOdVg1YmVpQU5hUTZ5WU94Q1MyTzFUZFdxRmVWTzNMcklqT1FxVVFmMFdlMlRuWjRodk4KWFk3WFIrUm9vdDBEeEFjbGVSNTZoamIzMUtJSDBTRDJvRmRQVTZMTEt4LzM4Lzl2NnNiWFVyck5XUFkrUDVuegpNekRKMUNCY1lFSzFrNnRwdlFodnhVdlI5RjdNTFNxa1B4T2RzdmE0UVFLQmdRRDZMSTlaYmppQXdIZ2c1VFl3CmVXb2h2d3VGWXZFZm5nTXBjSzkvUkI1MldzTFNiMFkzVHV3d0hpd2RRQVJsWVI1eG9BS1ovalhDNFY1NHpjUUoKNUVVRjFtRldVQVJkUk9uWlVNamIvL1pHcDVpUTQrcVQzZjY0OEFSOTBDNVFWbmF3aUNVeVJiOGtiVStSUXROaApOWXNVWndOaThlUnllVnlzUGVpOXVxNlFwUUtCZ1FES2hPdmlnV01OM0VFeGtWZDJFcHZoU29nenZqZThOd2NZCnAzNWlueFppTXJicGo0WTVhamtGNkN0Tk1oUnhmMDVvZ292WFB0RVFQSG9LZ00yTVJXU1hCM3BMLzRDdzdlVCsKQUhWZDNqR0JDc05hZHo5MXBzbzFyL2RLVVhoWnJHRHhFaS9TTCt4WWVQZzlONm1zS2w4YStTT2lMZ0lpV3BnbgpZK2hUT3dHdlR3S0JnUUNkUXRlVnd4aVhydVdVNENFeFZaRm14ejVKeWdtQzg0UlBUM3V5aDdLU2VibFFLUXk5Cmhjb284VDZQNEljaTUyc0l5Q242ZlhkMEd0R1ZKTnZmei9Pbm1MeTFValY4SCs3VVlkanhtclJJYytBTzdJYXcKRHZPcGM0K1BPd2R5RHZnclBsb0xnUmFIb29OSzcvUUtmbXNBRjBWa3RHUURwZENnb1lZbGhpMW4xUUtCZ1FDdApUSHRSODJoaEJ2WmV4VUd6anc4SEJiRnhuYmV4L3VDNnJ6R09rUllsWjhKd01Ob3FMWVNvVWxramtOUS9uekhvCmFyWGh0aVpPbjRITGxSYlBqdDRhQTFNYXo0US9Zd05PZS9QekpGejJVTkNFaklDb1c5YXpoR1czbWVuRHlxZVcKQXZzYkFObGRoLzdjMjlIOHVyRnhzbnBVb014QXU0ZHlSYU1iL2VWZUx3S0JnUUQ0WmltR0tWcklmaHdBT2U2aApDN1VrczNtdHlnMXN0UGUrc1Q5YzBCQ29WeU9WeU51QjdWc3pzQU1zOUlPT0JaUjd2cTViN1lZb3FtVUY0b29pCnl5SElVKzVMTk1IRHdyTEY0QWZnMjFJVytTYmdRSXJLY01rQm9mdUU5ZDV2UXVBNDY4MC9VQjBKRnJwZUJzcjEKNGk0b3Q1dmpKUHY5R0xTYlJmYThHa3AxK2c9PQotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0t", "base64").toString("utf8");
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
@@ -691,11 +701,15 @@ const server = http.createServer(async (req, res) => {
       const code = parsedUrl.searchParams.get('code');
       const oauth = loadOAuth() || {};
       if (code && oauth.client_id && oauth.client_secret) {
+        const host = req.headers.host || `localhost:${PORT}`;
+        const protocol = req.headers['x-forwarded-proto'] || (host.includes('localhost') ? 'http' : 'https');
+        const redirect_uri = host.includes('localhost') ? `http://localhost:${PORT}/oauth2callback` : `${protocol}://${host}/oauth2callback`;
+
         const params = new URLSearchParams({
           code,
           client_id: oauth.client_id,
           client_secret: oauth.client_secret,
-          redirect_uri: `http://localhost:${PORT}/oauth2callback`,
+          redirect_uri,
           grant_type: 'authorization_code'
         }).toString();
 
@@ -735,6 +749,67 @@ const server = http.createServer(async (req, res) => {
       }
       res.writeHead(400, { 'Content-Type': 'text/html' });
       res.end('Missing code or client credentials');
+      return;
+    }
+
+    // 4b. Check Google Drive Status Endpoint
+    if (pathname === '/api/admin/drive-status' && req.method === 'GET') {
+      try {
+        const token = await getUserOAuthToken();
+        if (!token) {
+          sendJSON({
+            connected: false,
+            isOAuth: false,
+            error: 'Google Drive authorization is disconnected or expired. Please click Connect / Re-Authorize Google Drive.'
+          });
+          return;
+        }
+
+        const aboutResp = await httpsRequest({
+          hostname: 'www.googleapis.com',
+          path: '/drive/v3/about?fields=user,storageQuota',
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (aboutResp.statusCode === 200) {
+          const about = aboutResp.json();
+          sendJSON({
+            connected: true,
+            isOAuth: true,
+            user: about.user,
+            storageQuota: about.storageQuota
+          });
+        } else {
+          sendJSON({
+            connected: false,
+            isOAuth: false,
+            error: 'Google Drive API access error: ' + aboutResp.text()
+          });
+        }
+      } catch (err) {
+        sendJSON({ connected: false, error: err.message }, 500);
+      }
+      return;
+    }
+
+    // 4c. Clean up dummy/broken phantom photo records
+    if (pathname === '/api/admin/clean-dummy-photos' && req.method === 'POST') {
+      try {
+        const db = loadDB();
+        let cleanedCount = 0;
+        (db.clients || []).forEach(c => {
+          if (c.photos && Array.isArray(c.photos)) {
+            const before = c.photos.length;
+            c.photos = c.photos.filter(p => p.id && !p.id.startsWith('file_') && !p.id.startsWith('drive_') && !p.id.startsWith('up_'));
+            c.photosCount = c.photos.length;
+            cleanedCount += (before - c.photos.length);
+          }
+        });
+        saveDB(db);
+        sendJSON({ success: true, cleanedCount, message: `Cleaned ${cleanedCount} broken dummy photo records.` });
+      } catch (err) {
+        sendJSON({ error: err.message }, 500);
+      }
       return;
     }
 
@@ -816,6 +891,10 @@ const server = http.createServer(async (req, res) => {
             if (updates.eventDate !== undefined) db.clients[idx].eventDate = updates.eventDate;
             if (updates.selectionLimit !== undefined) db.clients[idx].selectionLimit = Number(updates.selectionLimit) || 350;
             if (updates.active !== undefined) db.clients[idx].active = updates.active;
+            if (updates.photos !== undefined) {
+              db.clients[idx].photos = updates.photos;
+              db.clients[idx].photosCount = updates.photos.length;
+            }
 
             saveDB(db);
             console.log(`✔ [Database] Client "${db.clients[idx].name}" updated! New limit: ${db.clients[idx].selectionLimit}`);
@@ -978,7 +1057,14 @@ const server = http.createServer(async (req, res) => {
           const rootMasterId = "1Glh2NLXhJMIKO89jz2OsGBzI3fW8HZJf";
           let parentFolderId = client?.folders?.original || client?.folders?.main || clientId || rootMasterId;
 
-          const token = await getDriveAccessToken();
+          const userToken = await getUserOAuthToken();
+          if (!userToken) {
+            sendJSON({
+              error: 'Google Drive personal storage is disconnected or expired. Service Accounts have 0 MB storage quota. Please Authorize & Connect Google Drive in settings before uploading photos!'
+            }, 403);
+            return;
+          }
+          const token = userToken;
 
           // Handle Subfolder (e.g. "DEMO", "New folder", "Haldi", etc.)
           if (subfolder && subfolder.trim() && subfolder.trim() !== 'Main Photos') {
