@@ -155,7 +155,8 @@
       const trialCard = document.getElementById('pricing-card-trial');
       const trialBtn = document.getElementById('btn-claim-free-trial');
 
-      const isLocked = Boolean(sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED');
+      // Workspace Lock: ONLY lock if 7-day trial or paid plan has genuinely expired, or no plan selected
+      const isLocked = Boolean(sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED');
 
       // 1. CONFIGURE LOCKED STATE
       if (isLocked) {
@@ -403,18 +404,19 @@
 
     function openCreateClientModal() {
       const sub = window.currentActiveSubscription;
-      if (!sub || sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED') {
-        if (window.api && window.api.showToast) window.api.showToast('🔒 Active Plan Required: Please claim Free Trial or Upgrade to create clients!', 'error');
-        else alert('🔒 Active Plan Required: Please claim Free Trial or Upgrade to create clients!');
+      if (!sub || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED') {
+        if (window.api && window.api.showToast) window.api.showToast('🔒 7-Day Free Trial Expired: Please Upgrade to create clients!', 'error');
+        else alert('🔒 7-Day Free Trial Expired: Please Upgrade to create clients!');
         openUpgradeModal();
         return;
       }
       const clientsList = window.allClients || [];
+      const currentCount = clientsList.length;
+      const maxClients = (sub.limits && sub.limits.maxClients) ? sub.limits.maxClients : (sub.amount === 199 ? 10 : 3);
       if (sub && sub.limits && !sub.limits.unlimited) {
-        const maxClients = sub.limits.maxClients || (sub.amount === 199 ? 10 : 3);
-        if (clientsList.length >= maxClients) {
-          const msg = `⚠️ Plan Limit Reached: Your ${sub.limits.planName} allows a maximum of ${maxClients} Photo Selection Projects (${clientsList.length}/${maxClients} used). Upgrade to Gold Pro for Unlimited projects! 👑`;
-          if (window.api && window.api.showToast) window.api.showToast(msg, 'error');
+        if (currentCount >= maxClients) {
+          const msg = `⚠️ Free Trial Limit: You can create up to ${maxClients} Clients (${currentCount}/${maxClients} used). Upgrade to Silver or Gold Pro to add more clients! 👑`;
+          if (window.api && window.api.showToast) window.api.showToast(msg, 'warning');
           else alert(msg);
           openUpgradeModal();
           return;

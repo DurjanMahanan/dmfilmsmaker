@@ -118,7 +118,12 @@ class DM_API_Client {
         body: JSON.stringify(clientData)
       });
       if (response.ok) return await response.json();
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Server error (${response.status})`);
     } catch (e) {
+      if (e.message && (e.message.includes('Limit') || e.message.includes('Active Plan') || e.message.includes('Expired') || e.message.includes('Free Trial'))) {
+        throw e;
+      }
       console.warn('Worker client create failed, using local storage:', e);
     }
 

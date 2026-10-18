@@ -538,6 +538,7 @@ window.updateWebsiteLivePreview = updateWebsiteLivePreview;
 // --- Data Loading & Stats ---
 async function loadClientsAndStats() {
   allClients = await window.api.getClients();
+  window.allClients = allClients;
   updateStats();
   renderClientsTable();
   populateClientSelectDropdowns();
@@ -677,7 +678,14 @@ async function handleCreateClient(e) {
     }
   } catch (err) {
     console.error('Error creating client:', err);
-    window.api.showToast('Failed to create client: ' + (err.message || 'Server error'), 'error');
+    const errMsg = err.message || 'Server error';
+    if (errMsg.includes('Limit') || errMsg.includes('Active Plan') || errMsg.includes('Expired')) {
+      if (window.api && window.api.showToast) window.api.showToast('⚠️ ' + errMsg, 'warning');
+      else alert(errMsg);
+      if (typeof openUpgradeModal === 'function') openUpgradeModal();
+    } else {
+      window.api.showToast('Failed to create client: ' + errMsg, 'error');
+    }
   } finally {
     if (btn) {
       btn.disabled = false;
