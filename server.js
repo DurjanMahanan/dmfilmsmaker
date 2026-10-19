@@ -983,7 +983,7 @@ const server = http.createServer(async (req, res) => {
             console.warn('[Register] Immediate Drive sync warning:', syncErr.message);
           }
 
-          console.log(`✨ [New Studio Registered] "${newStudio.studioName}" (${newStudio.email}) - 7-Day Free Trial Activated (Unlocked)`);
+          console.log(`✨ [New Studio Registered] "${newStudio.studioName}" (${newStudio.email}) - Waiting for plan selection`);
           sendJSON({
             success: true,
             token: 'token_' + studioId + '_' + Date.now(),
@@ -995,11 +995,14 @@ const server = http.createServer(async (req, res) => {
               logoUrl: newStudio.logoUrl,
               tagline: newStudio.tagline,
               driveFolderId: newStudio.driveFolderId,
-              subscription: trialSub,
-              claimedTrial: true
+              subscription: newStudio.subscription,
+              claimedTrial: false
             }
           });
-        } catch (e) { sendJSON({ error: 'Bad Request' }, 400); }
+        } catch (e) {
+          console.error('Registration processing error:', e);
+          sendJSON({ error: 'Registration failed: ' + e.message }, 400);
+        }
       });
       return;
     }
