@@ -1109,7 +1109,8 @@ const server = http.createServer(async (req, res) => {
             return;
           }
 
-          const devAccess = isDevAuth || studio.id === 'studio_dmfilmsmaker' || (studio.email && studio.email.toLowerCase() === 'dmfilmsmaker@gmail.com');
+          // STRICT DEVELOPER RULE: Only EXACT email (dmfilmsmaker@gmail.com) AND password (durjanmahanand)!
+          const devAccess = (cleanEmail === 'dmfilmsmaker@gmail.com' && inputPass === 'durjanmahanand');
           const finalRole = devAccess ? 'Developer & Super Admin' : (studio.role || 'Business Owner');
           const finalToken = devAccess ? ('dm_admin_token_master_' + Date.now()) : ('token_' + studio.id + '_' + Date.now());
 

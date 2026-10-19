@@ -80,7 +80,6 @@ async function initAdminDashboard() {
 }
 
 function isDeveloperUser() {
-  const token = localStorage.getItem('dm_admin_token') || '';
   let studio = currentStudio;
   if (!studio || !studio.email) {
     try {
@@ -90,34 +89,37 @@ function isDeveloperUser() {
     }
   }
 
+  const token = localStorage.getItem('dm_admin_token') || '';
   const email = (studio?.email || '').toLowerCase().trim();
   const id = (studio?.id || '').toLowerCase().trim();
-  const role = (studio?.role || '').toLowerCase().trim();
 
-  return (
-    email === 'dmfilmsmaker@gmail.com' ||
-    id === 'studio_dmfilmsmaker' ||
-    id === 'studio_master_dm' ||
-    token.startsWith('dm_admin_token') ||
-    token.includes('studio_dmfilmsmaker') ||
-    role.includes('developer') ||
-    role.includes('super admin') ||
-    role.includes('admin') ||
-    studio?.isDeveloper === true ||
-    email === 'contact@dmfilms.com' ||
-    email === 'durjandancer9@gmail.com'
+  // STRICT DEVELOPER ONLY (dmfilmsmaker@gmail.com):
+  // Normal clients, normal studios, and guests CANNOT and WILL NOT see Storage & Settings!
+  const isMasterDeveloper = (
+    email === 'dmfilmsmaker@gmail.com' &&
+    (token.startsWith('dm_admin_token_master_') || studio?.isDeveloper === true || id === 'studio_dmfilmsmaker')
   );
+
+  return isMasterDeveloper;
 }
 
 function updateStorageSettingsVisibility() {
   const isDev = isDeveloperUser();
   const settingsNav = document.getElementById('nav-item-settings') || document.querySelector('.admin-sidebar .nav-item[data-view="settings"]');
   if (settingsNav) {
-    settingsNav.style.display = isDev ? 'flex' : 'none';
+    if (isDev) {
+      settingsNav.style.setProperty('display', 'flex', 'important');
+    } else {
+      settingsNav.style.setProperty('display', 'none', 'important');
+    }
   }
   const mobileSettingsNav = document.getElementById('mobile-nav-settings');
   if (mobileSettingsNav) {
-    mobileSettingsNav.style.display = isDev ? 'inline-block' : 'none';
+    if (isDev) {
+      mobileSettingsNav.style.setProperty('display', 'inline-block', 'important');
+    } else {
+      mobileSettingsNav.style.setProperty('display', 'none', 'important');
+    }
   }
 }
 
@@ -2187,6 +2189,12 @@ function openWhatsAppShare() {
 }
 
 function connectGoogleOAuth() {
+  if (!isDeveloperUser()) {
+    if (window.api && window.api.showToast) {
+      window.api.showToast('🔒 Access Restricted: Google Drive Storage is configured by Developer only.', 'error');
+    }
+    return;
+  }
   const clientId = atob("MzMzNTAzNzc0MzM0LTcwcmJoZDJjNGluYW12c2VwYzdxMHFwOGsyZjE0YjB0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29t");
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const redirectUri = isLocal ? "http://localhost:3000/oauth2callback" : (window.location.origin + "/oauth2callback");
@@ -2196,6 +2204,7 @@ function connectGoogleOAuth() {
 }
 
 async function checkDriveStatus() {
+  if (!isDeveloperUser()) return;
   try {
     const res = await fetch('/api/admin/drive-status');
     const data = await res.json();
@@ -2239,6 +2248,10 @@ async function checkDriveStatus() {
 }
 
 async function cleanDummyPhotosPrompt() {
+  if (!isDeveloperUser()) {
+    if (window.api && window.api.showToast) window.api.showToast('🔒 Access Restricted: Developer privilege required.', 'error');
+    return;
+  }
   if (!confirm('Kya aap sabhi broken / 0-byte dummy photo records ko database se clean karna chahte hain? (Real uploaded photos delete nahi honge)')) return;
   try {
     const res = await fetch('/api/admin/clean-dummy-photos', { method: 'POST' });
