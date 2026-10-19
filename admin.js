@@ -81,19 +81,43 @@ async function initAdminDashboard() {
 
 function isDeveloperUser() {
   const token = localStorage.getItem('dm_admin_token') || '';
-  const studio = currentStudio || JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
-
-  if (token === 'dm_admin_token_2026' || token.startsWith('dm_admin_token')) return true;
-  if (studio && (studio.id === 'studio_master_dm' || studio.role === 'developer' || studio.role === 'master_admin' || studio.role === 'admin' || studio.isDeveloper === true || studio.email === 'contact@dmfilms.com' || studio.email === 'durjandancer9@gmail.com')) {
-    return true;
+  let studio = currentStudio;
+  if (!studio || !studio.email) {
+    try {
+      studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
+    } catch (e) {
+      studio = {};
+    }
   }
-  return false;
+
+  const email = (studio?.email || '').toLowerCase().trim();
+  const id = (studio?.id || '').toLowerCase().trim();
+  const role = (studio?.role || '').toLowerCase().trim();
+
+  return (
+    email === 'dmfilmsmaker@gmail.com' ||
+    id === 'studio_dmfilmsmaker' ||
+    id === 'studio_master_dm' ||
+    token.startsWith('dm_admin_token') ||
+    token.includes('studio_dmfilmsmaker') ||
+    role.includes('developer') ||
+    role.includes('super admin') ||
+    role.includes('admin') ||
+    studio?.isDeveloper === true ||
+    email === 'contact@dmfilms.com' ||
+    email === 'durjandancer9@gmail.com'
+  );
 }
 
 function updateStorageSettingsVisibility() {
+  const isDev = isDeveloperUser();
   const settingsNav = document.getElementById('nav-item-settings') || document.querySelector('.admin-sidebar .nav-item[data-view="settings"]');
   if (settingsNav) {
-    settingsNav.style.display = isDeveloperUser() ? 'flex' : 'none';
+    settingsNav.style.display = isDev ? 'flex' : 'none';
+  }
+  const mobileSettingsNav = document.getElementById('mobile-nav-settings');
+  if (mobileSettingsNav) {
+    mobileSettingsNav.style.display = isDev ? 'inline-block' : 'none';
   }
 }
 
@@ -3695,8 +3719,11 @@ async function loadAndRenderProfileSettings() {
   }
 
   // Registered studio name is primary!
-  const studioName = activeProfileData.studioName || studio.studioName || 'DM STUDIO';
-  const role = activeProfileData.role || 'Business Owner';
+  const studioName = activeProfileData.studioName || studio.studioName || 'DM FILMS MAKER';
+  let role = activeProfileData.role || studio.role || 'Business Owner';
+  if (isDeveloperUser() || (studio.email && studio.email.toLowerCase() === 'dmfilmsmaker@gmail.com') || studio.id === 'studio_dmfilmsmaker') {
+    role = 'Developer & Super Admin';
+  }
   const email = activeProfileData.email || studio.email || '';
   const phone = activeProfileData.phone || studio.phone || '';
 
@@ -5576,7 +5603,21 @@ function updateSidebarSubscriptionBadge(sub) {
     return;
   }
 
-  if (sub.planName === 'Free Trial' || sub.amount === 0) {
+  if (sub.isDeveloper || isDeveloperUser() || (sub.planName && sub.planName.includes('Developer')) || sub.daysLeft >= 9999 || sub.planCode === 'LIFETIME') {
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:0.6rem;">
+        <div class="upgrade-crown-icon">👑</div>
+        <div>
+          <div style="color:#000;font-weight:900;font-size:0.78rem;line-height:1.1;letter-spacing:0.04em;">DEVELOPER LIFETIME VIP</div>
+          <div style="color:#15803d;font-weight:800;font-size:0.62rem;letter-spacing:0.08em;margin-top:2px;">LIFETIME UNLIMITED FREE ✔</div>
+        </div>
+      </div>
+      <div class="upgrade-arrow-icon" style="color:#15803d;font-size:0.9rem;font-weight:900;">★</div>
+    `;
+    return;
+  }
+
+  if (sub.planName === 'Free Trial' || (sub.amount === 0 && sub.planCode !== 'LIFETIME')) {
     banner.innerHTML = `
       <div style="display:flex;align-items:center;gap:0.6rem;">
         <div class="upgrade-crown-icon">🎁</div>

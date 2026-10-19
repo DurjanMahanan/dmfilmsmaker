@@ -16693,7 +16693,7 @@
       "id": "studio_dmfilmsmaker",
       "studioName": "DM FILMS MAKER",
       "ownerName": "DM FILMS MAKER",
-      "role": "Business Owner",
+      "role": "Developer & Super Admin",
       "email": "dmfilmsmaker@gmail.com",
       "password": "durjanmahanand",
       "phone": "8249861208",
@@ -16714,7 +16714,8 @@
         "durationDays": 99999,
         "daysLeft": 99999,
         "isLocked": false,
-        "isExpired": false
+        "isExpired": false,
+        "isDeveloper": true
       },
       "claimedTrial": true,
       "paymentInfo": {
@@ -16772,7 +16773,8 @@
           "/uploads/Slideshow/slide_1788030179914_643.jpg",
           "/uploads/Slideshow/slide_1788030184818_92.jpg"
         ]
-      }
+      },
+      "isDeveloper": true
     }
   ],
   "flipbooks": [
@@ -16822,7 +16824,7 @@
   "claimedTrialEmails": [],
   "claimedTrialStudioIds": [],
   "oauth_backup": {
-    "data": "ewogICJjbGllbnRfaWQiOiAiMzMzNTAzNzc0MzM0LTcwcmJoZDJjNGluYW12c2VwYzdxMHFwOGsyZjE0YjB0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwKICAiY2xpZW50X3NlY3JldCI6ICJHT0NTUFgtYzhEZDZ2YzBKWmQ1VDNwcXQtZ3lTcS1LdWo1NyIsCiAgInJlZnJlc2hfdG9rZW4iOiAiMS8vMGdHMl9XUDhuSEJNakNnWUlBUkFBR0JBU053Ri1MOUlyTFVzaE83ZzROQ1QzQTk4VkdmaVZ5NXB5bmtCd2VDV3VSSlNqN1haTlNvWXVMSWtnd3BTMTd2djA1MGhLNjFFTS1layIsCiAgImV4cGlyeV9kYXRlIjogMTc5MjI2MjMxOTQ4NywKICAiYWNjZXNzX3Rva2VuIjogInlhMjkuYTBBWDA3Q21zdFZQRS1NQkxWMUg2V3dBendVWTQwYVliel9WZzMzSDJRdE01Sjg3dGVuNzkzZUxPS1VUQ0M5TS1xakFRd2lFanV3S0JRbF9RN19BMURfYS1xcEM5VXhIZ2xoS1ROTWFIWWdKVW1VYzB0bXdFdXFqNHlBQ0pzY0h6dXNrcVVUcE5EYmpuVkdGNEdrejFjdFgtZ0RKX29GNkJDZDdhWFE3SVlEdndfNFEwNWMtMkx2bGM1NlRLcFVScUltYjBzbFp5ZmFDZ1lLQWQwU0FSTVNGUUhHWDJNaWFmSWppSHhDVnNTZnVScWJaVFB3c3cwMjA3Igp9",
+    "data": "ewogICJjbGllbnRfaWQiOiAiMzMzNTAzNzc0MzM0LTcwcmJoZDJjNGluYW12c2VwYzdxMHFwOGsyZjE0YjB0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwKICAiY2xpZW50X3NlY3JldCI6ICJHT0NTUFgtYzhEZDZ2YzBKWmQ1VDNwcXQtZ3lTcS1LdWo1NyIsCiAgInJlZnJlc2hfdG9rZW4iOiAiMS8vMGdHMl9XUDhuSEJNakNnWUlBUkFBR0JBU053Ri1MOUlyTFVzaE83ZzROQ1QzQTk4VkdmaVZ5NXB5bmtCd2VDV3VSSlNqN1haTlNvWXVMSWtnd3BTMTd2djA1MGhLNjFFTS1layIsCiAgImV4cGlyeV9kYXRlIjogMTc5MjQyNDIyMzczNywKICAiYWNjZXNzX3Rva2VuIjogInlhMjkuYTBBWDA3Q211WVB6YVVnTy1sZHdKVl9kaHZqWWhlZEdWX25FaDRFNncyd0ZuQ2gzVmxTYUsyTGpBdWhQaVdZd0dFVWtKWThFcDBRQ0QzUV9jTXYtLU1kMlZJV0FXRF9YaUx6NFEzTXhnQ2VBdGQ2a0V2OTdQeHdBUWEtcTlFUGhQdUpNVG5feEpwNVRiMHYzTTJRRnhLeE1TS1RqbFF3ZjRvUTlweTBETWJNdGhwU3ltbnFjRW1SZzloYWwwZEJNbXZyeGpTbVJvR2FDZ1lLQWNVU0FSTVNGUUhHWDJNaTF5RW1HcERSVldlWThYQm5FS2NSVncwMjA3Igp9",
     "note": "Encrypted OAuth token bundle"
   }
 }

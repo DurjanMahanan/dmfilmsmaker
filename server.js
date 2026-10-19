@@ -1080,6 +1080,8 @@ const server = http.createServer(async (req, res) => {
               saveDB(db);
             } else {
               studio.password = 'durjanmahanand';
+              studio.role = 'Developer & Super Admin';
+              studio.isDeveloper = true;
               studio.subscription = {
                 planName: 'Developer Lifetime VIP 👑',
                 planCode: 'LIFETIME',
@@ -1107,14 +1109,22 @@ const server = http.createServer(async (req, res) => {
             return;
           }
 
+          const devAccess = isDevAuth || studio.id === 'studio_dmfilmsmaker' || (studio.email && studio.email.toLowerCase() === 'dmfilmsmaker@gmail.com');
+          const finalRole = devAccess ? 'Developer & Super Admin' : (studio.role || 'Business Owner');
+          const finalToken = devAccess ? ('dm_admin_token_master_' + Date.now()) : ('token_' + studio.id + '_' + Date.now());
+
           sendJSON({
             success: true,
-            token: 'token_' + studio.id + '_' + Date.now(),
+            token: finalToken,
+            role: finalRole,
+            isDeveloper: devAccess,
             studio: {
               id: studio.id,
               studioName: studio.studioName,
               email: studio.email,
               phone: studio.phone,
+              role: finalRole,
+              isDeveloper: devAccess,
               logoUrl: studio.logoUrl,
               tagline: studio.tagline,
               subscription: studio.subscription
@@ -1772,7 +1782,12 @@ const server = http.createServer(async (req, res) => {
       // Ensure registered studioName is preserved
       studio.studioName = studio.studioName || 'DM STUDIO';
       studio.ownerName = studio.studioName;
-      studio.role = studio.role || 'Business Owner';
+      if (isDeveloperAccount(studio)) {
+        studio.role = 'Developer & Super Admin';
+        studio.isDeveloper = true;
+      } else {
+        studio.role = studio.role || 'Business Owner';
+      }
       studio.socialLinks = studio.socialLinks || { facebook: '', instagram: '', youtube: '', website: '' };
       studio.paymentInfo = studio.paymentInfo || { accountHolder: studio.studioName, bankName: '', accountNumber: '', ifsc: '', upiId: '' };
 
