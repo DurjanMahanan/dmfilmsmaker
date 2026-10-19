@@ -3943,6 +3943,22 @@ async function syncClientPhotosFromDrive(client, db) {
       decodedPath = pathname;
     }
     let filePath = path.join(__dirname, decodedPath === '/' ? 'index.html' : decodedPath);
+
+    // Auto-resolve admin.js whether uploaded to root or in js/ folder
+    if (decodedPath === '/js/admin.js' || decodedPath === '/admin.js') {
+      const rootAdmin = path.join(__dirname, 'admin.js');
+      const jsAdmin = path.join(__dirname, 'js', 'admin.js');
+      if (fs.existsSync(rootAdmin) && fs.existsSync(jsAdmin)) {
+        const rootMtime = fs.statSync(rootAdmin).mtimeMs;
+        const jsMtime = fs.statSync(jsAdmin).mtimeMs;
+        filePath = rootMtime >= jsMtime ? rootAdmin : jsAdmin;
+      } else if (fs.existsSync(rootAdmin)) {
+        filePath = rootAdmin;
+      } else if (fs.existsSync(jsAdmin)) {
+        filePath = jsAdmin;
+      }
+    }
+
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       const stat = fs.statSync(filePath);
       const totalSize = stat.size;
@@ -3969,6 +3985,15 @@ async function syncClientPhotosFromDrive(client, db) {
       };
       const contentType = mimeTypes[ext] || 'application/octet-stream';
 
+      const isDynamicCode = ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json';
+      const cacheHeaders = isDynamicCode ? {
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      } : {
+        'Cache-Control': 'public, max-age=86400'
+      };
+
       const range = req.headers.range;
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
@@ -3981,6 +4006,7 @@ async function syncClientPhotosFromDrive(client, db) {
           'Accept-Ranges': 'bytes',
           'Content-Length': chunkSize,
           'Content-Type': contentType,
+          ...cacheHeaders
         });
         fileStream.pipe(res);
         return;
@@ -3989,6 +4015,7 @@ async function syncClientPhotosFromDrive(client, db) {
           'Content-Length': totalSize,
           'Accept-Ranges': 'bytes',
           'Content-Type': contentType,
+          ...cacheHeaders
         });
         fs.createReadStream(filePath).pipe(res);
         return;
