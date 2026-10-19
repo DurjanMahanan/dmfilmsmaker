@@ -2,7 +2,7 @@
   "clients": [
     {
       "id": "1O5rQV5fpJU7mdNX0y1tJHs37CItib-Oy",
-      "studioId": "studio_archive_samples",
+      "studioId": "studio_dmfilmsmaker",
       "code": "PS253",
       "name": "P & S",
       "mobile": "",
@@ -14516,7 +14516,7 @@
     },
     {
       "id": "1Jgx5bQ8TrHXGjjyUa3yaPfCQ0YqxFjoU",
-      "studioId": "studio_archive_samples",
+      "studioId": "studio_dmfilmsmaker",
       "code": "RAMESH172",
       "name": "RAMESH & RAKHI",
       "mobile": "",
@@ -16237,7 +16237,7 @@
     },
     {
       "id": "1MBVRGrNsD24jTKu1c9fQULqXu6BTtR2w",
-      "studioId": "studio_archive_samples",
+      "studioId": "studio_dmfilmsmaker",
       "code": "ROHITR170",
       "name": "ROHIT & RESHMA",
       "mobile": "",
@@ -16365,7 +16365,7 @@
     },
     {
       "id": "1lh2tasGS01hWOUnVNRdRng7KMUB1VO4T",
-      "studioId": "studio_archive_samples",
+      "studioId": "studio_dmfilmsmaker",
       "code": "JJ638",
       "name": "J & J",
       "mobile": "",
@@ -16528,7 +16528,7 @@
     },
     {
       "id": "1jU5W70ZlXLN2GA1rgQfmS4UF3a7UPm5K",
-      "studioId": "studio_archive_samples",
+      "studioId": "studio_dmfilmsmaker",
       "code": "BADALB981",
       "name": "BADAL & BARSHA",
       "mobile": "",
@@ -16690,135 +16690,29 @@
   ],
   "studios": [
     {
-      "id": "studio_jsm736s",
-      "studioName": "DM STUDIO",
-      "email": "durjan.mahanand123@gmail.com",
-      "password": "durjan123",
-      "phone": "8249861208",
-      "logoUrl": "",
-      "tagline": "Wedding & Cinematic Photography",
-      "createdAt": "2026-08-10T15:51:14.385Z",
-      "driveFolderId": "1wWBX_jxT_TbySU0DBeQqEJad1K93-JmV",
-      "ownerName": "DM STUDIO",
-      "paymentInfo": {
-        "accountHolder": "DM STUDIO",
-        "bankName": "",
-        "accountNumber": "",
-        "ifsc": "",
-        "upiId": "8249861208@upi"
-      },
-      "updatedAt": "2026-08-29T19:23:10.913Z",
-      "avatarUrl": "",
-      "websiteConfig": {
-        "studioName": "DM STUDIO",
-        "studioSubtitle": "Wedding & Cinematic Photography",
-        "announcementText": "🎉 Special Offer: Get 3D Virtual Album Free with Gold VIP Plan!",
-        "phone": "8249861208",
-        "address": "Titilagarh, Odisha",
-        "heroBadge": "✨ Luxury Wedding Photo Selection Portal",
-        "heroTitle": "Cherish Every Moment, Select Your Favorites",
-        "heroSubtitle": "Welcome to your private wedding photo gallery. Effortlessly review, select, and finalize your memories for your personalized wedding album.",
-        "portalBoxHeading": "Access Your Event Gallery",
-        "portalBtnText": "",
-        "plan1Name": "Free Trial",
-        "plan1Price": "₹0",
-        "plan1BtnText": "🎁 Claim Free Trial",
-        "plan1Feat1": "Up to 1 Client Event Gallery",
-        "plan2Name": "Silver Edition",
-        "plan2Price": "₹199",
-        "plan2BtnText": "💎 Upgrade to Silver",
-        "plan2Feat1": "10 Active Client Galleries",
-        "plan3Name": "Gold Pro VIP",
-        "plan3Price": "₹999",
-        "plan3BtnText": "👑 Upgrade to Gold VIP",
-        "plan3Feat1": "UNLIMITED Client Galleries",
-        "feature1Icon": "💎",
-        "feature1Title": "Ultra High-Definition",
-        "feature1Desc": "View every candid expression in crystal clarity with instant zoom and full-screen lightbox preview.",
-        "feature2Icon": "⚡",
-        "feature2Title": "Seamless Selection",
-        "feature2Desc": "Select and filter with a single tap. Live selection counters keep you on budget and within album quotas.",
-        "feature3Icon": "🔒",
-        "feature3Title": "Enterprise Cloud Security",
-        "feature3Desc": "Your precious photos are securely synchronized with high-speed private cloud servers with bank-grade encryption.",
-        "accentColor": "#d4af37",
-        "whatsapp": "918249861208",
-        "footerText": "",
-        "sliderImages": [
-          "/uploads/Slideshow/slide_1788030099543_157.jpg",
-          "/uploads/Slideshow/slide_1788030104291_103.jpg",
-          "/uploads/Slideshow/slide_1788030111741_305.jpg",
-          "/uploads/Slideshow/slide_1788030121322_743.jpg",
-          "/uploads/Slideshow/slide_1788030133045_648.jpg",
-          "/uploads/Slideshow/slide_1788030137993_706.jpg",
-          "/uploads/Slideshow/slide_1788030147412_483.jpg",
-          "/uploads/Slideshow/slide_1788030163993_841.jpg",
-          "/uploads/Slideshow/slide_1788030168037_123.jpg",
-          "/uploads/Slideshow/slide_1788030179914_643.jpg",
-          "/uploads/Slideshow/slide_1788030184818_92.jpg"
-        ]
-      },
-      "subscription": {
-        "planName": "Gold (Pro)",
-        "planCode": "YEARLY",
-        "amount": 999,
-        "utr": "UPI39392362",
-        "paymentMethod": "PhonePe Gateway",
-        "status": "ACTIVE",
-        "upiId": "9668584247@ybl",
-        "activatedAt": "2026-09-29T15:43:43.922Z",
-        "expiresAt": "2027-09-29T15:43:43.925Z",
-        "durationDays": 365
-      },
-      "claimedTrial": true
-    },
-    {
-      "id": "studio_fotaidh",
-      "studioName": "Demo  STUDIO",
-      "email": "durjandancer9@gmail.com",
-      "password": "demo123",
-      "phone": "9668584247",
-      "logoUrl": "",
-      "tagline": "Wedding & Cinematic Photography",
-      "driveFolderId": "1qad8pbzv31Kl6aD-TVQ4VaUyalMdhy9z",
-      "createdAt": "2026-08-10T16:48:37.482Z",
-      "subscription": {
-        "planName": "Free Trial",
-        "amount": 0,
-        "status": "ACTIVE",
-        "upiId": "9668584247@ybl",
-        "activatedAt": "2026-10-19T12:00:00.000Z",
-        "expiresAt": "2026-10-26T12:00:00.000Z",
-        "durationDays": 7,
-        "daysLeft": 7,
-        "isLocked": false,
-        "isExpired": false
-      },
-      "claimedTrial": true
-    },
-    {
       "id": "studio_dmfilmsmaker",
       "studioName": "DM FILMS MAKER",
+      "ownerName": "DM FILMS MAKER",
+      "role": "Business Owner",
       "email": "dmfilmsmaker@gmail.com",
-      "password": "durjan123",
+      "password": "durjanmahanand",
       "phone": "8249861208",
       "logoUrl": "",
-      "tagline": "Wedding & Cinematic Photography",
+      "tagline": "Luxury Wedding & Cinematic Photography",
       "createdAt": "2026-10-19T12:00:00.000Z",
       "driveFolderId": "1wWBX_jxT_TbySU0DBeQqEJad1K93-JmV",
-      "ownerName": "DM FILMS MAKER",
       "subscription": {
-        "planName": "Gold (Pro)",
-        "planCode": "YEARLY",
-        "amount": 999,
-        "utr": "UPI39392362",
-        "paymentMethod": "PhonePe Gateway",
+        "planName": "Developer Lifetime VIP 👑",
+        "planCode": "LIFETIME",
+        "amount": 0,
+        "utr": "DEVELOPER_MASTER_FREE",
+        "paymentMethod": "Developer Lifetime Master Pass",
         "status": "ACTIVE",
         "upiId": "9668584247@ybl",
-        "activatedAt": "2026-10-19T12:00:00.000Z",
-        "expiresAt": "2027-10-19T12:00:00.000Z",
-        "durationDays": 365,
-        "daysLeft": 365,
+        "activatedAt": "2026-01-01T00:00:00.000Z",
+        "expiresAt": "2099-12-31T23:59:59.999Z",
+        "durationDays": 99999,
+        "daysLeft": 99999,
         "isLocked": false,
         "isExpired": false
       },
@@ -16854,7 +16748,7 @@
       "soundEffects": true,
       "createdAt": "2026-08-17T17:24:36.408Z",
       "updatedAt": "2026-08-17T17:24:36.408Z",
-      "studioId": "studio_fotaidh"
+      "studioId": "studio_dmfilmsmaker"
     }
   ],
   "customAudios": [
@@ -16865,275 +16759,12 @@
       "filename": "1786981851530_Bombai_Ki_Ranu_X_Annana_Pathiya_-_Dj_Shiv_Chauhan___Pilaga_Suresh___Run_It_Up___Cycle_Akki_Nuvve_128k_.mp3"
     }
   ],
-  "invoices": [
-    {
-      "id": "inv_1787158980123_848",
-      "invoiceNumber": "INV-2026-001",
-      "invoiceDate": "19-08-2026",
-      "dueDate": "10-04-2025",
-      "clientName": "RAMESH & RAKHI",
-      "clientPhone": "8249861208",
-      "clientEmail": "durjan.mahanand123@gmail.com",
-      "clientCode": "RAMESH172",
-      "eventName": "RAMESH & RAKHI's Wedding & Reception Photography",
-      "eventDate": "",
-      "venue": "",
-      "items": [
-        {
-          "id": "item_1",
-          "description": "TOTAL PACKAGE",
-          "qty": 1,
-          "rate": 60000,
-          "total": 60000
-        }
-      ],
-      "subtotal": 60000,
-      "discount": 0,
-      "taxPercent": 0,
-      "taxAmount": 0,
-      "grandTotal": 60000,
-      "advancePaid": 20000,
-      "balanceDue": 40000,
-      "status": "Partial",
-      "paymentMethod": "UPI / Bank Transfer",
-      "notes": "Thank you for choosing our photography services!",
-      "terms": "1. 50% advance booking amount.\n2. Balance payment on album/final delivery.",
-      "studioId": "studio_jsm736s",
-      "studioName": "DM STUDIO",
-      "createdAt": "2026-08-19T17:03:00.123Z",
-      "updatedAt": "2026-08-20T17:12:20.138Z",
-      "studioTagline": "Titilagarh",
-      "studioContact": "8249861208 | durjan.mahanand123@gmail.com"
-    }
-  ],
+  "invoices": [],
   "subscription": null,
-  "paymentHistory": [
-    {
-      "id": "PAY_1790705117432",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "utr": "UPI05117422",
-      "paymentMethod": "UPI",
-      "status": "SUCCESS",
-      "timestamp": "2026-09-29T18:05:17.432Z"
-    },
-    {
-      "id": "PAY_1790705110753",
-      "planName": "Free Trial",
-      "amount": 199,
-      "utr": "UPI05110742",
-      "paymentMethod": "Free Trial",
-      "status": "SUCCESS",
-      "timestamp": "2026-09-29T18:05:10.753Z"
-    },
-    {
-      "id": "PAY_1790704112300",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "utr": "UPI04112288",
-      "paymentMethod": "UPI",
-      "status": "SUCCESS",
-      "timestamp": "2026-09-29T17:48:32.300Z"
-    },
-    {
-      "id": "PAY_1790704102357",
-      "planName": "Free Trial",
-      "amount": 199,
-      "utr": "UPI04102350",
-      "paymentMethod": "Free Trial",
-      "status": "SUCCESS",
-      "timestamp": "2026-09-29T17:48:22.357Z"
-    },
-    {
-      "id": "PAY_1790701949427",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "utr": "UPI01949418",
-      "paymentMethod": "UPI",
-      "status": "SUCCESS",
-      "timestamp": "2026-09-29T17:12:29.427Z"
-    },
-    {
-      "id": "PAY_1790701943028",
-      "planName": "Free Trial",
-      "amount": 199,
-      "utr": "UPI01943021",
-      "paymentMethod": "Free Trial",
-      "status": "SUCCESS",
-      "timestamp": "2026-09-29T17:12:23.027Z"
-    },
-    {
-      "id": "PAY_1790701834186",
-      "planName": "Free Trial",
-      "amount": 199,
-      "utr": "UPI01834179",
-      "paymentMethod": "Free Trial",
-      "status": "SUCCESS",
-      "timestamp": "2026-09-29T17:10:34.185Z"
-    },
-    {
-      "id": "PAY_1787241796620",
-      "orderId": "DM_1787241789585_523999",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "utr": "UPI41796620",
-      "paymentMethod": "PhonePe Gateway",
-      "status": "SUCCESS",
-      "timestamp": "2026-08-20T16:03:16.620Z"
-    },
-    {
-      "id": "PAY_1787240466771",
-      "planName": "Free Trial",
-      "amount": 199,
-      "utr": "FREE_TRIAL_START",
-      "paymentMethod": "PhonePe / UPI QR (9668584247@ybl)",
-      "status": "SUCCESS",
-      "timestamp": "2026-08-20T15:41:06.765Z"
-    },
-    {
-      "id": "PAY_1787239392363",
-      "orderId": "DM_1787239385263_B12EFB",
-      "planName": "Gold (Pro)",
-      "amount": 999,
-      "utr": "UPI39392362",
-      "paymentMethod": "PhonePe Gateway",
-      "status": "SUCCESS",
-      "timestamp": "2026-08-20T15:23:12.362Z"
-    },
-    {
-      "id": "PAY_1787239392251",
-      "orderId": "DM_1787239385225_55BAA6",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "utr": "UPI39392251",
-      "paymentMethod": "PhonePe Gateway",
-      "status": "SUCCESS",
-      "timestamp": "2026-08-20T15:23:12.251Z"
-    },
-    {
-      "id": "PAY_1787163901115",
-      "planName": "Free Trial",
-      "amount": 199,
-      "utr": "FREE_TRIAL_START",
-      "paymentMethod": "PhonePe / UPI QR (9668584247@ybl)",
-      "status": "SUCCESS",
-      "timestamp": "2026-08-19T18:25:01.099Z"
-    },
-    {
-      "id": "PAY_1787163219615",
-      "planName": "Free Trial",
-      "amount": 199,
-      "utr": "FREE_TRIAL_START",
-      "paymentMethod": "PhonePe / UPI QR (9668584247@ybl)",
-      "status": "SUCCESS",
-      "timestamp": "2026-08-19T18:13:39.609Z"
-    },
-    {
-      "id": "PAY_1787163023465",
-      "orderId": "ORD_1787163015937_992",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "utr": "UPI63022944",
-      "paymentMethod": "Live UPI QR",
-      "status": "SUCCESS",
-      "timestamp": "2026-08-19T18:10:23.465Z"
-    },
-    {
-      "id": "PAY_1787162149583",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "utr": "TESTUTR123456",
-      "paymentMethod": "PhonePe / UPI QR",
-      "status": "SUCCESS",
-      "timestamp": "2026-08-19T17:55:49.579Z"
-    }
-  ],
-  "paymentOrders": [
-    {
-      "orderId": "DM_1790706774324_8D6BA3",
-      "studioId": "1",
-      "plan": "YEARLY",
-      "planName": "Gold (Pro)",
-      "amount": 999,
-      "amountPaise": 99900,
-      "currency": "INR",
-      "paymentGateway": "PhonePe",
-      "status": "PENDING",
-      "createdAt": "2026-09-29T18:32:54.332Z",
-      "paidAt": null,
-      "phonepeTransactionId": null,
-      "durationDays": 365
-    },
-    {
-      "orderId": "DM_1790706748921_6A536B",
-      "studioId": "1",
-      "plan": "MONTHLY",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "amountPaise": 19900,
-      "currency": "INR",
-      "paymentGateway": "PhonePe",
-      "status": "PENDING",
-      "createdAt": "2026-09-29T18:32:28.929Z",
-      "paidAt": null,
-      "phonepeTransactionId": null,
-      "durationDays": 30
-    },
-    {
-      "orderId": "DM_1787241789585_523999",
-      "studioId": "studio_jsm736s",
-      "plan": "MONTHLY",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "amountPaise": 19900,
-      "currency": "INR",
-      "paymentGateway": "PhonePe",
-      "status": "SUCCESS",
-      "createdAt": "2026-08-20T16:03:09.590Z",
-      "paidAt": "2026-08-20T16:03:16.620Z",
-      "phonepeTransactionId": "T240820796620",
-      "durationDays": 30,
-      "utr": "UPI41796620"
-    },
-    {
-      "orderId": "DM_1787239385263_B12EFB",
-      "studioId": "studio_master_dm",
-      "plan": "YEARLY",
-      "planName": "Gold (Pro)",
-      "amount": 999,
-      "amountPaise": 99900,
-      "currency": "INR",
-      "paymentGateway": "PhonePe",
-      "status": "SUCCESS",
-      "createdAt": "2026-08-20T15:23:05.268Z",
-      "paidAt": "2026-08-20T15:23:12.362Z",
-      "phonepeTransactionId": "T240820392363",
-      "durationDays": 365,
-      "utr": "UPI39392362"
-    },
-    {
-      "orderId": "DM_1787239385225_55BAA6",
-      "studioId": "studio_master_dm",
-      "plan": "MONTHLY",
-      "planName": "Silver Edition",
-      "amount": 199,
-      "amountPaise": 19900,
-      "currency": "INR",
-      "paymentGateway": "PhonePe",
-      "status": "SUCCESS",
-      "createdAt": "2026-08-20T15:23:05.231Z",
-      "paidAt": "2026-08-20T15:23:12.251Z",
-      "phonepeTransactionId": "T240820392251",
-      "durationDays": 30,
-      "utr": "UPI39392251"
-    }
-  ],
-  "claimedTrialEmails": [
-    "test_studio_1790701826716@example.com"
-  ],
-  "claimedTrialStudioIds": [
-    "studio_dujiblt"
-  ],
+  "paymentHistory": [],
+  "paymentOrders": [],
+  "claimedTrialEmails": [],
+  "claimedTrialStudioIds": [],
   "oauth_backup": {
     "data": "ewogICJjbGllbnRfaWQiOiAiMzMzNTAzNzc0MzM0LTcwcmJoZDJjNGluYW12c2VwYzdxMHFwOGsyZjE0YjB0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwKICAiY2xpZW50X3NlY3JldCI6ICJHT0NTUFgtYzhEZDZ2YzBKWmQ1VDNwcXQtZ3lTcS1LdWo1NyIsCiAgInJlZnJlc2hfdG9rZW4iOiAiMS8vMGdHMl9XUDhuSEJNakNnWUlBUkFBR0JBU053Ri1MOUlyTFVzaE83ZzROQ1QzQTk4VkdmaVZ5NXB5bmtCd2VDV3VSSlNqN1haTlNvWXVMSWtnd3BTMTd2djA1MGhLNjFFTS1layIsCiAgImV4cGlyeV9kYXRlIjogMTc5MjI2MjMxOTQ4NywKICAiYWNjZXNzX3Rva2VuIjogInlhMjkuYTBBWDA3Q21zdFZQRS1NQkxWMUg2V3dBendVWTQwYVliel9WZzMzSDJRdE01Sjg3dGVuNzkzZUxPS1VUQ0M5TS1xakFRd2lFanV3S0JRbF9RN19BMURfYS1xcEM5VXhIZ2xoS1ROTWFIWWdKVW1VYzB0bXdFdXFqNHlBQ0pzY0h6dXNrcVVUcE5EYmpuVkdGNEdrejFjdFgtZ0RKX29GNkJDZDdhWFE3SVlEdndfNFEwNWMtMkx2bGM1NlRLcFVScUltYjBzbFp5ZmFDZ1lLQWQwU0FSTVNGUUhHWDJNaWFmSWppSHhDVnNTZnVScWJaVFB3c3cwMjA3Igp9",
     "note": "Encrypted OAuth token bundle"

@@ -57,8 +57,35 @@ function saveDB(data) {
   }
 }
 
-// Plan Limit Tiers Config: Free Trial, Silver Edition (₹199), Gold (Pro) (₹999) - Multi-tenant Per-Studio
+// Strict Exact-Match Whitelist for Developer / Master Owner (Fraud Prevention)
+const DEVELOPER_WHITELIST_EMAILS = [
+  'dmfilmsmaker@gmail.com'
+];
+
+function isDeveloperAccount(studioOrEmail) {
+  if (!studioOrEmail) return false;
+  const email = (typeof studioOrEmail === 'string' ? studioOrEmail : (studioOrEmail.email || '')).toLowerCase().trim();
+  const id = (typeof studioOrEmail === 'object' && studioOrEmail.id ? studioOrEmail.id : '').toLowerCase().trim();
+  
+  // STRICT EXACT MATCH ONLY: Exactly dmfilmsmaker@gmail.com
+  return (
+    email === 'dmfilmsmaker@gmail.com' ||
+    id === 'studio_dmfilmsmaker'
+  );
+}
+
+// Plan Limit Tiers Config: Developer Lifetime Free, Free Trial, Silver Edition (₹199), Gold (Pro) (₹999)
 function getSubscriptionLimits(studioOrSub) {
+  if (isDeveloperAccount(studioOrSub)) {
+    return {
+      planName: 'Developer Lifetime VIP 👑',
+      maxClients: Infinity,
+      maxFlipbooks: Infinity,
+      unlimited: true,
+      isDeveloper: true
+    };
+  }
+
   let sub = null;
   if (studioOrSub && studioOrSub.subscription) {
     sub = studioOrSub.subscription;
@@ -67,6 +94,16 @@ function getSubscriptionLimits(studioOrSub) {
   }
   const planName = (sub?.planName || '').toLowerCase();
   
+  if (planName.includes('developer') || sub?.isDeveloper) {
+    return {
+      planName: 'Developer Lifetime VIP 👑',
+      maxClients: Infinity,
+      maxFlipbooks: Infinity,
+      unlimited: true,
+      isDeveloper: true
+    };
+  }
+
   if (planName.includes('gold') || planName.includes('pro') || sub?.amount === 999) {
     return {
       planName: 'Gold (Pro)',
@@ -117,24 +154,36 @@ function getTargetStudio(db, studioId) {
   db.studios = db.studios || [];
   if (db.studios.length === 0) {
     db.studios.push({
-      id: 'studio_jsm736s',
-      studioName: 'DM STUDIO',
-      ownerName: 'DM STUDIO',
+      id: 'studio_dmfilmsmaker',
+      studioName: 'DM FILMS MAKER',
+      ownerName: 'DM FILMS MAKER',
       role: 'Business Owner',
-      email: 'durjanmahanand123@gmail.com',
+      email: 'dmfilmsmaker@gmail.com',
       phone: '8249861208',
-      password: 'dmfilms',
+      password: 'durjanmahanand',
       tagline: 'Luxury Wedding & Cinematic Photography',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      driveFolderId: '1wWBX_jxT_TbySU0DBeQqEJad1K93-JmV',
+      subscription: {
+        planName: 'Developer Lifetime VIP 👑',
+        planCode: 'LIFETIME',
+        amount: 0,
+        utr: 'DEVELOPER_MASTER_FREE',
+        paymentMethod: 'Developer Lifetime Master Pass',
+        status: 'ACTIVE',
+        upiId: '9668584247@ybl',
+        activatedAt: '2026-01-01T00:00:00.000Z',
+        expiresAt: '2099-12-31T23:59:59.999Z',
+        durationDays: 99999,
+        daysLeft: 99999,
+        isLocked: false,
+        isExpired: false
+      },
+      claimedTrial: true
     });
   }
   if (!studioId) return db.studios[0];
   let s = db.studios.find(x => x.id === studioId || x.email === studioId);
-  if (!s) {
-    if (studioId === 'studio_master_dm' || studioId === 'studio_dm' || studioId.startsWith('studio_master')) {
-      s = db.studios[0];
-    }
-  }
   return s || db.studios[0];
 }
 
@@ -990,79 +1039,88 @@ const server = http.createServer(async (req, res) => {
             }
           }
 
-          // Auto-provision if owner email is used (e.g. dmfilmsmaker@gmail.com, durjanmahanand123@gmail.com)
-          if (!studio && (cleanEmail.includes('dmfilms') || cleanEmail.includes('durjan') || cleanEmail.includes('mahanand'))) {
-            studio = {
-              id: 'studio_' + Math.random().toString(36).substring(2, 9),
-              studioName: 'DM FILMS MAKER',
-              email: cleanEmail,
-              password: inputPass || 'durjan123',
-              phone: '8249861208',
-              logoUrl: '',
-              tagline: 'Wedding & Cinematic Photography',
-              createdAt: new Date().toISOString(),
-              driveFolderId: '1wWBX_jxT_TbySU0DBeQqEJad1K93-JmV',
-              ownerName: 'DM FILMS MAKER',
-              subscription: (db.studios && db.studios[0] && db.studios[0].subscription) ? db.studios[0].subscription : {
-                planName: 'Gold (Pro)',
+          // Strict Email + Password Matching (Both MUST match! No access by email alone!)
+          // Developer Credentials:
+          // Email: dmfilmsmaker@gmail.com
+          // Password: durjanmahanand
+          const isDevAuth = (cleanEmail === 'dmfilmsmaker@gmail.com' && inputPass === 'durjanmahanand');
+
+          if (isDevAuth) {
+            studio = (db.studios || []).find(s => s.id === 'studio_dmfilmsmaker' || (s.email && s.email.toLowerCase() === 'dmfilmsmaker@gmail.com'));
+            if (!studio) {
+              studio = {
+                id: 'studio_dmfilmsmaker',
+                studioName: 'DM FILMS MAKER',
+                email: 'dmfilmsmaker@gmail.com',
+                password: 'durjanmahanand',
+                phone: '8249861208',
+                logoUrl: '',
+                tagline: 'Wedding & Cinematic Photography',
+                createdAt: new Date().toISOString(),
+                driveFolderId: '1wWBX_jxT_TbySU0DBeQqEJad1K93-JmV',
+                ownerName: 'DM FILMS MAKER',
+                subscription: {
+                  planName: 'Developer Lifetime VIP 👑',
+                  planCode: 'LIFETIME',
+                  amount: 0,
+                  utr: 'DEVELOPER_MASTER_FREE',
+                  paymentMethod: 'Developer Lifetime Master Pass',
+                  status: 'ACTIVE',
+                  upiId: '9668584247@ybl',
+                  activatedAt: '2026-01-01T00:00:00.000Z',
+                  expiresAt: '2099-12-31T23:59:59.999Z',
+                  durationDays: 99999,
+                  daysLeft: 99999,
+                  isLocked: false,
+                  isExpired: false
+                },
+                claimedTrial: true
+              };
+              db.studios.push(studio);
+              saveDB(db);
+            } else {
+              studio.password = 'durjanmahanand';
+              studio.subscription = {
+                planName: 'Developer Lifetime VIP 👑',
+                planCode: 'LIFETIME',
+                amount: 0,
+                utr: 'DEVELOPER_MASTER_FREE',
+                paymentMethod: 'Developer Lifetime Master Pass',
                 status: 'ACTIVE',
-                amount: 999,
-                daysLeft: 365,
-                expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString()
-              },
-              claimedTrial: true
-            };
-            db.studios.push(studio);
-            saveDB(db);
-          }
-
-          // Check password: match stored password OR known master passwords OR owner account
-          const isMasterPass = (inputPass === 'admin123' || inputPass === 'dmfilms' || inputPass === 'durjan123' || inputPass === 'demo123');
-          const isOwnerAccount = cleanEmail.includes('dmfilms') || cleanEmail.includes('durjan') || cleanEmail.includes('mahanand');
-
-          if (studio && (studio.password === inputPass || isMasterPass || isOwnerAccount)) {
-            // Update stored password if user used a new custom password
-            if (inputPass && studio.password !== inputPass && !isMasterPass) {
-              studio.password = inputPass;
+                upiId: '9668584247@ybl',
+                activatedAt: '2026-01-01T00:00:00.000Z',
+                expiresAt: '2099-12-31T23:59:59.999Z',
+                durationDays: 99999,
+                daysLeft: 99999,
+                isLocked: false,
+                isExpired: false
+              };
               saveDB(db);
             }
+          }
 
-            sendJSON({
-              success: true,
-              token: 'token_' + studio.id + '_' + Date.now(),
-              studio: {
-                id: studio.id,
-                studioName: studio.studioName,
-                email: studio.email,
-                phone: studio.phone,
-                logoUrl: studio.logoUrl,
-                tagline: studio.tagline,
-                subscription: studio.subscription
-              }
-            });
+          // Strict Password Verification:
+          // Stored password MUST strictly match inputPass!
+          // Absolutely NO access by email alone!
+          if (!studio || studio.password !== inputPass) {
+            sendJSON({ success: false, error: 'Invalid email or password' }, 401);
             return;
           }
 
-          // Default Master Admin fallback
-          if (isMasterPass) {
-            const masterStudio = getTargetStudio(db, 'studio_jsm736s');
-            sendJSON({
-              success: true,
-              token: 'dm_admin_token_2026',
-              studio: {
-                id: masterStudio.id,
-                studioName: masterStudio.studioName,
-                email: masterStudio.email,
-                phone: masterStudio.phone,
-                logoUrl: masterStudio.logoUrl,
-                tagline: masterStudio.tagline,
-                subscription: masterStudio.subscription
-              }
-            });
-            return;
-          }
-
-          sendJSON({ success: false, error: 'Invalid email or password' }, 401);
+          sendJSON({
+            success: true,
+            token: 'token_' + studio.id + '_' + Date.now(),
+            studio: {
+              id: studio.id,
+              studioName: studio.studioName,
+              email: studio.email,
+              phone: studio.phone,
+              logoUrl: studio.logoUrl,
+              tagline: studio.tagline,
+              subscription: studio.subscription
+            }
+          });
+          return;
         } catch (e) { sendJSON({ error: 'Bad Request' }, 400); }
       });
       return;
@@ -1383,38 +1441,40 @@ const server = http.createServer(async (req, res) => {
             const studio = getTargetStudio(db, studioId || clientData.studioId);
             const targetStudioId = studio ? studio.id : (studioId || clientData.studioId);
 
-            // Active Subscription Check
-            const sub = studio?.subscription;
-            const now = Date.now();
-            const expTime = sub && sub.expiresAt ? new Date(sub.expiresAt).getTime() : 0;
-            const isExpired = sub ? (now >= expTime) : true;
-            const isNoPlan = !sub || sub.status === 'NO_PLAN';
+            // Active Subscription Check (Developer Lifetime Free Bypass)
+            if (!isDeveloperAccount(studio)) {
+              const sub = studio?.subscription;
+              const now = Date.now();
+              const expTime = sub && sub.expiresAt ? new Date(sub.expiresAt).getTime() : 0;
+              const isExpired = sub ? (now >= expTime) : true;
+              const isNoPlan = !sub || sub.status === 'NO_PLAN';
 
-            if (isNoPlan || isExpired) {
-              console.warn(`⚠️ [ACTION BLOCKED] Studio: ${studio?.studioName || targetStudioId} has no active plan or is expired!`);
-              sendJSON({
-                error: isExpired ? '7-Day Free Trial Expired: Please upgrade your plan to continue!' : 'Active Plan Required: Please claim your 7-Day Free Trial or upgrade your plan to create client galleries!',
-                isLocked: true,
-                isExpired: isExpired,
-                requiresUpgrade: true
-              }, 403);
-              return;
-            }
+              if (isNoPlan || isExpired) {
+                console.warn(`⚠️ [ACTION BLOCKED] Studio: ${studio?.studioName || targetStudioId} has no active plan or is expired!`);
+                sendJSON({
+                  error: isExpired ? '7-Day Free Trial Expired: Please upgrade your plan to continue!' : 'Active Plan Required: Please claim your 7-Day Free Trial or upgrade your plan to create client galleries!',
+                  isLocked: true,
+                  isExpired: isExpired,
+                  requiresUpgrade: true
+                }, 403);
+                return;
+              }
 
-            // Plan Limit Enforcement for Photo Selection Projects (Clients) for THIS Studio (3 clients for Free Trial)
-            const limits = getSubscriptionLimits(studio);
-            const studioClients = (db.clients || []).filter(c => c.studioId === targetStudioId);
-            const currentClientsCount = studioClients.length;
-            if (!limits.unlimited && currentClientsCount >= limits.maxClients) {
-              console.warn(`⚠️ [LIMIT REACHED] Studio: ${studio?.studioName} | Plan: ${limits.planName} | Max Allowed: ${limits.maxClients} | Current: ${currentClientsCount}`);
-              sendJSON({
-                error: `Plan Limit Reached: Your ${limits.planName} allows a maximum of ${limits.maxClients} Photo Selection Projects (${currentClientsCount}/${limits.maxClients} used). Upgrade to Silver or Gold Pro to add more projects! 👑`,
-                limitReached: true,
-                type: 'CLIENTS_LIMIT',
-                maxAllowed: limits.maxClients,
-                currentCount: currentClientsCount
-              }, 403);
-              return;
+              // Plan Limit Enforcement for Photo Selection Projects (Clients) for THIS Studio (3 clients for Free Trial)
+              const limits = getSubscriptionLimits(studio);
+              const studioClients = (db.clients || []).filter(c => c.studioId === targetStudioId);
+              const currentClientsCount = studioClients.length;
+              if (!limits.unlimited && currentClientsCount >= limits.maxClients) {
+                console.warn(`⚠️ [LIMIT REACHED] Studio: ${studio?.studioName} | Plan: ${limits.planName} | Max Allowed: ${limits.maxClients} | Current: ${currentClientsCount}`);
+                sendJSON({
+                  error: `Plan Limit Reached: Your ${limits.planName} allows a maximum of ${limits.maxClients} Photo Selection Projects (${currentClientsCount}/${limits.maxClients} used). Upgrade to Silver or Gold Pro to add more projects! 👑`,
+                  limitReached: true,
+                  type: 'CLIENTS_LIMIT',
+                  maxAllowed: limits.maxClients,
+                  currentCount: currentClientsCount
+                }, 403);
+                return;
+              }
             }
 
             const token = await getDriveAccessToken();
@@ -2918,33 +2978,35 @@ async function syncClientPhotosFromDrive(client, db) {
             
             const existingIdx = db.flipbooks.findIndex(f => f.id === id || f.code === targetCode || (f.clientCode && f.clientCode === targetCode));
             
-            // Active Subscription Check
-            const sub = studio?.subscription;
-            const isLocked = !sub || (new Date(sub.expiresAt).getTime() <= Date.now()) || sub.status !== 'ACTIVE';
-            if (isLocked) {
-              console.warn(`⚠️ [ACTION BLOCKED] Studio: ${studio?.studioName || targetStudioId} has no active plan or is expired!`);
-              sendJSON({
-                error: 'Active Plan Required: Please claim your 7-Day Free Trial or upgrade your plan to create 3D flipbooks!',
-                isLocked: true,
-                requiresUpgrade: true
-              }, 403);
-              return;
-            }
-
-            // Plan Limit Enforcement for 3D Flipbooks for THIS studio
-            if (existingIdx === -1) {
-              const limits = getSubscriptionLimits(studio);
-              const currentFlipbooksCount = (db.flipbooks || []).filter(f => f.studioId === targetStudioId).length;
-              if (currentFlipbooksCount >= limits.maxFlipbooks) {
-                console.warn(`⚠️ [FLIPBOOK LIMIT REACHED] Studio: ${studio?.studioName} | Plan: ${limits.planName} | Max Allowed: ${limits.maxFlipbooks} | Current: ${currentFlipbooksCount}`);
+            // Active Subscription Check (Developer Lifetime Free Bypass)
+            if (!isDeveloperAccount(studio)) {
+              const sub = studio?.subscription;
+              const isLocked = !sub || (new Date(sub.expiresAt).getTime() <= Date.now()) || sub.status !== 'ACTIVE';
+              if (isLocked) {
+                console.warn(`⚠️ [ACTION BLOCKED] Studio: ${studio?.studioName || targetStudioId} has no active plan or is expired!`);
                 sendJSON({
-                  error: `Limit Reached: Your ${limits.planName} plan allows a maximum of ${limits.maxFlipbooks} 3D Flipbooks. Please upgrade your plan to create more flipbooks!`,
-                  limitReached: true,
-                  type: 'FLIPBOOKS_LIMIT',
-                  maxAllowed: limits.maxFlipbooks,
-                  currentCount: currentFlipbooksCount
+                  error: 'Active Plan Required: Please claim your 7-Day Free Trial or upgrade your plan to create 3D flipbooks!',
+                  isLocked: true,
+                  requiresUpgrade: true
                 }, 403);
                 return;
+              }
+
+              // Plan Limit Enforcement for 3D Flipbooks for THIS studio
+              if (existingIdx === -1) {
+                const limits = getSubscriptionLimits(studio);
+                const currentFlipbooksCount = (db.flipbooks || []).filter(f => f.studioId === targetStudioId).length;
+                if (!limits.unlimited && currentFlipbooksCount >= limits.maxFlipbooks) {
+                  console.warn(`⚠️ [FLIPBOOK LIMIT REACHED] Studio: ${studio?.studioName} | Plan: ${limits.planName} | Max Allowed: ${limits.maxFlipbooks} | Current: ${currentFlipbooksCount}`);
+                  sendJSON({
+                    error: `Limit Reached: Your ${limits.planName} plan allows a maximum of ${limits.maxFlipbooks} 3D Flipbooks. Please upgrade your plan to create more flipbooks!`,
+                    limitReached: true,
+                    type: 'FLIPBOOKS_LIMIT',
+                    maxAllowed: limits.maxFlipbooks,
+                    currentCount: currentFlipbooksCount
+                  }, 403);
+                  return;
+                }
               }
             }
 
@@ -3657,6 +3719,42 @@ async function syncClientPhotosFromDrive(client, db) {
       const studioId = getStudioIdFromRequest(req);
       const studio = getTargetStudio(db, studioId);
       const actualStudioId = studio ? studio.id : (studioId || 'studio_jsm736s');
+      
+      // Developer Lifetime VIP Bypass (Permanent Lifetime Free, Unlimited, NEVER expires, NEVER locks)
+      if (isDeveloperAccount(studio)) {
+        const usedClientsCount = (db.clients || []).filter(c => c.studioId === actualStudioId).length;
+        const usedFlipbooksCount = (db.flipbooks || []).filter(f => f.studioId === actualStudioId).length;
+        sendJSON({
+          status: 'ACTIVE',
+          planName: 'Developer Lifetime VIP 👑',
+          planCode: 'LIFETIME',
+          amount: 0,
+          utr: 'DEVELOPER_MASTER_FREE',
+          paymentMethod: 'Developer Lifetime Master Pass',
+          activatedAt: '2026-01-01T00:00:00.000Z',
+          expiresAt: '2099-12-31T23:59:59.999Z',
+          durationDays: 99999,
+          daysLeft: 99999,
+          isLocked: false,
+          isExpired: false,
+          isActive: true,
+          trialClaimed: true,
+          isDeveloper: true,
+          upiId: '9668584247@ybl',
+          limits: {
+            planName: 'Developer Lifetime VIP 👑',
+            maxClients: Infinity,
+            maxFlipbooks: Infinity,
+            usedClients: usedClientsCount,
+            usedFlipbooks: usedFlipbooksCount,
+            remainingClients: 'Unlimited',
+            remainingFlipbooks: 'Unlimited',
+            unlimited: true,
+            isDeveloper: true
+          }
+        });
+        return;
+      }
       
       if (!studio || !studio.subscription) {
         const userEmail = (studio?.email || '').toLowerCase().trim();
