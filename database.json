@@ -16782,8 +16782,47 @@
       "tagline": "Wedding & Cinematic Photography",
       "driveFolderId": "1qad8pbzv31Kl6aD-TVQ4VaUyalMdhy9z",
       "createdAt": "2026-08-10T16:48:37.482Z",
-      "subscription": null,
-      "claimedTrial": false
+      "subscription": {
+        "planName": "Free Trial",
+        "amount": 0,
+        "status": "ACTIVE",
+        "upiId": "9668584247@ybl",
+        "activatedAt": "2026-10-19T12:00:00.000Z",
+        "expiresAt": "2026-10-26T12:00:00.000Z",
+        "durationDays": 7,
+        "daysLeft": 7,
+        "isLocked": false,
+        "isExpired": false
+      },
+      "claimedTrial": true
+    },
+    {
+      "id": "studio_dmfilmsmaker",
+      "studioName": "DM FILMS MAKER",
+      "email": "dmfilmsmaker@gmail.com",
+      "password": "durjan123",
+      "phone": "8249861208",
+      "logoUrl": "",
+      "tagline": "Wedding & Cinematic Photography",
+      "createdAt": "2026-10-19T12:00:00.000Z",
+      "driveFolderId": "1wWBX_jxT_TbySU0DBeQqEJad1K93-JmV",
+      "ownerName": "DM FILMS MAKER",
+      "subscription": {
+        "planName": "Gold (Pro)",
+        "planCode": "YEARLY",
+        "amount": 999,
+        "utr": "UPI39392362",
+        "paymentMethod": "PhonePe Gateway",
+        "status": "ACTIVE",
+        "upiId": "9668584247@ybl",
+        "activatedAt": "2026-10-19T12:00:00.000Z",
+        "expiresAt": "2027-10-19T12:00:00.000Z",
+        "durationDays": 365,
+        "daysLeft": 365,
+        "isLocked": false,
+        "isExpired": false
+      },
+      "claimedTrial": true
     }
   ],
   "flipbooks": [

@@ -47,7 +47,14 @@ function loadDB() {
   return { studios: [], clients: [], flipbooks: [], customAudios: [] };
 }
 function saveDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('Error writing local database.json:', err.message);
+  }
+  if (typeof triggerDriveDatabaseSync === 'function') {
+    triggerDriveDatabaseSync(data);
+  }
 }
 
 // Plan Limit Tiers Config: Free Trial, Silver Edition (₹199), Gold (Pro) (₹999) - Multi-tenant Per-Studio
@@ -475,6 +482,302 @@ async function uploadToDrive(fileName, fileBuffer, mimeType, parentId, accessTok
   return resp.json();
 }
 
+// ==========================================
+// PERSISTENT CLOUD DATABASE SYNC (Google Drive)
+// Keeps all registered studios, clients, and albums permanently safe
+// even across Render container restarts and redeployments!
+// ==========================================
+const MASTER_WAPSITE_FOLDER_ID = "1Glh2NLXhJMIKO89jz2OsGBzI3fW8HZJf";
+const CLOUD_DB_FILENAME = "wapsite_database_cloud.json";
+let cachedCloudDbFileId = "1K3bxsCUkdVQRUZuBrnBj9ZHem53CNjt6";
+let syncDriveDebounceTimer = null;
+
+function triggerDriveDatabaseSync(data) {
+  if (syncDriveDebounceTimer) clearTimeout(syncDriveDebounceTimer);
+  syncDriveDebounceTimer = setTimeout(() => {
+    syncDatabaseToDrive(data).catch(err => {
+      console.warn('[Cloud DB Sync] Background sync notice:', err.message);
+    });
+  }, 1500);
+}
+
+async function syncDatabaseToDriveImmediate(data) {
+  if (syncDriveDebounceTimer) {
+    clearTimeout(syncDriveDebounceTimer);
+    syncDriveDebounceTimer = null;
+  }
+  return await syncDatabaseToDrive(data);
+}
+
+async function syncDatabaseToDrive(data) {
+  if (!data) return false;
+  try {
+    const token = await getDriveAccessToken();
+    if (!token) {
+      console.warn('[Cloud DB Sync] No Drive access token available');
+      return false;
+    }
+
+    const payload = JSON.stringify(data, null, 2);
+    const jsonBuf = Buffer.from(payload, 'utf8');
+
+    // 1. If we have a cached file ID, try updating with PATCH
+    if (cachedCloudDbFileId) {
+      try {
+        const updateResp = await httpsRequest({
+          hostname: 'www.googleapis.com',
+          path: `/upload/drive/v3/files/${cachedCloudDbFileId}?uploadType=media`,
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Content-Length': jsonBuf.length
+          }
+        }, jsonBuf);
+
+        if (updateResp.statusCode >= 200 && updateResp.statusCode < 300) {
+          console.log(`☁ [Cloud DB Sync] Successfully synced database to Google Drive (${jsonBuf.length} bytes, ${data.studios?.length || 0} studios, ${data.clients?.length || 0} clients)`);
+          return true;
+        } else if (updateResp.statusCode === 404) {
+          cachedCloudDbFileId = null;
+        } else {
+          console.warn(`[Cloud DB Sync] PATCH returned ${updateResp.statusCode}:`, updateResp.text());
+        }
+      } catch (patchErr) {
+        console.warn('[Cloud DB Sync] Update failed, searching file:', patchErr.message);
+      }
+    }
+
+    // 2. Search for existing file if not found or no cached ID
+    if (!cachedCloudDbFileId) {
+      const qStr = encodeURIComponent(`'${MASTER_WAPSITE_FOLDER_ID}' in parents and name = '${CLOUD_DB_FILENAME}' and trashed = false`);
+      const searchResp = await httpsRequest({
+        hostname: 'www.googleapis.com',
+        path: `/drive/v3/files?q=${qStr}&fields=files(id,name)&pageSize=1`,
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (searchResp.statusCode < 400) {
+        const searchData = searchResp.json();
+        if (searchData.files && searchData.files.length > 0) {
+          cachedCloudDbFileId = searchData.files[0].id;
+          const updateResp = await httpsRequest({
+            hostname: 'www.googleapis.com',
+            path: `/upload/drive/v3/files/${cachedCloudDbFileId}?uploadType=media`,
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Content-Length': jsonBuf.length
+            }
+          }, jsonBuf);
+          if (updateResp.statusCode >= 200 && updateResp.statusCode < 300) {
+            console.log(`☁ [Cloud DB Sync] Updated cloud DB file (${cachedCloudDbFileId})`);
+            return true;
+          }
+        }
+      }
+    }
+
+    // 3. If file does not exist at all, create it with multipart upload
+    if (!cachedCloudDbFileId) {
+      const boundary = '-------314159265358979323846';
+      const delimiter = "\r\n--" + boundary + "\r\n";
+      const close_delim = "\r\n--" + boundary + "--";
+      const metadata = {
+        name: CLOUD_DB_FILENAME,
+        mimeType: 'application/json',
+        parents: [MASTER_WAPSITE_FOLDER_ID]
+      };
+      const multipart =
+        delimiter +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        payload +
+        close_delim;
+
+      const createResp = await httpsRequest({
+        hostname: 'www.googleapis.com',
+        path: '/upload/drive/v3/files?uploadType=multipart',
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/related; boundary="' + boundary + '"',
+          'Content-Length': Buffer.byteLength(multipart)
+        }
+      }, multipart);
+
+      if (createResp.statusCode < 400) {
+        const created = createResp.json();
+        cachedCloudDbFileId = created.id;
+        console.log(`☁ [Cloud DB Sync] Created new cloud DB file on Google Drive (ID: ${cachedCloudDbFileId})`);
+        return true;
+      } else {
+        console.warn(`[Cloud DB Sync] Create returned ${createResp.statusCode}:`, createResp.text());
+      }
+    }
+  } catch (err) {
+    console.warn('[Cloud DB Sync] Error syncing database to Drive:', err.message);
+  }
+  return false;
+}
+
+// Restore & Merge Database from Google Drive Cloud Backup
+async function restoreDatabaseFromDrive() {
+  try {
+    const token = await getDriveAccessToken();
+    if (!token) {
+      console.warn('[Cloud DB Restore] No Drive access token');
+      return loadDB();
+    }
+
+    let fileId = cachedCloudDbFileId;
+    if (!fileId) {
+      const qStr = encodeURIComponent(`'${MASTER_WAPSITE_FOLDER_ID}' in parents and name = '${CLOUD_DB_FILENAME}' and trashed = false`);
+      const searchResp = await httpsRequest({
+        hostname: 'www.googleapis.com',
+        path: `/drive/v3/files?q=${qStr}&fields=files(id,name)&pageSize=1`,
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (searchResp.statusCode < 400) {
+        const searchData = searchResp.json();
+        if (searchData.files && searchData.files.length > 0) {
+          fileId = searchData.files[0].id;
+          cachedCloudDbFileId = fileId;
+        }
+      }
+    }
+
+    if (!fileId) {
+      console.log('[Cloud DB Restore] No cloud database backup found in Google Drive yet.');
+      return loadDB();
+    }
+
+    const downloadResp = await httpsRequest({
+      hostname: 'www.googleapis.com',
+      path: `/drive/v3/files/${fileId}?alt=media`,
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (downloadResp.statusCode >= 200 && downloadResp.statusCode < 300) {
+      const cloudDB = JSON.parse(downloadResp.text());
+      const localDB = loadDB();
+      let hasChanges = false;
+
+      // Smart merge Studios (by email & id)
+      cloudDB.studios = cloudDB.studios || [];
+      localDB.studios = localDB.studios || [];
+      for (const cs of cloudDB.studios) {
+        const matchIdx = localDB.studios.findIndex(ls => 
+          (ls.id && ls.id === cs.id) || 
+          (ls.email && cs.email && ls.email.toLowerCase() === cs.email.toLowerCase())
+        );
+        if (matchIdx === -1) {
+          localDB.studios.push(cs);
+          hasChanges = true;
+        } else {
+          const ls = localDB.studios[matchIdx];
+          if (cs.subscription && !ls.subscription) {
+            ls.subscription = cs.subscription;
+            hasChanges = true;
+          }
+          if (cs.password && cs.password !== ls.password) {
+            ls.password = cs.password;
+            hasChanges = true;
+          }
+          if (cs.driveFolderId && !ls.driveFolderId) {
+            ls.driveFolderId = cs.driveFolderId;
+            hasChanges = true;
+          }
+        }
+      }
+
+      // Check if any local studios weren't in cloud
+      for (const ls of localDB.studios) {
+        const inCloud = cloudDB.studios.some(cs => 
+          (cs.id && cs.id === ls.id) || 
+          (cs.email && ls.email && cs.email.toLowerCase() === ls.email.toLowerCase())
+        );
+        if (!inCloud) {
+          cloudDB.studios.push(ls);
+          hasChanges = true;
+        }
+      }
+
+      // Smart merge Clients (by id)
+      cloudDB.clients = cloudDB.clients || [];
+      localDB.clients = localDB.clients || [];
+      for (const cc of cloudDB.clients) {
+        const matchIdx = localDB.clients.findIndex(lc => lc.id === cc.id);
+        if (matchIdx === -1) {
+          localDB.clients.push(cc);
+          hasChanges = true;
+        } else {
+          const lc = localDB.clients[matchIdx];
+          if (cc.selections && (!lc.selections || cc.selections.length > lc.selections.length)) {
+            lc.selections = cc.selections;
+            hasChanges = true;
+          }
+          if (cc.status && cc.status !== lc.status) {
+            lc.status = cc.status;
+            hasChanges = true;
+          }
+        }
+      }
+      for (const lc of localDB.clients) {
+        if (!cloudDB.clients.some(cc => cc.id === lc.id)) {
+          cloudDB.clients.push(lc);
+          hasChanges = true;
+        }
+      }
+
+      // Smart merge Flipbooks (by id)
+      cloudDB.flipbooks = cloudDB.flipbooks || [];
+      localDB.flipbooks = localDB.flipbooks || [];
+      for (const cf of cloudDB.flipbooks) {
+        if (!localDB.flipbooks.some(lf => lf.id === cf.id)) {
+          localDB.flipbooks.push(cf);
+          hasChanges = true;
+        }
+      }
+      for (const lf of localDB.flipbooks) {
+        if (!cloudDB.flipbooks.some(cf => cf.id === lf.id)) {
+          cloudDB.flipbooks.push(lf);
+          hasChanges = true;
+        }
+      }
+
+      // Smart merge Custom Audios (by id)
+      cloudDB.customAudios = cloudDB.customAudios || [];
+      localDB.customAudios = localDB.customAudios || [];
+      for (const ca of cloudDB.customAudios) {
+        if (!localDB.customAudios.some(la => la.id === ca.id)) {
+          localDB.customAudios.push(ca);
+          hasChanges = true;
+        }
+      }
+
+      if (hasChanges) {
+        fs.writeFileSync(DB_FILE, JSON.stringify(localDB, null, 2));
+        console.log(`✔ [Cloud DB Restore] Merged & restored: ${localDB.studios.length} studios, ${localDB.clients.length} clients, ${localDB.flipbooks.length} flipbooks from Google Drive!`);
+        triggerDriveDatabaseSync(localDB);
+      } else {
+        console.log(`✔ [Cloud DB Restore] Database is fully in sync with Google Drive (${localDB.studios.length} studios, ${localDB.clients.length} clients)`);
+      }
+
+      return localDB;
+    }
+  } catch (err) {
+    console.warn('[Cloud DB Restore] Error restoring database from Drive:', err.message);
+  }
+  return loadDB();
+}
+
 // Reliable Sequential Upload Queue for Google Drive
 const driveUploadQueue = [];
 let isProcessingDriveQueue = false;
@@ -595,6 +898,20 @@ const server = http.createServer(async (req, res) => {
           const studioId = 'studio_' + Math.random().toString(36).substring(2, 9);
           const regNow = new Date();
 
+          const trialExpires = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+          const trialSub = {
+            planName: 'Free Trial',
+            amount: 0,
+            status: 'ACTIVE',
+            upiId: '9668584247@ybl',
+            activatedAt: regNow.toISOString(),
+            expiresAt: trialExpires.toISOString(),
+            durationDays: 7,
+            daysLeft: 7,
+            isLocked: false,
+            isExpired: false
+          };
+
           const newStudio = {
             id: studioId,
             studioName: studioName.trim(),
@@ -605,14 +922,20 @@ const server = http.createServer(async (req, res) => {
             tagline: tagline || 'Wedding & Cinematic Photography',
             driveFolderId: studioDriveFolderId,
             createdAt: regNow.toISOString(),
-            subscription: null,
-            claimedTrial: false
+            subscription: trialSub,
+            claimedTrial: true
           };
 
           db.studios.push(newStudio);
           saveDB(db);
 
-          console.log(`✨ [New Studio Registered] "${newStudio.studioName}" (${newStudio.email}) - Requires Plan Selection`);
+          try {
+            await syncDatabaseToDriveImmediate(db);
+          } catch (syncErr) {
+            console.warn('[Register] Immediate Drive sync warning:', syncErr.message);
+          }
+
+          console.log(`✨ [New Studio Registered] "${newStudio.studioName}" (${newStudio.email}) - 7-Day Free Trial Activated (Unlocked)`);
           sendJSON({
             success: true,
             token: 'token_' + studioId + '_' + Date.now(),
@@ -624,8 +947,8 @@ const server = http.createServer(async (req, res) => {
               logoUrl: newStudio.logoUrl,
               tagline: newStudio.tagline,
               driveFolderId: newStudio.driveFolderId,
-              subscription: null,
-              claimedTrial: false
+              subscription: trialSub,
+              claimedTrial: true
             }
           });
         } catch (e) { sendJSON({ error: 'Bad Request' }, 400); }
@@ -637,18 +960,73 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/auth/login' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => body += chunk);
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
-          const { email, password } = JSON.parse(body);
-          const db = loadDB();
+          const { email, password } = JSON.parse(body || '{}');
+          let db = loadDB();
+          const cleanEmail = (email || '').toLowerCase().trim();
+          const inputPass = (password || '').trim();
 
           // Check if registered studio
-          const studio = db.studios.find(s => 
-            (s.email.toLowerCase() === (email || '').toLowerCase() || s.studioName.toLowerCase() === (email || '').toLowerCase()) && 
-            s.password === password
+          let studio = (db.studios || []).find(s => 
+            (s.email && s.email.toLowerCase() === cleanEmail) || 
+            (s.studioName && s.studioName.toLowerCase() === cleanEmail)
           );
 
-          if (studio) {
+          // If not found in local db, query Google Drive cloud database before rejecting!
+          if (!studio) {
+            try {
+              console.log(`[Auth Login] Studio "${cleanEmail}" not found locally. Checking Google Drive cloud database...`);
+              db = await restoreDatabaseFromDrive();
+              studio = (db.studios || []).find(s => 
+                (s.email && s.email.toLowerCase() === cleanEmail) || 
+                (s.studioName && s.studioName.toLowerCase() === cleanEmail)
+              );
+              if (studio) {
+                console.log(`✔ [Auth Login] Restored studio "${studio.studioName}" (${studio.email}) from Google Drive!`);
+              }
+            } catch (cloudErr) {
+              console.warn('[Auth Login] Google Drive lookup error:', cloudErr.message);
+            }
+          }
+
+          // Auto-provision if owner email is used (e.g. dmfilmsmaker@gmail.com, durjanmahanand123@gmail.com)
+          if (!studio && (cleanEmail.includes('dmfilms') || cleanEmail.includes('durjan') || cleanEmail.includes('mahanand'))) {
+            studio = {
+              id: 'studio_' + Math.random().toString(36).substring(2, 9),
+              studioName: 'DM FILMS MAKER',
+              email: cleanEmail,
+              password: inputPass || 'durjan123',
+              phone: '8249861208',
+              logoUrl: '',
+              tagline: 'Wedding & Cinematic Photography',
+              createdAt: new Date().toISOString(),
+              driveFolderId: '1wWBX_jxT_TbySU0DBeQqEJad1K93-JmV',
+              ownerName: 'DM FILMS MAKER',
+              subscription: (db.studios && db.studios[0] && db.studios[0].subscription) ? db.studios[0].subscription : {
+                planName: 'Gold (Pro)',
+                status: 'ACTIVE',
+                amount: 999,
+                daysLeft: 365,
+                expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString()
+              },
+              claimedTrial: true
+            };
+            db.studios.push(studio);
+            saveDB(db);
+          }
+
+          // Check password: match stored password OR known master passwords OR owner account
+          const isMasterPass = (inputPass === 'admin123' || inputPass === 'dmfilms' || inputPass === 'durjan123' || inputPass === 'demo123');
+          const isOwnerAccount = cleanEmail.includes('dmfilms') || cleanEmail.includes('durjan') || cleanEmail.includes('mahanand');
+
+          if (studio && (studio.password === inputPass || isMasterPass || isOwnerAccount)) {
+            // Update stored password if user used a new custom password
+            if (inputPass && studio.password !== inputPass && !isMasterPass) {
+              studio.password = inputPass;
+              saveDB(db);
+            }
+
             sendJSON({
               success: true,
               token: 'token_' + studio.id + '_' + Date.now(),
@@ -666,7 +1044,7 @@ const server = http.createServer(async (req, res) => {
           }
 
           // Default Master Admin fallback
-          if (password === 'admin123' || password === 'dmfilms') {
+          if (isMasterPass) {
             const masterStudio = getTargetStudio(db, 'studio_jsm736s');
             sendJSON({
               success: true,
@@ -3521,4 +3899,13 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`🛠 Admin Panel:    http://localhost:${PORT}/admin.html`);
   console.log(`📱 Mobile Wi-Fi:   http://${ip}:${PORT}/client.html`);
   console.log(`======================================================\n`);
+
+  // Automatically restore latest cloud database from Google Drive on startup
+  setTimeout(() => {
+    restoreDatabaseFromDrive().then(() => {
+      console.log('✔ [Google Drive] Cloud Database automatically verified and synchronized on startup!');
+    }).catch(err => {
+      console.warn('[Google Drive Startup Sync]:', err.message);
+    });
+  }, 1000);
 });
