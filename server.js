@@ -3484,6 +3484,330 @@ async function syncClientPhotosFromDrive(client, db) {
       return expected === xVerifyHeader;
     }
 
+    // =========================================================================
+    // --- RAZORPAY SUBSCRIPTION PAYMENT SYSTEM (OFFICIAL GATEWAY) ---
+    // =========================================================================
+
+    const RAZORPAY_CONFIG = {
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TprgssuNmmuuQL',
+      keySecret: process.env.RAZORPAY_KEY_SECRET || 'eSnJwJwrfJRZOQ8XBZ3pnli2'
+    };
+
+    function createRazorpayOrder({ amountPaise, currency = 'INR', receipt, notes }) {
+      return new Promise((resolve, reject) => {
+        const postData = JSON.stringify({
+          amount: amountPaise,
+          currency,
+          receipt,
+          notes: notes || {}
+        });
+
+        const auth = Buffer.from(`${RAZORPAY_CONFIG.keyId}:${RAZORPAY_CONFIG.keySecret}`).toString('base64');
+        const options = {
+          hostname: 'api.razorpay.com',
+          port: 443,
+          path: '/v1/orders',
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        };
+
+        const rzpReq = https.request(options, (rzpRes) => {
+          let data = '';
+          rzpRes.on('data', chunk => { data += chunk; });
+          rzpRes.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              if (rzpRes.statusCode >= 200 && rzpRes.statusCode < 300) {
+                resolve(parsed);
+              } else {
+                reject(new Error(parsed.error?.description || `Razorpay error HTTP ${rzpRes.statusCode}`));
+              }
+            } catch (e) {
+              reject(new Error('Failed to parse Razorpay response: ' + e.message));
+            }
+          });
+        });
+
+        rzpReq.on('error', (err) => {
+          reject(err);
+        });
+
+        rzpReq.write(postData);
+        rzpReq.end();
+      });
+    }
+
+    function verifyRazorpaySignature(orderId, paymentId, signature) {
+      if (!orderId || !paymentId || !signature) return false;
+      const expectedSignature = crypto
+        .createHmac('sha256', RAZORPAY_CONFIG.keySecret)
+        .update(`${orderId}|${paymentId}`)
+        .digest('hex');
+      return expectedSignature === signature;
+    }
+
+    // Razorpay: Create Order Endpoint
+    if (pathname === '/api/payment/razorpay/create-order' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const data = JSON.parse(body || '{}');
+          
+          let selectedPlan = SUBSCRIPTION_PLANS.MONTHLY;
+          const reqPlan = (data.plan || data.planName || '').toUpperCase();
+          if (reqPlan === 'YEARLY' || reqPlan.includes('GOLD') || Number(data.amount) === 999) {
+            selectedPlan = SUBSCRIPTION_PLANS.YEARLY;
+          }
+
+          const timestamp = Date.now();
+          const internalOrderId = `DM_RZP_${timestamp}_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+          const studioId = data.studioId || getStudioIdFromRequest(req) || 'studio_master_dm';
+
+          // Call official Razorpay Orders API
+          const rzpOrder = await createRazorpayOrder({
+            amountPaise: selectedPlan.amountPaise,
+            currency: 'INR',
+            receipt: internalOrderId,
+            notes: {
+              studioId,
+              plan: selectedPlan.code,
+              planName: selectedPlan.name,
+              durationDays: String(selectedPlan.durationDays)
+            }
+          });
+
+          // Save pending order record in database
+          const db = loadDB();
+          if (!db.paymentOrders) db.paymentOrders = [];
+
+          const orderRecord = {
+            orderId: internalOrderId,
+            razorpayOrderId: rzpOrder.id,
+            studioId,
+            plan: selectedPlan.code,
+            planName: selectedPlan.name,
+            amount: selectedPlan.amount,
+            amountPaise: selectedPlan.amountPaise,
+            currency: 'INR',
+            paymentGateway: 'Razorpay',
+            status: 'PENDING',
+            createdAt: new Date().toISOString(),
+            paidAt: null,
+            razorpayPaymentId: null,
+            durationDays: selectedPlan.durationDays
+          };
+
+          db.paymentOrders.unshift(orderRecord);
+          saveDB(db);
+
+          if (!global.activePaymentOrders) global.activePaymentOrders = {};
+          global.activePaymentOrders[internalOrderId] = orderRecord;
+          global.activePaymentOrders[rzpOrder.id] = orderRecord;
+
+          sendJSON({
+            success: true,
+            keyId: RAZORPAY_CONFIG.keyId,
+            orderId: internalOrderId,
+            razorpayOrderId: rzpOrder.id,
+            amount: selectedPlan.amountPaise,
+            currency: 'INR',
+            plan: selectedPlan.code,
+            planName: selectedPlan.name,
+            durationDays: selectedPlan.durationDays
+          });
+        } catch (e) {
+          console.error('[Razorpay Create Order Error]:', e);
+          sendJSON({ error: 'Failed to create Razorpay order: ' + e.message }, 400);
+        }
+      });
+      return;
+    }
+
+    // Razorpay: Client Payment Verification & Instant Subscription Activation
+    if (pathname === '/api/payment/razorpay/verify' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body || '{}');
+          const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId, studioId } = data;
+
+          if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            sendJSON({ success: false, error: 'Missing Razorpay verification parameters' }, 400);
+            return;
+          }
+
+          const isValid = verifyRazorpaySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+          if (!isValid) {
+            console.error(`❌ [Razorpay Invalid Signature] Order: ${razorpay_order_id} | Payment: ${razorpay_payment_id}`);
+            sendJSON({ success: false, error: 'Invalid Razorpay payment signature' }, 400);
+            return;
+          }
+
+          const db = loadDB();
+          const order = (db.paymentOrders || []).find(o => o.razorpayOrderId === razorpay_order_id || o.orderId === orderId);
+
+          const targetStudioId = studioId || order?.studioId || getStudioIdFromRequest(req);
+          const targetStudio = getTargetStudio(db, targetStudioId);
+
+          const planCode = order?.plan || 'MONTHLY';
+          const planDuration = order?.durationDays || (planCode === 'YEARLY' ? 180 : 30);
+          const planName = order?.planName || (planCode === 'YEARLY' ? 'Gold (Pro)' : 'Silver Edition');
+          const amount = order?.amount || (planCode === 'YEARLY' ? 999 : 199);
+          const now = new Date();
+          const expires = new Date(Date.now() + planDuration * 24 * 3600 * 1000);
+
+          if (order) {
+            order.status = 'SUCCESS';
+            order.paidAt = now.toISOString();
+            order.razorpayPaymentId = razorpay_payment_id;
+            order.utr = razorpay_payment_id;
+          }
+
+          const subObj = {
+            planName: planName,
+            planCode: planCode,
+            amount: amount,
+            utr: razorpay_payment_id,
+            paymentMethod: 'Razorpay Verified',
+            status: 'ACTIVE',
+            upiId: '9668584247@ybl',
+            activatedAt: now.toISOString(),
+            expiresAt: expires.toISOString(),
+            durationDays: planDuration,
+            daysLeft: planDuration,
+            isLocked: false,
+            isExpired: false
+          };
+
+          if (targetStudio) {
+            targetStudio.subscription = subObj;
+            targetStudio.paymentHistory = targetStudio.paymentHistory || [];
+            targetStudio.paymentHistory.unshift({
+              id: 'PAY_' + Date.now(),
+              orderId: order?.orderId || razorpay_order_id,
+              razorpayPaymentId: razorpay_payment_id,
+              planName: planName,
+              amount: amount,
+              utr: razorpay_payment_id,
+              paymentMethod: 'Razorpay Gateway',
+              status: 'SUCCESS',
+              timestamp: now.toISOString()
+            });
+          }
+
+          if (!targetStudioId || targetStudioId === 'studio_master_dm') {
+            db.subscription = subObj;
+          }
+
+          if (!db.paymentHistory) db.paymentHistory = [];
+          db.paymentHistory.unshift({
+            id: 'PAY_' + Date.now(),
+            orderId: order?.orderId || razorpay_order_id,
+            razorpayPaymentId: razorpay_payment_id,
+            planName: planName,
+            amount: amount,
+            utr: razorpay_payment_id,
+            paymentMethod: 'Razorpay Gateway',
+            status: 'SUCCESS',
+            timestamp: now.toISOString()
+          });
+
+          saveDB(db);
+          if (global.activePaymentOrders && order) {
+            global.activePaymentOrders[order.orderId] = order;
+            global.activePaymentOrders[razorpay_order_id] = order;
+          }
+
+          console.log(`🎉 [RAZORPAY PAYMENT ACTIVATED] Studio: ${targetStudio?.studioName || targetStudioId} | Plan: ${planName} for ${planDuration} Days! Txn: ${razorpay_payment_id}`);
+
+          sendJSON({
+            success: true,
+            message: 'Razorpay payment successfully verified and subscription activated!',
+            subscription: subObj,
+            durationDays: planDuration
+          });
+        } catch (e) {
+          console.error('[Razorpay Verify Error]:', e);
+          sendJSON({ error: 'Verification failed: ' + e.message }, 400);
+        }
+      });
+      return;
+    }
+
+    // Razorpay: Webhook Listener Endpoint (Automated Background Sync)
+    if (pathname === '/api/payment/razorpay/webhook' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const rzpSignature = req.headers['x-razorpay-signature'];
+          if (rzpSignature) {
+            const expectedSig = crypto.createHmac('sha256', RAZORPAY_CONFIG.keySecret).update(body).digest('hex');
+            if (expectedSig !== rzpSignature) {
+              console.warn('[Razorpay Webhook] Signature verification failed');
+              sendJSON({ error: 'Invalid webhook signature' }, 400);
+              return;
+            }
+          }
+
+          const event = JSON.parse(body || '{}');
+          console.log(`📩 [RAZORPAY WEBHOOK] Event: ${event.event}`);
+
+          if (event.event === 'order.paid' || event.event === 'payment.captured') {
+            const payment = event.payload?.payment?.entity;
+            const orderId = payment?.order_id;
+            const paymentId = payment?.id;
+
+            if (orderId) {
+              const db = loadDB();
+              const order = (db.paymentOrders || []).find(o => o.razorpayOrderId === orderId || o.orderId === orderId);
+              if (order && order.status !== 'SUCCESS') {
+                const now = new Date();
+                const planDuration = order.durationDays || (order.plan === 'YEARLY' ? 180 : 30);
+                const expires = new Date(Date.now() + planDuration * 24 * 3600 * 1000);
+
+                order.status = 'SUCCESS';
+                order.paidAt = now.toISOString();
+                order.razorpayPaymentId = paymentId;
+                order.utr = paymentId;
+
+                const targetStudio = (db.studios || []).find(s => s.id === order.studioId);
+                const subObj = {
+                  planName: order.planName,
+                  planCode: order.plan,
+                  amount: order.amount,
+                  utr: paymentId,
+                  paymentMethod: 'Razorpay Webhook',
+                  status: 'ACTIVE',
+                  upiId: '9668584247@ybl',
+                  activatedAt: now.toISOString(),
+                  expiresAt: expires.toISOString(),
+                  durationDays: planDuration
+                };
+
+                if (targetStudio) {
+                  targetStudio.subscription = subObj;
+                }
+                saveDB(db);
+                console.log(`🎉 [RAZORPAY WEBHOOK ACTIVATED] Order: ${orderId} activated!`);
+              }
+            }
+          }
+
+          sendJSON({ success: true, message: 'Webhook received' });
+        } catch (e) {
+          sendJSON({ error: e.message }, 400);
+        }
+      });
+      return;
+    }
+
     // 1. PhonePe Order Creation API (Monthly / Yearly)
     if ((pathname === '/api/payment/phonepe/create-order' || pathname === '/api/payment/create-order') && req.method === 'POST') {
       let body = '';
@@ -3697,7 +4021,7 @@ async function syncClientPhotosFromDrive(client, db) {
       }
 
       const db = loadDB();
-      const order = (db.paymentOrders || []).find(o => o.orderId === orderId) || (global.activePaymentOrders ? global.activePaymentOrders[orderId] : null);
+      const order = (db.paymentOrders || []).find(o => o.orderId === orderId || o.razorpayOrderId === orderId) || (global.activePaymentOrders ? (global.activePaymentOrders[orderId] || null) : null);
 
       if (!order) {
         sendJSON({ status: 'PENDING' });

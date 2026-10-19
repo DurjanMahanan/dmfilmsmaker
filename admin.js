@@ -5530,6 +5530,134 @@ async function executeActivateSubscription(planName, amount, utr) {
   }
 }
 
+async function payWithRazorpay() {
+  const plan = currentCheckoutPlan || window.currentCheckoutPlan || { name: 'Silver Edition', amount: 199, durationDays: 30 };
+  const studio = currentStudio || JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
+  const planType = (plan.amount === 999 || (plan.name && plan.name.includes('Gold'))) ? 'YEARLY' : 'MONTHLY';
+  
+  const btn = document.getElementById('btn-pay-razorpay');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ Opening Razorpay Gateway...</span>';
+  }
+
+  try {
+    const headers = typeof getAdminStudioHeaders === 'function' 
+      ? getAdminStudioHeaders({ 'Content-Type': 'application/json' }) 
+      : { 'Content-Type': 'application/json' };
+    if (studio && studio.id) headers['X-Studio-Id'] = studio.id;
+
+    const res = await fetch('/api/payment/razorpay/create-order', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        plan: planType,
+        planName: plan.name,
+        studioId: studio.id || 'studio_master_dm'
+      })
+    });
+    const orderData = await res.json();
+    if (!orderData.success) {
+      alert(orderData.error || 'Failed to initiate Razorpay order. Please try direct UPI QR below.');
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+      return;
+    }
+
+    if (typeof window.Razorpay !== 'function') {
+      alert('Razorpay Checkout SDK is still loading. Please try again in a few seconds.');
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+      return;
+    }
+
+    const options = {
+      key: orderData.keyId,
+      amount: orderData.amount,
+      currency: orderData.currency || 'INR',
+      name: 'DM Films Maker',
+      description: `${orderData.planName} (${orderData.durationDays} Days Unlimited Access)`,
+      image: 'https://dmfilmsmaker.onrender.com/logo.png',
+      order_id: orderData.razorpayOrderId,
+      prefill: {
+        name: studio.ownerName || studio.studioName || '',
+        email: studio.email || '',
+        contact: studio.phone || '9668584247'
+      },
+      notes: {
+        studioId: studio.id || '',
+        plan: orderData.plan,
+        orderId: orderData.orderId
+      },
+      theme: {
+        color: '#1d4ed8'
+      },
+      handler: async function (response) {
+        if (btn) {
+          btn.innerHTML = '<span>⚡ Verifying Payment...</span>';
+        }
+        try {
+          const verifyHeaders = typeof getAdminStudioHeaders === 'function' 
+            ? getAdminStudioHeaders({ 'Content-Type': 'application/json' }) 
+            : { 'Content-Type': 'application/json' };
+          if (studio && studio.id) verifyHeaders['X-Studio-Id'] = studio.id;
+
+          const verifyRes = await fetch('/api/payment/razorpay/verify', {
+            method: 'POST',
+            headers: verifyHeaders,
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              orderId: orderData.orderId,
+              studioId: studio.id
+            })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success) {
+            currentActiveSubscription = verifyData.subscription;
+            window.currentActiveSubscription = verifyData.subscription;
+            if (typeof window.updateTopAndSidebarSubscriptionBadges === 'function') {
+              window.updateTopAndSidebarSubscriptionBadges(verifyData.subscription);
+            }
+            if (typeof updateSidebarSubscriptionBadge === 'function') {
+              updateSidebarSubscriptionBadge(verifyData.subscription);
+            }
+            if (checkoutTimerInterval) clearInterval(checkoutTimerInterval);
+            if (livePaymentPollingInterval) clearInterval(livePaymentPollingInterval);
+
+            showLivePaymentSuccess(orderData.planName, plan.amount, response.razorpay_payment_id, verifyData.durationDays || orderData.durationDays);
+            if (typeof loadCurrentSubscription === 'function') loadCurrentSubscription();
+          } else {
+            alert('Verification Error: ' + (verifyData.error || 'Payment could not be verified.'));
+            if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+          }
+        } catch (vErr) {
+          console.error('Razorpay verification call failed:', vErr);
+          alert('Payment received! (Txn ID: ' + response.razorpay_payment_id + '). Your subscription is being activated!');
+          if (typeof loadCurrentSubscription === 'function') loadCurrentSubscription();
+        }
+      },
+      modal: {
+        ondismiss: function() {
+          if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+        }
+      }
+    };
+
+    const rzpInstance = new window.Razorpay(options);
+    rzpInstance.on('payment.failed', function (resp) {
+      alert('Payment failed: ' + (resp.error ? resp.error.description : 'Transaction cancelled'));
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+    });
+    rzpInstance.open();
+  } catch (err) {
+    console.error('Razorpay initiation error:', err);
+    alert('Could not open Razorpay. Please use direct UPI QR option below.');
+    if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+  }
+}
+window.payWithRazorpay = payWithRazorpay;
+
 function showLivePaymentSuccess(planName, amount, utr, durationDays) {
   const checkoutView = document.getElementById('payment-checkout-view');
   const successView = document.getElementById('payment-success-view');
