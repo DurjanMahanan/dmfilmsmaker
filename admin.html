@@ -85,10 +85,10 @@
       if (studioNameEl) studioNameEl.textContent = studioName;
       if (totalAmountEl) totalAmountEl.textContent = '₹' + price + '.00';
       if (planBadgeEl) {
-        planBadgeEl.textContent = (price === 999 ? '👑 Gold Pro VIP (365 Days Unlimited Access)' : '💎 Silver Edition (30 Days Unlimited Access)');
+        planBadgeEl.textContent = (price === 999 ? '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)' : '💎 Silver Edition (30 Days Unlimited Access)');
       }
 
-      window.currentCheckoutPlan = { name: planName, amount: price, durationDays: price === 999 ? 365 : 30 };
+      window.currentCheckoutPlan = { name: planName, amount: price, durationDays: price === 999 ? 180 : 30 };
 
       const directUpi = `upi://pay?pa=9668584247@ybl&pn=DURJAN%20MAHANAND&am=${price}&cu=INR&tn=${encodeURIComponent('DM Photo SaaS - ' + planName)}`;
       if (qrImgEl) {
@@ -298,7 +298,7 @@
         expDateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       }
 
-      const daysLeft = sub.daysLeft !== undefined ? sub.daysLeft : (isGold ? 365 : (isSilver ? 30 : 7));
+      const daysLeft = sub.daysLeft !== undefined ? sub.daysLeft : (isGold ? 180 : (isSilver ? 30 : 7));
 
       if (topName) topName.textContent = sub.planName || (isGold ? 'Gold (Pro) VIP' : (isSilver ? 'Silver Edition' : 'Free Trial'));
       if (topIcon) topIcon.textContent = isGold ? '👑' : (isSilver ? '💎' : '🎁');
@@ -2878,7 +2878,7 @@
               </div>
               <div style="text-align:center;margin-bottom:0.9rem;">
                 <span style="font-size:2.3rem;font-weight:900;color:#fde047;font-family:'Outfit',sans-serif;line-height:1;">₹999</span>
-                <span style="font-size:0.78rem;color:#fde047;margin-left:3px;">/ year</span>
+                <span style="font-size:0.78rem;color:#fde047;margin-left:3px;">/ 6 months</span>
               </div>
 
               <!-- Feature List -->
@@ -3407,10 +3407,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261019_2130"></script>
-  <script src="js/api.js?v=20261019_2130"></script>
-  <script src="js/admin.js?v=20261019_2130"></script>
-  <script src="admin.js?v=20261019_2130" onerror="this.remove()"></script>
+  <script src="js/config.js?v=20261019_2225"></script>
+  <script src="js/api.js?v=20261019_2225"></script>
+  <script src="js/admin.js?v=20261019_2225"></script>
+  <script src="admin.js?v=20261019_2225" onerror="this.remove()"></script>
   <!-- Inline Direct Profile Settings Engine (Zero Latency & 100% Reliable) -->
   <script>
     function openCheckoutModalDirect(planName, price) {
@@ -3443,11 +3443,11 @@
       if (totalAmountEl) totalAmountEl.textContent = '₹' + price + '.00';
       if (planBadgeEl) {
         planBadgeEl.textContent = price === 999 
-          ? '👑 Gold Pro VIP (365 Days Unlimited Access)' 
+          ? '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)' 
           : '💎 Silver Edition (30 Days Unlimited Access)';
       }
 
-      window.currentCheckoutPlan = { name: planName, amount: price, durationDays: price === 999 ? 365 : 30 };
+      window.currentCheckoutPlan = { name: planName, amount: price, durationDays: price === 999 ? 180 : 30 };
 
       const directUpi = `upi://pay?pa=9668584247@ybl&pn=DURJAN%20MAHANAND&am=${price}&cu=INR&tn=${encodeURIComponent('DM Photo SaaS - ' + planName)}`;
       if (qrImgEl) {
@@ -4169,7 +4169,7 @@
       window.currentCheckoutPlan = {
         name: planName,
         amount: price,
-        durationDays: (price === 999 ? 365 : 30)
+        durationDays: (price === 999 ? 180 : 30)
       };
 
       let studio = {};
@@ -4195,7 +4195,7 @@
       if (planBadgeEl) {
         planBadgeEl.textContent = planName === 'Silver Edition' 
           ? '💎 Silver Edition (30 Days Unlimited Access)' 
-          : '👑 Gold Pro VIP (365 Days Unlimited Access)';
+          : '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)';
       }
       if (liveStatusText) {
         liveStatusText.textContent = 'Waiting for UPI payment... Auto-detecting live';
@@ -4255,7 +4255,7 @@
         });
         const data = await res.json();
         if (data.success) {
-          showLivePaymentSuccess(plan.name, plan.amount, utrVal, plan.name.includes('Gold') ? 365 : 30);
+          showLivePaymentSuccess(plan.name, plan.amount, utrVal, plan.name.includes('Gold') ? 180 : 30);
           if (typeof loadCurrentSubscription === 'function') loadCurrentSubscription();
         }
       } catch (err) {

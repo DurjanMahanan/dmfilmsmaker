@@ -5344,7 +5344,7 @@ function selectPlanUpgrade(planName, price) {
   currentCheckoutPlan = {
     name: planName,
     amount: price,
-    durationDays: (price === 999 ? 365 : 30)
+    durationDays: (price === 999 ? 180 : 30)
   };
 
   const studio = currentStudio || JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
@@ -5368,7 +5368,7 @@ function selectPlanUpgrade(planName, price) {
   if (planBadgeEl) {
     planBadgeEl.textContent = planName === 'Silver Edition' 
       ? '💎 Silver Edition (30 Days Unlimited Access)' 
-      : '👑 Gold Pro VIP (365 Days Unlimited Access)';
+      : '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)';
   }
   if (liveStatusText) {
     liveStatusText.textContent = 'Waiting for UPI payment... Auto-detecting live';
@@ -5515,7 +5515,7 @@ async function executeActivateSubscription(planName, amount, utr) {
         }
       } else {
         // Trigger Live Green Payment Success Screen
-        showLivePaymentSuccess(planName, amount, utr, data.subscription.durationDays || (amount === 999 ? 365 : 30));
+        showLivePaymentSuccess(planName, amount, utr, data.subscription.durationDays || (amount === 999 ? 180 : 30));
       }
     } else {
       if (window.api && window.api.showToast) {
@@ -5592,6 +5592,15 @@ async function loadCurrentSubscription() {
         window.updateTopAndSidebarSubscriptionBadges(data);
       }
       updateSidebarSubscriptionBadge(data);
+
+      // If new user with NO_PLAN or locked workspace, automatically pop up the upgrade modal
+      if ((data.status === 'NO_PLAN' || data.isLocked) && !isDeveloperUser()) {
+        setTimeout(() => {
+          if (typeof window.openUpgradeModal === 'function') {
+            window.openUpgradeModal();
+          }
+        }, 400);
+      }
     }
   } catch (err) {
     console.error('Failed to load subscription:', err);

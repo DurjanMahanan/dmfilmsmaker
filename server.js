@@ -947,17 +947,16 @@ const server = http.createServer(async (req, res) => {
           const studioId = 'studio_' + Math.random().toString(36).substring(2, 9);
           const regNow = new Date();
 
-          const trialExpires = new Date(Date.now() + 7 * 24 * 3600 * 1000);
-          const trialSub = {
-            planName: 'Free Trial',
+          const initialSub = {
+            planName: 'No Plan Active',
             amount: 0,
-            status: 'ACTIVE',
+            status: 'NO_PLAN',
             upiId: '9668584247@ybl',
-            activatedAt: regNow.toISOString(),
-            expiresAt: trialExpires.toISOString(),
-            durationDays: 7,
-            daysLeft: 7,
-            isLocked: false,
+            activatedAt: null,
+            expiresAt: null,
+            durationDays: 0,
+            daysLeft: 0,
+            isLocked: true,
             isExpired: false
           };
 
@@ -971,8 +970,8 @@ const server = http.createServer(async (req, res) => {
             tagline: tagline || 'Wedding & Cinematic Photography',
             driveFolderId: studioDriveFolderId,
             createdAt: regNow.toISOString(),
-            subscription: trialSub,
-            claimedTrial: true
+            subscription: initialSub,
+            claimedTrial: false
           };
 
           db.studios.push(newStudio);
@@ -1892,7 +1891,7 @@ const server = http.createServer(async (req, res) => {
 
         plan3Name: 'Gold Pro VIP',
         plan3Price: '₹999',
-        plan3Duration: '1 Year Access (Best Value)',
+        plan3Duration: '6 Months Access (180 Days)',
         plan3Badge: 'BEST VALUE 👑',
         plan3Feat1: 'UNLIMITED Client Galleries',
         plan3Feat2: 'UNLIMITED Photo Selections',
@@ -3464,7 +3463,7 @@ async function syncClientPhotosFromDrive(client, db) {
         name: 'Gold (Pro)',
         amount: 999,
         amountPaise: 99900,
-        durationDays: 365
+        durationDays: 180
       }
     };
 
@@ -3606,7 +3605,7 @@ async function syncClientPhotosFromDrive(client, db) {
 
               if (status === 'PAYMENT_SUCCESS' || status === 'SUCCESS') {
                 const now = new Date();
-                const planDuration = order.durationDays || (order.plan === 'YEARLY' ? 365 : 30);
+                const planDuration = order.durationDays || (order.plan === 'YEARLY' ? 180 : 30);
                 const expires = new Date(Date.now() + planDuration * 24 * 3600 * 1000);
                 const utr = decodedPayload.data?.paymentInstrument?.utr || ('UPI' + Date.now().toString().slice(-8));
 
@@ -3801,6 +3800,35 @@ async function syncClientPhotosFromDrive(client, db) {
       }
 
       const sub = studio.subscription;
+      if (!sub || sub.status === 'NO_PLAN') {
+        const userEmail = (studio?.email || '').toLowerCase().trim();
+        const trialClaimed = Boolean(studio?.claimedTrial) || 
+                             (userEmail && (db.claimedTrialEmails || []).includes(userEmail)) || 
+                             (db.claimedTrialStudioIds || []).includes(actualStudioId);
+        sendJSON({
+          status: 'NO_PLAN',
+          planName: 'No Plan Active',
+          amount: 0,
+          isExpired: false,
+          isActive: false,
+          isLocked: true,
+          daysLeft: 0,
+          trialClaimed,
+          upiId: '9668584247@ybl',
+          limits: {
+            planName: 'No Plan Active',
+            maxClients: 0,
+            maxFlipbooks: 0,
+            usedClients: (db.clients || []).filter(c => c.studioId === actualStudioId).length,
+            usedFlipbooks: (db.flipbooks || []).filter(f => f.studioId === actualStudioId).length,
+            remainingClients: 0,
+            remainingFlipbooks: 0,
+            unlimited: false
+          }
+        });
+        return;
+      }
+
       const now = Date.now();
       const expTime = new Date(sub.expiresAt).getTime();
       const isExpired = now >= expTime;
@@ -3869,7 +3897,7 @@ async function syncClientPhotosFromDrive(client, db) {
 
           let durationDays = 30;
           if (planName.includes('Gold') || amount === 999) {
-            durationDays = 365;
+            durationDays = 180;
           } else if (planName.toLowerCase().includes('free') || planName.toLowerCase().includes('trial') || amount === 0) {
             durationDays = 7;
             if (userEmail && !db.claimedTrialEmails.includes(userEmail)) db.claimedTrialEmails.push(userEmail);
