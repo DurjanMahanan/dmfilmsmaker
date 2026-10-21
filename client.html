@@ -21,6 +21,12 @@
       user-select: none !important;
       -webkit-user-select: none !important;
       overflow: hidden !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100% !important;
+      max-width: 100vw !important;
+      box-sizing: border-box !important;
     }
     .lightbox-image-container {
       touch-action: none !important;
@@ -29,6 +35,14 @@
       will-change: transform;
       transform: translateZ(0);
       backface-visibility: hidden;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin: 0 auto !important;
+      box-sizing: border-box !important;
     }
     .lightbox-img {
       user-select: none !important;
@@ -38,9 +52,13 @@
       will-change: transform, opacity;
       transform: translateZ(0);
       backface-visibility: hidden;
-      max-width: 100%;
-      max-height: 80vh;
-      object-fit: contain;
+      max-width: 95vw !important;
+      max-height: calc(100vh - 190px) !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: contain !important;
+      margin: auto !important;
+      display: block !important;
     }
 
     /* Silky-Smooth 60FPS Slide In Animations */
@@ -74,13 +92,101 @@
     }
 
     @media (max-width: 768px) {
-      .lightbox-nav-btn {
-        width: 44px !important;
-        height: 44px !important;
-        background: rgba(10, 14, 26, 0.75) !important;
+      .lightbox-modal {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
       }
-      .lightbox-prev { left: 0.75rem !important; }
-      .lightbox-next { right: 0.75rem !important; }
+      .lightbox-header {
+        padding: 0.5rem 0.75rem !important;
+        padding-top: max(0.55rem, env(safe-area-inset-top)) !important;
+        gap: 0.4rem !important;
+      }
+      .lightbox-info {
+        gap: 0.4rem !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+      }
+      #lightbox-photo-number {
+        font-size: 0.72rem !important;
+        padding: 0.2rem 0.45rem !important;
+      }
+      #lightbox-photo-title {
+        font-size: 0.82rem !important;
+        max-width: 120px !important;
+      }
+      #lightbox-zoom-badge {
+        font-size: 0.7rem !important;
+        padding: 0.2rem 0.45rem !important;
+      }
+      .lightbox-header .modal-close {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 1.25rem !important;
+      }
+      .lightbox-stage {
+        padding: 0 !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+      }
+      .lightbox-image-container {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 auto !important;
+      }
+      .lightbox-img {
+        max-width: calc(100vw - 8px) !important;
+        max-height: calc(100dvh - 160px) !important;
+        margin: auto !important;
+      }
+      .lightbox-nav-btn {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 1.05rem !important;
+        background: rgba(10, 14, 26, 0.75) !important;
+        border-color: rgba(212, 175, 55, 0.35) !important;
+      }
+      .lightbox-prev { left: 0.4rem !important; }
+      .lightbox-next { right: 0.4rem !important; }
+      .lightbox-footer {
+        padding: 0.55rem 0.75rem !important;
+        padding-bottom: max(0.65rem, env(safe-area-inset-bottom)) !important;
+        gap: 0.45rem !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+      }
+      .lightbox-footer-top {
+        flex-direction: column !important;
+        gap: 0 !important;
+      }
+      .lightbox-tip-text {
+        display: none !important;
+      }
+      .lightbox-btn-group {
+        width: 100% !important;
+        display: flex !important;
+        gap: 0.45rem !important;
+      }
+      .lightbox-btn-group button {
+        flex: 1 !important;
+        height: 42px !important;
+        font-size: 0.8rem !important;
+        font-weight: 700 !important;
+        padding: 0 0.4rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.25rem !important;
+        white-space: nowrap !important;
+        border-radius: 8px !important;
+      }
+      .lightbox-comment-box {
+        padding: 0.35rem 0.65rem !important;
+      }
+      .lightbox-comment-box input {
+        font-size: 0.8rem !important;
+        height: 30px !important;
+      }
     }
   </style>
 </head>
@@ -177,10 +283,10 @@
     <div class="lightbox-header">
       <div class="lightbox-info">
         <span id="lightbox-photo-number" class="badge badge-gold">#001</span>
-        <span id="lightbox-photo-title" style="font-weight:500;font-size:0.95rem;">Photo Preview</span>
-        <span id="lightbox-zoom-badge" class="badge" style="background:rgba(212,175,55,0.15);color:var(--gold-400);border:1px solid var(--border-gold);font-size:0.75rem;">🔍 100% (Scroll wheel to Zoom &bull; Drag to Pan)</span>
+        <span id="lightbox-photo-title">Photo Preview</span>
+        <span id="lightbox-zoom-badge" class="badge">🔍 100%</span>
       </div>
-      <button class="modal-close" onclick="closeLightbox()">&times;</button>
+      <button class="modal-close" onclick="closeLightbox()" title="Close viewer">&times;</button>
     </div>
 
     <div class="lightbox-stage">
@@ -191,10 +297,10 @@
       <button class="lightbox-nav-btn lightbox-next" onclick="nextLightboxPhoto()" title="Next Photo (Right Arrow)">&#10095;</button>
     </div>
 
-    <div class="lightbox-footer" style="flex-direction:column;gap:0.75rem;padding:0.85rem 1.5rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:1rem;flex-wrap:wrap;">
-        <span style="font-size:0.8rem;color:var(--text-muted);">Double-click image to quick zoom (1x ↔ 2.5x) &bull; Mouse wheel to zoom in/out</span>
-        <div style="display:flex;align-items:center;gap:0.75rem;">
+    <div class="lightbox-footer">
+      <div class="lightbox-footer-top">
+        <span class="lightbox-tip-text">Double-click image to quick zoom (1x ↔ 2.5x) &bull; Mouse wheel to zoom in/out</span>
+        <div class="lightbox-btn-group">
           <button id="lightbox-toggle-heart" class="btn btn-outline-pink" onclick="toggleCurrentLightboxFavorite()" style="border-color:#ec4899;color:#f472b6;">
             🤍 Special Favorite
           </button>
@@ -205,9 +311,9 @@
       </div>
       
       <!-- Photo Custom Instructions & Comment Input -->
-      <div style="width:100%;display:flex;align-items:center;gap:0.75rem;background:rgba(0,0,0,0.3);padding:0.4rem 0.75rem;border-radius:var(--radius-md);border:1px solid var(--border-subtle);">
-        <span style="font-size:1.1rem;">💬</span>
-        <input type="text" id="lightbox-photo-comment" class="form-control" style="border:none;background:transparent;box-shadow:none;font-size:0.85rem;" placeholder="Add special note/instructions for this photo (e.g. Smooth skin, living room canvas frame, edit background...)" oninput="saveCurrentLightboxComment(this.value)" onkeydown="event.stopPropagation()">
+      <div class="lightbox-comment-box">
+        <span style="font-size:1.05rem;flex-shrink:0;">💬</span>
+        <input type="text" id="lightbox-photo-comment" class="form-control" placeholder="Add special note/instructions for this photo (e.g. Smooth skin, living room canvas frame...)" oninput="saveCurrentLightboxComment(this.value)" onkeydown="event.stopPropagation()">
       </div>
     </div>
   </div>
@@ -301,7 +407,12 @@
         }
         if (badge) {
           const percent = Math.round(zoomScale * 100);
-          badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
+          const isMobile = window.innerWidth <= 768;
+          if (isMobile) {
+            badge.textContent = `🔍 ${percent}%`;
+          } else {
+            badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
+          }
         }
       }
 

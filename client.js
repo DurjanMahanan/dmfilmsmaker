@@ -399,7 +399,12 @@ function applyLightboxTransform() {
   }
   if (badge) {
     const percent = Math.round(zoomScale * 100);
-    badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      badge.textContent = `🔍 ${percent}%`;
+    } else {
+      badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
+    }
   }
 }
 
