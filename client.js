@@ -112,10 +112,10 @@ function loadAndRenderClientGallery() {
   currentClient.photosCount = currentClient.photos.length;
 
   if (currentClient.selectedPhotoIds && Array.isArray(currentClient.selectedPhotoIds)) {
-    selectedPhotoIds = new Set(currentClient.selectedPhotoIds);
+    selectedPhotoIds = new Set(currentClient.selectedPhotoIds.map(String));
   }
   if (currentClient.favoritePhotoIds && Array.isArray(currentClient.favoritePhotoIds)) {
-    favoritePhotoIds = new Set(currentClient.favoritePhotoIds);
+    favoritePhotoIds = new Set(currentClient.favoritePhotoIds.map(String));
   }
   if (currentClient.photoComments && typeof currentClient.photoComments === 'object') {
     photoComments = { ...currentClient.photoComments };
@@ -264,8 +264,8 @@ function renderGallery() {
 
   const photos = currentClient.photos || [];
   let filtered = photos.filter(photo => {
-    const isSelected = selectedPhotoIds.has(photo.id);
-    const isFavorite = favoritePhotoIds.has(photo.id);
+    const isSelected = selectedPhotoIds.has(String(photo.id));
+    const isFavorite = favoritePhotoIds.has(String(photo.id));
     const photoFolder = photo.subfolder || 'Main Photos';
 
     if (activeFolderFilter !== 'all' && photoFolder !== activeFolderFilter) return false;
@@ -286,8 +286,8 @@ function renderGallery() {
   }
 
   container.innerHTML = filtered.map((photo, index) => {
-    const isSelected = selectedPhotoIds.has(photo.id);
-    const isFavorite = favoritePhotoIds.has(photo.id);
+    const isSelected = selectedPhotoIds.has(String(photo.id));
+    const isFavorite = favoritePhotoIds.has(String(photo.id));
     const originalIndex = photos.findIndex(p => p.id === photo.id);
 
     return `
@@ -314,16 +314,17 @@ function renderGallery() {
 // --- Selection & Favorites State Handlers ---
 function toggleSelectPhoto(photoId, event) {
   if (event) event.stopPropagation();
+  const id = String(photoId);
 
-  if (selectedPhotoIds.has(photoId)) {
-    selectedPhotoIds.delete(photoId);
+  if (selectedPhotoIds.has(id)) {
+    selectedPhotoIds.delete(id);
   } else {
     const limit = Number(currentClient.selectionLimit) || 500;
     if (selectedPhotoIds.size >= limit) {
       window.api.showToast(`Selection limit of ${limit} photos reached!`, 'error');
       return;
     }
-    selectedPhotoIds.add(photoId);
+    selectedPhotoIds.add(id);
   }
 
   updatePhotoCardUI(photoId);
@@ -333,11 +334,12 @@ function toggleSelectPhoto(photoId, event) {
 
 function toggleFavoritePhoto(photoId, event) {
   if (event) event.stopPropagation();
+  const id = String(photoId);
 
-  if (favoritePhotoIds.has(photoId)) {
-    favoritePhotoIds.delete(photoId);
+  if (favoritePhotoIds.has(id)) {
+    favoritePhotoIds.delete(id);
   } else {
-    favoritePhotoIds.add(photoId);
+    favoritePhotoIds.add(id);
   }
 
   updatePhotoCardUI(photoId);
@@ -346,10 +348,11 @@ function toggleFavoritePhoto(photoId, event) {
 }
 
 function updatePhotoCardUI(photoId) {
-  const el = document.getElementById(`photo-${photoId}`);
+  const id = String(photoId);
+  const el = document.getElementById(`photo-${photoId}`) || document.getElementById(`photo-${id}`);
   if (el) {
-    const isSelected = selectedPhotoIds.has(photoId);
-    const isFavorite = favoritePhotoIds.has(photoId);
+    const isSelected = selectedPhotoIds.has(id);
+    const isFavorite = favoritePhotoIds.has(id);
     el.classList.toggle('selected', isSelected);
 
     const selectBtn = el.querySelector('.photo-select-btn');
@@ -406,7 +409,7 @@ function applyLightboxTransform() {
       badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
     }
   }
-  const overlayControls = document.querySelectorAll('.lightbox-onphoto-select-btn, .lightbox-onphoto-heart-btn, .lightbox-onphoto-bottom-bar');
+  const overlayControls = document.querySelectorAll('.lightbox-onphoto-select-btn, .lightbox-onphoto-heart-btn, .lightbox-below-bar, .lightbox-onphoto-bottom-bar');
   overlayControls.forEach(el => {
     el.style.opacity = zoomScale > 1.05 ? '0' : '1';
     el.style.pointerEvents = zoomScale > 1.05 ? 'none' : 'auto';
@@ -495,7 +498,7 @@ function initLightboxZoomEvents() {
   stage.addEventListener('touchstart', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || !modal.classList.contains('active')) return;
-    if (e.target.closest('button, input, textarea, a, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
+    if (e.target.closest('button, input, textarea, a, .lightbox-below-bar, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
     if (e.touches.length === 1) {
       touchStartX = e.touches[0].clientX;
@@ -530,7 +533,7 @@ function initLightboxZoomEvents() {
   stage.addEventListener('touchmove', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || !modal.classList.contains('active')) return;
-    if (e.target.closest('button, input, textarea, a, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
+    if (e.target.closest('button, input, textarea, a, .lightbox-below-bar, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
     if (e.touches.length === 1) {
       const currentX = e.touches[0].clientX;
@@ -566,7 +569,7 @@ function initLightboxZoomEvents() {
   stage.addEventListener('touchend', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || !modal.classList.contains('active')) return;
-    if (e.target.closest('button, input, textarea, a, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
+    if (e.target.closest('button, input, textarea, a, .lightbox-below-bar, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
     if (isPinching) {
       isPinching = false;
@@ -687,19 +690,23 @@ function prevLightboxPhoto() {
 function updateLightboxSelectButton() {
   const overlayBtn = document.getElementById('lightbox-overlay-select');
   const overlayIcon = document.getElementById('lightbox-overlay-select-icon');
+  const photoFrame = document.getElementById('lightbox-photo-frame');
   if (currentLightboxIndex === -1) return;
 
   const photos = currentClient.photos || [];
   const photo = photos[currentLightboxIndex];
   if (!photo) return;
 
-  const isSelected = selectedPhotoIds.has(photo.id);
+  const isSelected = selectedPhotoIds.has(String(photo.id));
   if (overlayBtn) {
     overlayBtn.className = isSelected ? 'lightbox-onphoto-select-btn selected' : 'lightbox-onphoto-select-btn';
     overlayBtn.title = isSelected ? 'Unselect Photo' : 'Select Photo';
   }
   if (overlayIcon) {
     overlayIcon.textContent = isSelected ? '✔' : '+';
+  }
+  if (photoFrame) {
+    photoFrame.classList.toggle('selected', isSelected);
   }
 }
 
@@ -712,7 +719,7 @@ function updateLightboxHeartButton() {
   const photo = photos[currentLightboxIndex];
   if (!photo) return;
 
-  const isFavorite = favoritePhotoIds.has(photo.id);
+  const isFavorite = favoritePhotoIds.has(String(photo.id));
   if (overlayBtn) {
     overlayBtn.className = isFavorite ? 'lightbox-onphoto-heart-btn favorited' : 'lightbox-onphoto-heart-btn';
     overlayBtn.title = isFavorite ? 'Remove Favorite' : 'Mark as Special Favorite';
@@ -1144,6 +1151,25 @@ function setupClientEventListeners() {
       searchQuery = e.target.value.trim();
       renderGallery();
     });
+  }
+
+  // Instant Mobile Tap for Lightbox On-Photo Overlay Buttons
+  const selectBtn = document.getElementById('lightbox-overlay-select');
+  if (selectBtn) {
+    selectBtn.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleCurrentLightboxPhoto(e);
+    }, { passive: false });
+  }
+
+  const heartBtn = document.getElementById('lightbox-overlay-heart');
+  if (heartBtn) {
+    heartBtn.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleCurrentLightboxFavorite(e);
+    }, { passive: false });
   }
 
   // Keyboard navigation for Lightbox
