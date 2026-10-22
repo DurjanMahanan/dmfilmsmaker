@@ -406,7 +406,7 @@ function applyLightboxTransform() {
       badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
     }
   }
-  const overlayControls = document.querySelectorAll('.lightbox-onphoto-select-btn, .lightbox-onphoto-heart-btn, .lightbox-onphoto-dock');
+  const overlayControls = document.querySelectorAll('.lightbox-onphoto-select-btn, .lightbox-onphoto-heart-btn, .lightbox-onphoto-bottom-bar');
   overlayControls.forEach(el => {
     el.style.opacity = zoomScale > 1.05 ? '0' : '1';
     el.style.pointerEvents = zoomScale > 1.05 ? 'none' : 'auto';
@@ -495,6 +495,7 @@ function initLightboxZoomEvents() {
   stage.addEventListener('touchstart', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || !modal.classList.contains('active')) return;
+    if (e.target.closest('button, input, textarea, a, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
     if (e.touches.length === 1) {
       touchStartX = e.touches[0].clientX;
@@ -529,6 +530,7 @@ function initLightboxZoomEvents() {
   stage.addEventListener('touchmove', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || !modal.classList.contains('active')) return;
+    if (e.target.closest('button, input, textarea, a, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
     if (e.touches.length === 1) {
       const currentX = e.touches[0].clientX;
@@ -564,6 +566,7 @@ function initLightboxZoomEvents() {
   stage.addEventListener('touchend', (e) => {
     const modal = document.getElementById('lightbox-modal');
     if (!modal || !modal.classList.contains('active')) return;
+    if (e.target.closest('button, input, textarea, a, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
     if (isPinching) {
       isPinching = false;
@@ -682,7 +685,6 @@ function prevLightboxPhoto() {
 }
 
 function updateLightboxSelectButton() {
-  const btn = document.getElementById('lightbox-toggle-select');
   const overlayBtn = document.getElementById('lightbox-overlay-select');
   const overlayIcon = document.getElementById('lightbox-overlay-select-icon');
   if (currentLightboxIndex === -1) return;
@@ -692,12 +694,6 @@ function updateLightboxSelectButton() {
   if (!photo) return;
 
   const isSelected = selectedPhotoIds.has(photo.id);
-  if (btn) {
-    btn.className = isSelected ? 'lightbox-dock-btn dock-select selected' : 'lightbox-dock-btn dock-select';
-    btn.innerHTML = isSelected 
-      ? '<span class="dock-select-icon">✔</span><span class="dock-btn-text">Photo Selected</span>' 
-      : '<span class="dock-select-icon">+</span><span class="dock-btn-text">Select This Photo</span>';
-  }
   if (overlayBtn) {
     overlayBtn.className = isSelected ? 'lightbox-onphoto-select-btn selected' : 'lightbox-onphoto-select-btn';
     overlayBtn.title = isSelected ? 'Unselect Photo' : 'Select Photo';
@@ -708,7 +704,6 @@ function updateLightboxSelectButton() {
 }
 
 function updateLightboxHeartButton() {
-  const btn = document.getElementById('lightbox-toggle-heart');
   const overlayBtn = document.getElementById('lightbox-overlay-heart');
   const overlayIcon = document.getElementById('lightbox-overlay-heart-icon');
   if (currentLightboxIndex === -1) return;
@@ -718,12 +713,6 @@ function updateLightboxHeartButton() {
   if (!photo) return;
 
   const isFavorite = favoritePhotoIds.has(photo.id);
-  if (btn) {
-    btn.className = isFavorite ? 'lightbox-dock-btn dock-heart favorited' : 'lightbox-dock-btn dock-heart';
-    btn.innerHTML = isFavorite 
-      ? '<span class="dock-heart-icon">❤️</span><span class="dock-btn-text">Special Favorite</span>' 
-      : '<span class="dock-heart-icon">🤍</span><span class="dock-btn-text">Special Favorite</span>';
-  }
   if (overlayBtn) {
     overlayBtn.className = isFavorite ? 'lightbox-onphoto-heart-btn favorited' : 'lightbox-onphoto-heart-btn';
     overlayBtn.title = isFavorite ? 'Remove Favorite' : 'Mark as Special Favorite';
@@ -799,7 +788,10 @@ window.openLightboxCommentModal = openLightboxCommentModal;
 window.saveNoteFromModal = saveNoteFromModal;
 
 function toggleCurrentLightboxPhoto(event) {
-  if (event) event.stopPropagation();
+  if (event) {
+    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    if (typeof event.preventDefault === 'function') event.preventDefault();
+  }
   const photos = currentClient.photos || [];
   const photo = photos[currentLightboxIndex];
   if (photo) {
@@ -808,7 +800,10 @@ function toggleCurrentLightboxPhoto(event) {
 }
 
 function toggleCurrentLightboxFavorite(event) {
-  if (event) event.stopPropagation();
+  if (event) {
+    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    if (typeof event.preventDefault === 'function') event.preventDefault();
+  }
   const photos = currentClient.photos || [];
   const photo = photos[currentLightboxIndex];
   if (photo) {
@@ -825,6 +820,7 @@ function saveCurrentLightboxComment(text) {
     } else {
       delete photoComments[photo.id];
     }
+    updateLightboxCommentButton();
   }
 }
 

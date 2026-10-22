@@ -378,14 +378,14 @@
 
 .photo-heart-btn:hover {
   transform: scale(1.15);
-  border-color: #ec4899;
+  border-color: #ef4444;
 }
 
 .photo-heart-btn.favorited {
-  background: #ec4899;
-  border-color: #f472b6;
-  color: #fff;
-  box-shadow: 0 0 15px rgba(236, 72, 153, 0.6);
+  background: #ef4444 !important;
+  border-color: #f87171 !important;
+  color: #fff !important;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.75) !important;
 }
 
 .photo-meta-bar {
@@ -638,86 +638,110 @@
 }
 .lightbox-onphoto-heart-btn:hover {
   transform: scale(1.12);
-  border-color: #ec4899;
+  border-color: #ef4444;
 }
 .lightbox-onphoto-heart-btn.favorited {
-  background: #ec4899;
-  border-color: #f472b6;
-  color: #ffffff;
-  box-shadow: 0 0 25px rgba(236, 72, 153, 0.85);
+  background: #ef4444 !important;
+  border-color: #f87171 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.85) !important;
   transform: scale(1.05);
 }
 
-/* 2. On-Photo Floating Action Dock (Bottom Edge of Photo) */
-.lightbox-onphoto-dock {
+/* 2. On-Photo Floating Bottom Bar (Comment Box + Close Viewer Button) */
+.lightbox-onphoto-bottom-bar {
   position: absolute;
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  background: rgba(10, 14, 26, 0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  padding: 6px 10px;
-  border-radius: 30px;
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.75);
-  z-index: 30;
-  user-select: none;
-  max-width: calc(100% - 24px);
+  gap: 0.6rem;
+  width: calc(100% - 24px);
+  max-width: 580px;
+  z-index: 35;
   box-sizing: border-box;
+  user-select: none;
 }
 
-.lightbox-dock-btn {
+.lightbox-onphoto-comment-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(10, 14, 26, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(212, 175, 55, 0.35);
+  border-radius: 30px;
+  padding: 2px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  transition: all 0.2s ease;
+  min-width: 0;
+}
+
+.lightbox-onphoto-comment-wrap:focus-within {
+  border-color: var(--gold-400);
+  background: rgba(15, 20, 34, 0.96);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.35), 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+.lightbox-comment-icon {
+  font-size: 1rem;
+  margin-right: 8px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.lightbox-onphoto-comment-input {
+  flex: 1;
   height: 40px;
-  border-radius: 20px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.lightbox-onphoto-comment-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.82rem;
+}
+
+.lightbox-onphoto-close-btn {
+  height: 44px;
   padding: 0 1.15rem;
+  border-radius: 30px;
+  background: rgba(10, 14, 26, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
   font-size: 0.85rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-  box-sizing: border-box;
+  flex-shrink: 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.lightbox-dock-btn.dock-heart {
-  background: rgba(236, 72, 153, 0.15);
-  border: 1.5px solid #ec4899;
-  color: #f472b6;
-}
-.lightbox-dock-btn.dock-heart:hover {
-  background: rgba(236, 72, 153, 0.3);
-  transform: scale(1.03);
-}
-.lightbox-dock-btn.dock-heart.favorited {
-  background: #ec4899;
-  border-color: #f472b6;
-  color: #ffffff;
-  box-shadow: 0 0 18px rgba(236, 72, 153, 0.65);
+.lightbox-onphoto-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+  transform: translateY(-1px);
 }
 
-.lightbox-dock-btn.dock-select {
-  background: rgba(212, 175, 55, 0.15);
-  border: 1.5px solid #eab308;
-  color: #fde047;
+.lightbox-onphoto-close-btn .close-icon {
+  font-size: 0.95rem;
   font-weight: 800;
-}
-.lightbox-dock-btn.dock-select:hover {
-  background: rgba(212, 175, 55, 0.3);
-  transform: scale(1.03);
-}
-.lightbox-dock-btn.dock-select.selected {
-  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-  border-color: #fef08a;
-  color: #0a0c10;
-  box-shadow: 0 0 20px rgba(234, 179, 8, 0.7);
 }
 
 .lightbox-nav-btn {
@@ -910,31 +934,42 @@
   .lightbox-onphoto-select-btn {
     top: 10px !important;
     right: 10px !important;
-    width: 40px !important;
-    height: 40px !important;
+    width: 42px !important;
+    height: 42px !important;
     font-size: 1.3rem !important;
   }
 
   .lightbox-onphoto-heart-btn {
-    top: 58px !important;
+    top: 60px !important;
     right: 10px !important;
-    width: 40px !important;
-    height: 40px !important;
+    width: 42px !important;
+    height: 42px !important;
     font-size: 1.15rem !important;
   }
 
-  .lightbox-onphoto-dock {
+  .lightbox-onphoto-bottom-bar {
     bottom: 12px !important;
-    padding: 5px 8px !important;
     gap: 0.45rem !important;
-    max-width: calc(100% - 16px) !important;
+    width: calc(100% - 16px) !important;
   }
 
-  .lightbox-dock-btn {
+  .lightbox-onphoto-comment-wrap {
+    padding: 2px 10px !important;
+  }
+
+  .lightbox-onphoto-comment-input {
     height: 38px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .lightbox-onphoto-comment-input::placeholder {
+    font-size: 0.75rem !important;
+  }
+
+  .lightbox-onphoto-close-btn {
+    height: 42px !important;
     padding: 0 0.85rem !important;
     font-size: 0.8rem !important;
-    gap: 0.35rem !important;
   }
 
   .lightbox-footer {
