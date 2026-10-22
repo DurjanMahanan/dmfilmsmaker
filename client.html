@@ -159,15 +159,20 @@
     /* Below-Photo Bar: Comment Box (Left) + Close Button (Right) */
     .lightbox-below-bar,
     .lightbox-onphoto-bottom-bar {
-      display: flex;
-      align-items: center;
-      gap: 0.65rem;
-      width: calc(100% - 24px);
-      max-width: 580px;
-      z-index: 35;
-      box-sizing: border-box;
-      user-select: none;
-      margin-top: 4px;
+      position: absolute !important;
+      bottom: 20px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.65rem !important;
+      width: calc(100% - 24px) !important;
+      max-width: 580px !important;
+      z-index: 50 !important;
+      box-sizing: border-box !important;
+      user-select: none !important;
+      margin: 0 !important;
     }
 
     .lightbox-comment-wrap,
@@ -369,9 +374,9 @@
       }
       .lightbox-below-bar,
       .lightbox-onphoto-bottom-bar {
+        bottom: 14px !important;
         width: calc(100% - 16px) !important;
         gap: 0.45rem !important;
-        margin-top: 6px !important;
       }
       .lightbox-comment-wrap,
       .lightbox-onphoto-comment-wrap {
@@ -520,28 +525,28 @@
             <span id="lightbox-overlay-heart-icon">🤍</span>
           </button>
         </div>
-
-        <!-- Directly Under Photo: Comment Box (Left) + Close Button (Right) -->
-        <div class="lightbox-below-bar" id="lightbox-below-bar">
-          <div class="lightbox-comment-wrap">
-            <span class="lightbox-comment-icon">💬</span>
-            <input 
-              type="text" 
-              id="lightbox-photo-comment" 
-              class="lightbox-comment-input" 
-              placeholder="Add special note/instructions for this photo..." 
-              oninput="saveCurrentLightboxComment(this.value)"
-              autocomplete="off"
-            >
-          </div>
-          <button type="button" class="lightbox-close-viewer-btn" onclick="closeLightbox()" title="Close viewer">
-            <span class="close-icon">✕</span>
-            <span>Close</span>
-          </button>
-        </div>
       </div>
       
       <button class="lightbox-nav-btn lightbox-next" onclick="nextLightboxPhoto()" title="Next Photo (Right Arrow)">&#10095;</button>
+
+      <!-- Centered Below-Photo Floating Bar: Comment Box (Left) + Close Button (Right) -->
+      <div class="lightbox-below-bar" id="lightbox-below-bar">
+        <div class="lightbox-comment-wrap">
+          <span class="lightbox-comment-icon">💬</span>
+          <input 
+            type="text" 
+            id="lightbox-photo-comment" 
+            class="lightbox-comment-input" 
+            placeholder="Add special note/instructions for this photo..." 
+            oninput="saveCurrentLightboxComment(this.value)"
+            autocomplete="off"
+          >
+        </div>
+        <button type="button" class="lightbox-close-viewer-btn" onclick="closeLightbox()" title="Close viewer">
+          <span class="close-icon">✕</span>
+          <span>Close</span>
+        </button>
+      </div>
     </div>
   </div>
 
