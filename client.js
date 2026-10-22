@@ -689,7 +689,6 @@ function prevLightboxPhoto() {
 
 function updateLightboxSelectButton() {
   const overlayBtn = document.getElementById('lightbox-overlay-select');
-  const overlayIcon = document.getElementById('lightbox-overlay-select-icon');
   const photoFrame = document.getElementById('lightbox-photo-frame');
   if (currentLightboxIndex === -1) return;
 
@@ -701,9 +700,7 @@ function updateLightboxSelectButton() {
   if (overlayBtn) {
     overlayBtn.className = isSelected ? 'lightbox-onphoto-select-btn selected' : 'lightbox-onphoto-select-btn';
     overlayBtn.title = isSelected ? 'Unselect Photo' : 'Select Photo';
-  }
-  if (overlayIcon) {
-    overlayIcon.textContent = isSelected ? '✔' : '+';
+    overlayBtn.innerHTML = `<span id="lightbox-overlay-select-icon">${isSelected ? '✔' : '+'}</span>`;
   }
   if (photoFrame) {
     photoFrame.classList.toggle('selected', isSelected);
@@ -712,7 +709,6 @@ function updateLightboxSelectButton() {
 
 function updateLightboxHeartButton() {
   const overlayBtn = document.getElementById('lightbox-overlay-heart');
-  const overlayIcon = document.getElementById('lightbox-overlay-heart-icon');
   if (currentLightboxIndex === -1) return;
 
   const photos = currentClient.photos || [];
@@ -723,9 +719,7 @@ function updateLightboxHeartButton() {
   if (overlayBtn) {
     overlayBtn.className = isFavorite ? 'lightbox-onphoto-heart-btn favorited' : 'lightbox-onphoto-heart-btn';
     overlayBtn.title = isFavorite ? 'Remove Favorite' : 'Mark as Special Favorite';
-  }
-  if (overlayIcon) {
-    overlayIcon.textContent = isFavorite ? '❤️' : '🤍';
+    overlayBtn.innerHTML = `<span id="lightbox-overlay-heart-icon">${isFavorite ? '❤️' : '🤍'}</span>`;
   }
 }
 
@@ -794,24 +788,36 @@ function saveNoteFromModal() {
 window.openLightboxCommentModal = openLightboxCommentModal;
 window.saveNoteFromModal = saveNoteFromModal;
 
+let isTogglingSelect = false;
 function toggleCurrentLightboxPhoto(event) {
   if (event) {
     if (typeof event.stopPropagation === 'function') event.stopPropagation();
-    if (typeof event.preventDefault === 'function') event.preventDefault();
+    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
   }
+  if (isTogglingSelect) return;
+  isTogglingSelect = true;
+  setTimeout(() => { isTogglingSelect = false; }, 300);
+
   const photos = currentClient.photos || [];
+  if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
   const photo = photos[currentLightboxIndex];
   if (photo) {
     toggleSelectPhoto(photo.id);
   }
 }
 
+let isTogglingFavorite = false;
 function toggleCurrentLightboxFavorite(event) {
   if (event) {
     if (typeof event.stopPropagation === 'function') event.stopPropagation();
-    if (typeof event.preventDefault === 'function') event.preventDefault();
+    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
   }
+  if (isTogglingFavorite) return;
+  isTogglingFavorite = true;
+  setTimeout(() => { isTogglingFavorite = false; }, 300);
+
   const photos = currentClient.photos || [];
+  if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
   const photo = photos[currentLightboxIndex];
   if (photo) {
     toggleFavoritePhoto(photo.id);
@@ -1151,25 +1157,6 @@ function setupClientEventListeners() {
       searchQuery = e.target.value.trim();
       renderGallery();
     });
-  }
-
-  // Instant Mobile Tap for Lightbox On-Photo Overlay Buttons
-  const selectBtn = document.getElementById('lightbox-overlay-select');
-  if (selectBtn) {
-    selectBtn.addEventListener('touchend', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      toggleCurrentLightboxPhoto(e);
-    }, { passive: false });
-  }
-
-  const heartBtn = document.getElementById('lightbox-overlay-heart');
-  if (heartBtn) {
-    heartBtn.addEventListener('touchend', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      toggleCurrentLightboxFavorite(e);
-    }, { passive: false });
   }
 
   // Keyboard navigation for Lightbox

@@ -105,9 +105,14 @@
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-      z-index: 30;
-      user-select: none;
+      z-index: 60 !important;
+      user-select: none !important;
+      touch-action: manipulation !important;
+      pointer-events: auto !important;
       -webkit-tap-highlight-color: transparent;
+    }
+    .lightbox-onphoto-select-btn * {
+      pointer-events: none !important;
     }
     .lightbox-onphoto-select-btn:hover {
       transform: scale(1.12);
@@ -140,9 +145,14 @@
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-      z-index: 30;
-      user-select: none;
+      z-index: 60 !important;
+      user-select: none !important;
+      touch-action: manipulation !important;
+      pointer-events: auto !important;
       -webkit-tap-highlight-color: transparent;
+    }
+    .lightbox-onphoto-heart-btn * {
+      pointer-events: none !important;
     }
     .lightbox-onphoto-heart-btn:hover {
       transform: scale(1.12);
