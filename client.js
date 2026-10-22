@@ -406,6 +406,11 @@ function applyLightboxTransform() {
       badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
     }
   }
+  const overlayControls = document.querySelectorAll('.lightbox-onphoto-select-btn, .lightbox-onphoto-heart-btn, .lightbox-onphoto-dock');
+  overlayControls.forEach(el => {
+    el.style.opacity = zoomScale > 1.05 ? '0' : '1';
+    el.style.pointerEvents = zoomScale > 1.05 ? 'none' : 'auto';
+  });
 }
 
 function initLightboxZoomEvents() {
@@ -650,6 +655,7 @@ function openLightbox(index, direction) {
 
   updateLightboxSelectButton();
   updateLightboxHeartButton();
+  updateLightboxCommentButton();
   if (modal) modal.classList.add('active');
   document.body.style.overflow = 'hidden';
 }
@@ -677,33 +683,123 @@ function prevLightboxPhoto() {
 
 function updateLightboxSelectButton() {
   const btn = document.getElementById('lightbox-toggle-select');
-  if (!btn || currentLightboxIndex === -1) return;
+  const overlayBtn = document.getElementById('lightbox-overlay-select');
+  const overlayIcon = document.getElementById('lightbox-overlay-select-icon');
+  if (currentLightboxIndex === -1) return;
 
   const photos = currentClient.photos || [];
   const photo = photos[currentLightboxIndex];
   if (!photo) return;
 
   const isSelected = selectedPhotoIds.has(photo.id);
-  btn.className = isSelected ? 'btn btn-primary' : 'btn btn-outline-gold';
-  btn.innerHTML = isSelected ? '✔ Photo Selected' : '+ Select This Photo';
+  if (btn) {
+    btn.className = isSelected ? 'lightbox-dock-btn dock-select selected' : 'lightbox-dock-btn dock-select';
+    btn.innerHTML = isSelected 
+      ? '<span class="dock-select-icon">✔</span><span class="dock-btn-text">Photo Selected</span>' 
+      : '<span class="dock-select-icon">+</span><span class="dock-btn-text">Select This Photo</span>';
+  }
+  if (overlayBtn) {
+    overlayBtn.className = isSelected ? 'lightbox-onphoto-select-btn selected' : 'lightbox-onphoto-select-btn';
+    overlayBtn.title = isSelected ? 'Unselect Photo' : 'Select Photo';
+  }
+  if (overlayIcon) {
+    overlayIcon.textContent = isSelected ? '✔' : '+';
+  }
 }
 
 function updateLightboxHeartButton() {
   const btn = document.getElementById('lightbox-toggle-heart');
-  if (!btn || currentLightboxIndex === -1) return;
+  const overlayBtn = document.getElementById('lightbox-overlay-heart');
+  const overlayIcon = document.getElementById('lightbox-overlay-heart-icon');
+  if (currentLightboxIndex === -1) return;
 
   const photos = currentClient.photos || [];
   const photo = photos[currentLightboxIndex];
   if (!photo) return;
 
   const isFavorite = favoritePhotoIds.has(photo.id);
-  btn.style.background = isFavorite ? '#ec4899' : '';
-  btn.style.borderColor = isFavorite ? '#f472b6' : '#ec4899';
-  btn.style.color = isFavorite ? '#fff' : '#f472b6';
-  btn.innerHTML = isFavorite ? '❤️ Special Favorite' : '🤍 Special Favorite';
+  if (btn) {
+    btn.className = isFavorite ? 'lightbox-dock-btn dock-heart favorited' : 'lightbox-dock-btn dock-heart';
+    btn.innerHTML = isFavorite 
+      ? '<span class="dock-heart-icon">❤️</span><span class="dock-btn-text">Special Favorite</span>' 
+      : '<span class="dock-heart-icon">🤍</span><span class="dock-btn-text">Special Favorite</span>';
+  }
+  if (overlayBtn) {
+    overlayBtn.className = isFavorite ? 'lightbox-onphoto-heart-btn favorited' : 'lightbox-onphoto-heart-btn';
+    overlayBtn.title = isFavorite ? 'Remove Favorite' : 'Mark as Special Favorite';
+  }
+  if (overlayIcon) {
+    overlayIcon.textContent = isFavorite ? '❤️' : '🤍';
+  }
 }
 
-function toggleCurrentLightboxPhoto() {
+function updateLightboxCommentButton() {
+  const commentBtnText = document.getElementById('lightbox-comment-status-text');
+  const commentBtn = document.getElementById('lightbox-comment-btn');
+  if (currentLightboxIndex === -1) return;
+
+  const photos = currentClient.photos || [];
+  const photo = photos[currentLightboxIndex];
+  if (!photo) return;
+
+  const hasComment = Boolean(photoComments[photo.id]);
+  if (commentBtnText) {
+    commentBtnText.textContent = hasComment ? 'Note Added' : 'Add Note';
+  }
+  if (commentBtn) {
+    if (hasComment) {
+      commentBtn.style.background = 'rgba(212, 175, 55, 0.25)';
+      commentBtn.style.borderColor = 'var(--gold-400)';
+      commentBtn.style.color = 'var(--gold-300)';
+    } else {
+      commentBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+      commentBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      commentBtn.style.color = '#fff';
+    }
+  }
+}
+
+function openLightboxCommentModal() {
+  const photos = currentClient.photos || [];
+  const photo = photos[currentLightboxIndex];
+  if (!photo) return;
+
+  const nameEl = document.getElementById('note-modal-photo-name');
+  const inputEl = document.getElementById('note-modal-input');
+  if (nameEl) nameEl.textContent = photo.name;
+  if (inputEl) inputEl.value = photoComments[photo.id] || '';
+
+  const modal = document.getElementById('lightbox-comment-modal');
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
+    if (inputEl) setTimeout(() => inputEl.focus(), 100);
+  }
+}
+
+function saveNoteFromModal() {
+  const photos = currentClient.photos || [];
+  const photo = photos[currentLightboxIndex];
+  const inputEl = document.getElementById('note-modal-input');
+  if (photo && inputEl) {
+    saveCurrentLightboxComment(inputEl.value);
+    updateLightboxCommentButton();
+    if (window.api && window.api.showToast) {
+      window.api.showToast(inputEl.value.trim() ? 'Note saved for photo' : 'Note cleared', 'success');
+    }
+  }
+  const modal = document.getElementById('lightbox-comment-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.removeProperty('display');
+  }
+}
+
+window.openLightboxCommentModal = openLightboxCommentModal;
+window.saveNoteFromModal = saveNoteFromModal;
+
+function toggleCurrentLightboxPhoto(event) {
+  if (event) event.stopPropagation();
   const photos = currentClient.photos || [];
   const photo = photos[currentLightboxIndex];
   if (photo) {
@@ -711,7 +807,8 @@ function toggleCurrentLightboxPhoto() {
   }
 }
 
-function toggleCurrentLightboxFavorite() {
+function toggleCurrentLightboxFavorite(event) {
+  if (event) event.stopPropagation();
   const photos = currentClient.photos || [];
   const photo = photos[currentLightboxIndex];
   if (photo) {
