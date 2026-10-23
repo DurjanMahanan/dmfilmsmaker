@@ -448,7 +448,6 @@ function initLightboxZoomEvents() {
   }, { passive: false });
 
   // 2. Double Click / Double Tap Quick Zoom (1.0x ↔ 2.5x)
-  let lastTapTime = 0;
   container.addEventListener('dblclick', (e) => {
     e.preventDefault();
     toggleDoubleZoom();
@@ -501,6 +500,7 @@ function initLightboxZoomEvents() {
   let isPinching = false;
   let isTouchPanning = false;
   let isSwiping = false;
+  let lastTapTime = 0;
 
   stage.addEventListener('touchstart', (e) => {
     const modal = document.getElementById('lightbox-modal');
@@ -514,7 +514,8 @@ function initLightboxZoomEvents() {
       isPinching = false;
 
       if (zoomScale > 1.05) {
-        // Zoomed in: 1-finger panning active (Pan Left, Right, Up, Down)
+        // Zoomed in: 1-finger panning active (Pan Left, Right, Up, Down anywhere)
+        e.preventDefault();
         isTouchPanning = true;
         isSwiping = false;
         startPanTouchX = touchStartX - panX;
@@ -524,8 +525,9 @@ function initLightboxZoomEvents() {
         isSwiping = true;
         isTouchPanning = false;
       }
-    } else if (e.touches.length === 2) {
-      // 2 Fingers: Pinch to zoom start
+    } else if (e.touches.length >= 2) {
+      // 2 Fingers: Pinch to zoom start (CRUCIAL: e.preventDefault() prevents browser zoom popup)
+      e.preventDefault();
       isPinching = true;
       isSwiping = false;
       isTouchPanning = false;
@@ -542,7 +544,17 @@ function initLightboxZoomEvents() {
     if (!modal || !modal.classList.contains('active')) return;
     if (e.target.closest('button, input, textarea, a, .lightbox-below-bar, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
-    if (e.touches.length === 1) {
+    if (e.touches.length >= 2 && isPinching && initialPinchDist > 0) {
+      // 2-Finger Pinch Zooming
+      e.preventDefault();
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const scaleFactor = currentDist / initialPinchDist;
+      zoomScale = Math.min(4.0, Math.max(1.0, initialPinchScale * scaleFactor));
+      applyLightboxTransform();
+    } else if (e.touches.length === 1) {
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
       const diffX = currentX - touchStartX;
@@ -555,21 +567,11 @@ function initLightboxZoomEvents() {
         panY = currentY - startPanTouchY;
         applyLightboxTransform();
       } else if (isSwiping && zoomScale <= 1.05) {
-        // Swipe gesture lock (prevent browser vertical pull)
+        // Swipe gesture lock (prevent vertical bounce)
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
           e.preventDefault();
         }
       }
-    } else if (e.touches.length === 2 && isPinching && initialPinchDist > 0) {
-      // Smooth 2-Finger Pinch Zoom In / Out
-      e.preventDefault();
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const scaleFactor = currentDist / initialPinchDist;
-      zoomScale = Math.min(4.0, Math.max(0.9, initialPinchScale * scaleFactor));
-      applyLightboxTransform();
     }
   }, { passive: false });
 
@@ -590,15 +592,38 @@ function initLightboxZoomEvents() {
       return;
     }
 
-    if (isSwiping && zoomScale <= 1.05 && e.changedTouches && e.changedTouches.length > 0) {
+    if (e.changedTouches && e.changedTouches.length > 0) {
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
       const totalDiffX = touchEndX - touchStartX;
       const totalDiffY = touchEndY - touchStartY;
       const swipeDuration = Date.now() - touchStartTime;
 
+      // Mobile Double Tap to Zoom Detection (2 quick taps within 300ms)
+      if (Math.abs(totalDiffX) < 12 && Math.abs(totalDiffY) < 12) {
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+          // Double Tap Triggered
+          if (zoomScale > 1.2) {
+            zoomScale = 1.0;
+            panX = 0;
+            panY = 0;
+          } else {
+            zoomScale = 2.5;
+            panX = 0;
+            panY = 0;
+          }
+          applyLightboxTransform();
+          lastTapTime = 0;
+          isSwiping = false;
+          isTouchPanning = false;
+          return;
+        }
+        lastTapTime = now;
+      }
+
       // Swipe threshold: 35px horizontal movement
-      if (Math.abs(totalDiffX) > 35 && Math.abs(totalDiffX) > Math.abs(totalDiffY) * 1.1 && swipeDuration < 800) {
+      if (isSwiping && zoomScale <= 1.05 && Math.abs(totalDiffX) > 35 && Math.abs(totalDiffX) > Math.abs(totalDiffY) * 1.1 && swipeDuration < 800) {
         if (totalDiffX < 0) {
           nextLightboxPhoto();
         } else {
@@ -669,6 +694,7 @@ function openLightbox(index, direction) {
   updateLightboxSelectButton();
   updateLightboxHeartButton();
   updateLightboxCommentButton();
+  attachLightboxOverlayButtonEvents();
   if (modal) modal.classList.add('active');
   document.body.style.overflow = 'hidden';
 }
@@ -699,15 +725,21 @@ function updateLightboxSelectButton() {
   const photoFrame = document.getElementById('lightbox-photo-frame');
   if (currentLightboxIndex === -1) return;
 
-  const photos = currentClient.photos || [];
+  const photos = currentClient?.photos || [];
   const photo = photos[currentLightboxIndex];
   if (!photo) return;
 
   const isSelected = selectedPhotoIds.has(String(photo.id));
   if (overlayBtn) {
-    overlayBtn.className = isSelected ? 'lightbox-onphoto-select-btn selected' : 'lightbox-onphoto-select-btn';
-    overlayBtn.title = isSelected ? 'Unselect Photo' : 'Select Photo';
-    overlayBtn.innerHTML = `<span id="lightbox-overlay-select-icon" style="pointer-events:none">${isSelected ? '✔' : '+'}</span>`;
+    if (isSelected) {
+      overlayBtn.classList.add('selected');
+      overlayBtn.title = 'Unselect Photo';
+      overlayBtn.innerHTML = '<span id="lightbox-overlay-select-icon" style="pointer-events:none;font-weight:900;">✔</span>';
+    } else {
+      overlayBtn.classList.remove('selected');
+      overlayBtn.title = 'Select Photo';
+      overlayBtn.innerHTML = '<span id="lightbox-overlay-select-icon" style="pointer-events:none;font-weight:900;">+</span>';
+    }
   }
   if (photoFrame) {
     photoFrame.classList.toggle('selected', isSelected);
@@ -718,15 +750,21 @@ function updateLightboxHeartButton() {
   const overlayBtn = document.getElementById('lightbox-overlay-heart');
   if (currentLightboxIndex === -1) return;
 
-  const photos = currentClient.photos || [];
+  const photos = currentClient?.photos || [];
   const photo = photos[currentLightboxIndex];
   if (!photo) return;
 
   const isFavorite = favoritePhotoIds.has(String(photo.id));
   if (overlayBtn) {
-    overlayBtn.className = isFavorite ? 'lightbox-onphoto-heart-btn favorited' : 'lightbox-onphoto-heart-btn';
-    overlayBtn.title = isFavorite ? 'Remove Favorite' : 'Mark as Special Favorite';
-    overlayBtn.innerHTML = `<span id="lightbox-overlay-heart-icon" style="pointer-events:none">${isFavorite ? '❤️' : '🤍'}</span>`;
+    if (isFavorite) {
+      overlayBtn.classList.add('favorited');
+      overlayBtn.title = 'Remove Favorite';
+      overlayBtn.innerHTML = '<span id="lightbox-overlay-heart-icon" style="pointer-events:none;">❤️</span>';
+    } else {
+      overlayBtn.classList.remove('favorited');
+      overlayBtn.title = 'Mark as Special Favorite';
+      overlayBtn.innerHTML = '<span id="lightbox-overlay-heart-icon" style="pointer-events:none;">🤍</span>';
+    }
   }
 }
 
@@ -826,18 +864,30 @@ function toggleCurrentLightboxFavorite(e) {
   }
 }
 
-// Attach lightbox overlay button events (called once after DOM ready)
+// Attach lightbox overlay button events (called on page load and every time photo opens)
 function attachLightboxOverlayButtonEvents() {
   const selBtn = document.getElementById('lightbox-overlay-select');
   if (selBtn) {
-    selBtn.onclick = function(e) { toggleCurrentLightboxPhoto(e); };
-    selBtn.ontouchend = function(e) { toggleCurrentLightboxPhoto(e); };
+    selBtn.onpointerdown = function(e) {
+      if (e) e.stopPropagation();
+      toggleCurrentLightboxPhoto(e);
+    };
+    selBtn.onclick = function(e) {
+      if (e) e.stopPropagation();
+      toggleCurrentLightboxPhoto(e);
+    };
   }
 
   const hrtBtn = document.getElementById('lightbox-overlay-heart');
   if (hrtBtn) {
-    hrtBtn.onclick = function(e) { toggleCurrentLightboxFavorite(e); };
-    hrtBtn.ontouchend = function(e) { toggleCurrentLightboxFavorite(e); };
+    hrtBtn.onpointerdown = function(e) {
+      if (e) e.stopPropagation();
+      toggleCurrentLightboxFavorite(e);
+    };
+    hrtBtn.onclick = function(e) {
+      if (e) e.stopPropagation();
+      toggleCurrentLightboxFavorite(e);
+    };
   }
 }
 

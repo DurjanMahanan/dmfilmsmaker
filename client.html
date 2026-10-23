@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=20261023_fix1">
-  <link rel="stylesheet" href="css/client.css?v=20261023_fix1">
+  <link rel="stylesheet" href="css/main.css?v=20261023_v3">
+  <link rel="stylesheet" href="css/client.css?v=20261023_v3">
 
   <style>
     /* 60FPS Hardware-Accelerated Smooth Swipe & Slide Engine */
@@ -89,23 +89,23 @@
       position: absolute;
       top: 14px;
       right: 14px;
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      background: rgba(10, 14, 26, 0.78);
+      background: rgba(10, 14, 26, 0.85);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border: 2px solid rgba(255, 255, 255, 0.45);
+      border: 2px solid rgba(255, 255, 255, 0.55);
       color: #ffffff;
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       font-weight: 800;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-      z-index: 60 !important;
+      z-index: 9999 !important;
       user-select: none !important;
       touch-action: manipulation !important;
       pointer-events: auto !important;
@@ -121,31 +121,31 @@
     .lightbox-onphoto-select-btn.selected {
       background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%) !important;
       border-color: #fef08a !important;
-      color: #0a0c10 !important;
-      box-shadow: 0 0 25px rgba(234, 179, 8, 0.85) !important;
-      transform: scale(1.05);
+      color: #000000 !important;
+      box-shadow: 0 0 25px rgba(234, 179, 8, 0.9) !important;
+      transform: scale(1.08);
     }
 
     .lightbox-onphoto-heart-btn {
       position: absolute;
-      top: 68px;
+      top: 72px;
       right: 14px;
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      background: rgba(10, 14, 26, 0.78);
+      background: rgba(10, 14, 26, 0.85);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border: 2px solid rgba(255, 255, 255, 0.35);
+      border: 2px solid rgba(255, 255, 255, 0.45);
       color: #ffffff;
-      font-size: 1.25rem;
+      font-size: 1.35rem;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-      z-index: 60 !important;
+      z-index: 9999 !important;
       user-select: none !important;
       touch-action: manipulation !important;
       pointer-events: auto !important;
@@ -162,8 +162,8 @@
       background: #ef4444 !important;
       border-color: #f87171 !important;
       color: #ffffff !important;
-      box-shadow: 0 0 25px rgba(239, 68, 68, 0.85) !important;
-      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.9) !important;
+      transform: scale(1.08);
     }
 
     /* Below-Photo Bar: Comment Box (Left) + Close Button (Right) */
@@ -369,18 +369,18 @@
         max-height: calc(100dvh - 150px) !important;
       }
       .lightbox-onphoto-select-btn {
-        top: 10px !important;
-        right: 10px !important;
-        width: 44px !important;
-        height: 44px !important;
-        font-size: 1.35rem !important;
+        top: 12px !important;
+        right: 12px !important;
+        width: 48px !important;
+        height: 48px !important;
+        font-size: 1.45rem !important;
       }
       .lightbox-onphoto-heart-btn {
-        top: 62px !important;
-        right: 10px !important;
-        width: 44px !important;
-        height: 44px !important;
-        font-size: 1.2rem !important;
+        top: 68px !important;
+        right: 12px !important;
+        width: 48px !important;
+        height: 48px !important;
+        font-size: 1.3rem !important;
       }
       .lightbox-below-bar,
       .lightbox-onphoto-bottom-bar {
@@ -638,9 +638,9 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261023_fix1"></script>
-  <script src="js/api.js?v=20261023_fix1"></script>
-  <script src="js/client.js?v=20261023_fix1"></script>
+  <script src="js/config.js?v=20261023_v3"></script>
+  <script src="js/api.js?v=20261023_v3"></script>
+  <script src="js/client.js?v=20261023_v3"></script>
 
   <!-- Gesture engine is handled by js/client.js → initLightboxZoomEvents() -->
 </body>
