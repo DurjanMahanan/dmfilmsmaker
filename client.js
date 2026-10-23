@@ -142,6 +142,7 @@ function loadAndRenderClientGallery() {
   updateSelectionCounter();
   setupClientEventListeners();
   initLightboxZoomEvents();
+  attachLightboxOverlayButtonEvents();
 }
 
 // --- Header & Information ---
@@ -409,10 +410,16 @@ function applyLightboxTransform() {
       badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
     }
   }
+  // When zoomed, hide overlay controls but keep them always clickable
   const overlayControls = document.querySelectorAll('.lightbox-onphoto-select-btn, .lightbox-onphoto-heart-btn, .lightbox-below-bar, .lightbox-onphoto-bottom-bar');
   overlayControls.forEach(el => {
     el.style.opacity = zoomScale > 1.05 ? '0' : '1';
-    el.style.pointerEvents = zoomScale > 1.05 ? 'none' : 'auto';
+    // NEVER disable pointer-events on buttons - always keep them tappable
+    if (el.classList.contains('lightbox-below-bar') || el.classList.contains('lightbox-onphoto-bottom-bar')) {
+      el.style.pointerEvents = zoomScale > 1.05 ? 'none' : 'auto';
+    } else {
+      el.style.pointerEvents = 'auto';
+    }
   });
 }
 
@@ -700,7 +707,7 @@ function updateLightboxSelectButton() {
   if (overlayBtn) {
     overlayBtn.className = isSelected ? 'lightbox-onphoto-select-btn selected' : 'lightbox-onphoto-select-btn';
     overlayBtn.title = isSelected ? 'Unselect Photo' : 'Select Photo';
-    overlayBtn.innerHTML = `<span id="lightbox-overlay-select-icon">${isSelected ? '✔' : '+'}</span>`;
+    overlayBtn.innerHTML = `<span id="lightbox-overlay-select-icon" style="pointer-events:none">${isSelected ? '✔' : '+'}</span>`;
   }
   if (photoFrame) {
     photoFrame.classList.toggle('selected', isSelected);
@@ -719,7 +726,7 @@ function updateLightboxHeartButton() {
   if (overlayBtn) {
     overlayBtn.className = isFavorite ? 'lightbox-onphoto-heart-btn favorited' : 'lightbox-onphoto-heart-btn';
     overlayBtn.title = isFavorite ? 'Remove Favorite' : 'Mark as Special Favorite';
-    overlayBtn.innerHTML = `<span id="lightbox-overlay-heart-icon">${isFavorite ? '❤️' : '🤍'}</span>`;
+    overlayBtn.innerHTML = `<span id="lightbox-overlay-heart-icon" style="pointer-events:none">${isFavorite ? '❤️' : '🤍'}</span>`;
   }
 }
 
@@ -788,39 +795,51 @@ function saveNoteFromModal() {
 window.openLightboxCommentModal = openLightboxCommentModal;
 window.saveNoteFromModal = saveNoteFromModal;
 
-let isTogglingSelect = false;
-function toggleCurrentLightboxPhoto(event) {
-  if (event) {
-    if (typeof event.stopPropagation === 'function') event.stopPropagation();
-    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-  }
-  if (isTogglingSelect) return;
-  isTogglingSelect = true;
-  setTimeout(() => { isTogglingSelect = false; }, 300);
-
+// ── Lightbox Select & Heart toggle (mobile + desktop) ──────────────────────
+let _lbSelectLock = false;
+function toggleCurrentLightboxPhoto(e) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  if (_lbSelectLock) return;
+  _lbSelectLock = true;
+  setTimeout(() => { _lbSelectLock = false; }, 500);
   const photos = currentClient.photos || [];
   if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
   const photo = photos[currentLightboxIndex];
-  if (photo) {
-    toggleSelectPhoto(photo.id);
-  }
+  if (photo) toggleSelectPhoto(photo.id);
 }
 
-let isTogglingFavorite = false;
-function toggleCurrentLightboxFavorite(event) {
-  if (event) {
-    if (typeof event.stopPropagation === 'function') event.stopPropagation();
-    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-  }
-  if (isTogglingFavorite) return;
-  isTogglingFavorite = true;
-  setTimeout(() => { isTogglingFavorite = false; }, 300);
-
+let _lbHeartLock = false;
+function toggleCurrentLightboxFavorite(e) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  if (_lbHeartLock) return;
+  _lbHeartLock = true;
+  setTimeout(() => { _lbHeartLock = false; }, 500);
   const photos = currentClient.photos || [];
   if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
   const photo = photos[currentLightboxIndex];
-  if (photo) {
-    toggleFavoritePhoto(photo.id);
+  if (photo) toggleFavoritePhoto(photo.id);
+}
+
+// Called once on page load – attaches touch listeners directly on buttons
+function attachLightboxOverlayButtonEvents() {
+  // Select button
+  const selBtn = document.getElementById('lightbox-overlay-select');
+  if (selBtn) {
+    selBtn.addEventListener('touchend', function(e) {
+      e.stopPropagation();
+      e.preventDefault();         // prevents the follow-up synthetic click
+      toggleCurrentLightboxPhoto(e);
+    }, { passive: false });
+  }
+
+  // Heart button
+  const hrtBtn = document.getElementById('lightbox-overlay-heart');
+  if (hrtBtn) {
+    hrtBtn.addEventListener('touchend', function(e) {
+      e.stopPropagation();
+      e.preventDefault();         // prevents the follow-up synthetic click
+      toggleCurrentLightboxFavorite(e);
+    }, { passive: false });
   }
 }
 
@@ -1233,3 +1252,4 @@ window.verifyClientPin = verifyClientPin;
 window.initLightboxZoomEvents = initLightboxZoomEvents;
 window.resetLightboxTransform = resetLightboxTransform;
 window.applyLightboxTransform = applyLightboxTransform;
+window.attachLightboxOverlayButtonEvents = attachLightboxOverlayButtonEvents;
