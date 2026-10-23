@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=20261023_v3">
-  <link rel="stylesheet" href="css/client.css?v=20261023_v3">
+  <link rel="stylesheet" href="css/main.css?v=20261023_v4">
+  <link rel="stylesheet" href="css/client.css?v=20261023_v4">
 
   <style>
     /* 60FPS Hardware-Accelerated Smooth Swipe & Slide Engine */
@@ -526,18 +526,23 @@
       <div class="lightbox-image-container" id="lightbox-image-stage">
         <div class="lightbox-photo-frame" id="lightbox-photo-frame">
           <img id="lightbox-image" class="lightbox-img" src="" alt="Full preview" draggable="false">
-
-          <!-- On-Photo Top-Right Quick Circular Buttons -->
-          <button id="lightbox-overlay-select" type="button" class="lightbox-onphoto-select-btn" onclick="toggleCurrentLightboxPhoto(event)" title="Select Photo">
-            <span id="lightbox-overlay-select-icon" style="pointer-events:none">+</span>
-          </button>
-          <button id="lightbox-overlay-heart" type="button" class="lightbox-onphoto-heart-btn" onclick="toggleCurrentLightboxFavorite(event)" title="Mark as Favorite">
-            <span id="lightbox-overlay-heart-icon" style="pointer-events:none">🤍</span>
-          </button>
         </div>
       </div>
       
       <button class="lightbox-nav-btn lightbox-next" onclick="nextLightboxPhoto()" title="Next Photo (Right Arrow)">&#10095;</button>
+
+      <!-- Centered Action Buttons Bar: Select (Left) + Favorite (Right) - Exactly at Red Mark location -->
+      <div class="lightbox-actions-bar" id="lightbox-actions-bar">
+        <button id="lightbox-action-select" type="button" class="lightbox-action-btn select-btn" onclick="toggleCurrentLightboxPhoto(event)" title="Select Photo">
+          <span class="action-btn-icon" id="lightbox-action-select-icon">＋</span>
+          <span class="action-btn-text" id="lightbox-action-select-text">Select Photo</span>
+        </button>
+
+        <button id="lightbox-action-heart" type="button" class="lightbox-action-btn heart-btn" onclick="toggleCurrentLightboxFavorite(event)" title="Favorite Photo">
+          <span class="action-btn-icon" id="lightbox-action-heart-icon">🤍</span>
+          <span class="action-btn-text" id="lightbox-action-heart-text">Favorite</span>
+        </button>
+      </div>
 
       <!-- Centered Below-Photo Floating Bar: Comment Box (Left) + Close Button (Right) -->
       <div class="lightbox-below-bar" id="lightbox-below-bar">
@@ -638,9 +643,9 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261023_v3"></script>
-  <script src="js/api.js?v=20261023_v3"></script>
-  <script src="js/client.js?v=20261023_v3"></script>
+  <script src="js/config.js?v=20261023_v4"></script>
+  <script src="js/api.js?v=20261023_v4"></script>
+  <script src="js/client.js?v=20261023_v4"></script>
 
   <!-- Gesture engine is handled by js/client.js → initLightboxZoomEvents() -->
 </body>
