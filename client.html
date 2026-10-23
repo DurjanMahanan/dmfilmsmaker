@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=20261023_v4">
-  <link rel="stylesheet" href="css/client.css?v=20261023_v4">
+  <link rel="stylesheet" href="css/main.css?v=20261023_v5">
+  <link rel="stylesheet" href="css/client.css?v=20261023_v5">
 
   <style>
     /* 60FPS Hardware-Accelerated Smooth Swipe & Slide Engine */
@@ -162,14 +162,14 @@
       transform: scale(0.97) !important;
     }
 
-    /* Select Button (Active / Selected State - Golden Glow) */
+    /* Select Button (Active / Selected State - Glowing Solid Gold) */
     .lightbox-action-btn.select-btn.selected {
-      background: linear-gradient(135deg, #fde047 0%, #eab308 50%, #ca8a04 100%) !important;
-      border-color: #fef9c3 !important;
+      background: #eab308 !important;
+      border: 2px solid #ffffff !important;
       color: #000000 !important;
       font-weight: 800 !important;
-      box-shadow: 0 0 25px rgba(234, 179, 8, 0.85), 0 4px 16px rgba(0, 0, 0, 0.5) !important;
-      transform: translateY(-1px) !important;
+      box-shadow: 0 0 25px rgba(234, 179, 8, 1), 0 4px 16px rgba(0, 0, 0, 0.7) !important;
+      transform: scale(1.03) !important;
     }
 
     /* Heart Button (Default State) */
@@ -194,14 +194,47 @@
       transform: scale(0.97) !important;
     }
 
-    /* Heart Button (Active / Favorited State - Deep Vivid Red) */
+    /* Heart Button (Active / Favorited State - Deep Vivid Glowing Red) */
     .lightbox-action-btn.heart-btn.favorited {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%) !important;
-      border-color: #fca5a5 !important;
+      background: #ef4444 !important;
+      border: 2px solid #ffffff !important;
       color: #ffffff !important;
       font-weight: 800 !important;
-      box-shadow: 0 0 25px rgba(239, 68, 68, 0.85), 0 4px 16px rgba(0, 0, 0, 0.5) !important;
-      transform: translateY(-1px) !important;
+      box-shadow: 0 0 25px rgba(239, 68, 68, 1), 0 4px 16px rgba(0, 0, 0, 0.7) !important;
+      transform: scale(1.03) !important;
+    }
+
+    /* Instant Toast Popup on Top of Lightbox */
+    #lightbox-toast-popup {
+      position: fixed !important;
+      top: 68px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      z-index: 9999999 !important;
+      padding: 10px 22px !important;
+      border-radius: 30px !important;
+      font-size: 0.95rem !important;
+      font-weight: 700 !important;
+      color: #ffffff !important;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9) !important;
+      pointer-events: none !important;
+      text-align: center !important;
+      white-space: nowrap !important;
+    }
+    #lightbox-toast-popup.toast-success {
+      background: #059669 !important;
+      border: 2px solid #6ee7b7 !important;
+    }
+    #lightbox-toast-popup.toast-info {
+      background: #2563eb !important;
+      border: 2px solid #93c5fd !important;
+    }
+    #lightbox-toast-popup.toast-error {
+      background: #dc2626 !important;
+      border: 2px solid #fca5a5 !important;
     }
 
     /* Legacy on-photo buttons hidden to prevent face obstruction */
@@ -688,9 +721,9 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261023_v4"></script>
-  <script src="js/api.js?v=20261023_v4"></script>
-  <script src="js/client.js?v=20261023_v4"></script>
+  <script src="js/config.js?v=20261023_v5"></script>
+  <script src="js/api.js?v=20261023_v5"></script>
+  <script src="js/client.js?v=20261023_v5"></script>
 
   <!-- Gesture engine is handled by js/client.js → initLightboxZoomEvents() -->
 </body>

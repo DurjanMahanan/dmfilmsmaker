@@ -502,6 +502,9 @@ function initLightboxZoomEvents() {
     if (!modal || !modal.classList.contains('active')) return;
     if (e.target.closest('button, input, textarea, a, .lightbox-actions-bar, .lightbox-below-bar, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
+    // Prevent native browser scroll/zoom gestures on photo area
+    e.preventDefault();
+
     if (e.touches.length === 1) {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
@@ -510,7 +513,6 @@ function initLightboxZoomEvents() {
 
       if (zoomScale > 1.05) {
         // Zoomed in: 1-finger panning active (Pan Left, Right, Up, Down anywhere)
-        e.preventDefault();
         isTouchPanning = true;
         isSwiping = false;
         startPanTouchX = touchStartX - panX;
@@ -521,8 +523,7 @@ function initLightboxZoomEvents() {
         isTouchPanning = false;
       }
     } else if (e.touches.length >= 2) {
-      // 2 Fingers: Pinch to zoom start (CRUCIAL: e.preventDefault() prevents browser zoom popup)
-      e.preventDefault();
+      // 2 Fingers: Pinch to zoom start
       isPinching = true;
       isSwiping = false;
       isTouchPanning = false;
@@ -539,33 +540,34 @@ function initLightboxZoomEvents() {
     if (!modal || !modal.classList.contains('active')) return;
     if (e.target.closest('button, input, textarea, a, .lightbox-actions-bar, .lightbox-below-bar, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
-    if (e.touches.length >= 2 && isPinching && initialPinchDist > 0) {
+    e.preventDefault();
+
+    if (e.touches.length >= 2) {
       // 2-Finger Pinch Zooming
-      e.preventDefault();
       const currentDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      const scaleFactor = currentDist / initialPinchDist;
-      zoomScale = Math.min(4.0, Math.max(1.0, initialPinchScale * scaleFactor));
-      applyLightboxTransform();
+      if (!isPinching || initialPinchDist === 0) {
+        isPinching = true;
+        isSwiping = false;
+        isTouchPanning = false;
+        initialPinchDist = currentDist;
+        initialPinchScale = zoomScale;
+      } else {
+        const scaleFactor = currentDist / initialPinchDist;
+        zoomScale = Math.min(4.0, Math.max(1.0, initialPinchScale * scaleFactor));
+        applyLightboxTransform();
+      }
     } else if (e.touches.length === 1) {
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
-      const diffX = currentX - touchStartX;
-      const diffY = currentY - touchStartY;
 
       if (zoomScale > 1.05 && isTouchPanning) {
         // Smooth 1-Finger Pan (Left, Right, Up, Down)
-        e.preventDefault();
         panX = currentX - startPanTouchX;
         panY = currentY - startPanTouchY;
         applyLightboxTransform();
-      } else if (isSwiping && zoomScale <= 1.05) {
-        // Swipe gesture lock (prevent vertical bounce)
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
-          e.preventDefault();
-        }
       }
     }
   }, { passive: false });
@@ -576,6 +578,14 @@ function initLightboxZoomEvents() {
     if (e.target.closest('button, input, textarea, a, .lightbox-actions-bar, .lightbox-below-bar, .lightbox-onphoto-bottom-bar, .lightbox-nav-btn, .modal-close')) return;
 
     if (isPinching) {
+      if (e.touches && e.touches.length === 1) {
+        // One finger still on screen: transition smoothly to 1-finger panning
+        isPinching = false;
+        isTouchPanning = true;
+        startPanTouchX = e.touches[0].clientX - panX;
+        startPanTouchY = e.touches[0].clientY - panY;
+        return;
+      }
       isPinching = false;
       initialPinchDist = 0;
       if (zoomScale <= 1.05) {
@@ -594,10 +604,10 @@ function initLightboxZoomEvents() {
       const totalDiffY = touchEndY - touchStartY;
       const swipeDuration = Date.now() - touchStartTime;
 
-      // Mobile Double Tap to Zoom Detection (2 quick taps within 300ms)
-      if (Math.abs(totalDiffX) < 12 && Math.abs(totalDiffY) < 12) {
+      // Mobile Double Tap to Zoom Detection (2 quick taps within 320ms)
+      if (Math.abs(totalDiffX) < 15 && Math.abs(totalDiffY) < 15 && swipeDuration < 280) {
         const now = Date.now();
-        if (now - lastTapTime < 300) {
+        if (now - lastTapTime < 320) {
           // Double Tap Triggered
           if (zoomScale > 1.2) {
             zoomScale = 1.0;
@@ -617,8 +627,8 @@ function initLightboxZoomEvents() {
         lastTapTime = now;
       }
 
-      // Swipe threshold: 35px horizontal movement
-      if (isSwiping && zoomScale <= 1.05 && Math.abs(totalDiffX) > 35 && Math.abs(totalDiffX) > Math.abs(totalDiffY) * 1.1 && swipeDuration < 800) {
+      // Swipe threshold: 28px horizontal movement changes photo
+      if (isSwiping && zoomScale <= 1.05 && Math.abs(totalDiffX) > 28 && Math.abs(totalDiffX) > Math.abs(totalDiffY) * 0.8 && swipeDuration < 900) {
         if (totalDiffX < 0) {
           nextLightboxPhoto();
         } else {
@@ -627,6 +637,12 @@ function initLightboxZoomEvents() {
       }
     }
 
+    isSwiping = false;
+    isTouchPanning = false;
+  });
+
+  stage.addEventListener('touchcancel', () => {
+    isPinching = false;
     isSwiping = false;
     isTouchPanning = false;
   });
@@ -857,71 +873,101 @@ function saveNoteFromModal() {
 window.openLightboxCommentModal = openLightboxCommentModal;
 window.saveNoteFromModal = saveNoteFromModal;
 
-// ── Lightbox Select & Heart toggle (mobile + desktop) ──────────────────────
-let lastSelectToggleTime = 0;
-function toggleCurrentLightboxPhoto(e) {
-  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-  const now = Date.now();
-  if (now - lastSelectToggleTime < 300) return;
-  lastSelectToggleTime = now;
-
-  const photos = currentClient?.photos || [];
-  if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
-  const photo = photos[currentLightboxIndex];
-  if (photo) {
-    toggleSelectPhoto(photo.id);
+// ── Lightbox Floating Action Toast Notification ───────────────────────────
+function showLightboxActionToast(msg, type) {
+  let toast = document.getElementById('lightbox-toast-popup');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'lightbox-toast-popup';
+    document.body.appendChild(toast);
   }
+  toast.className = 'lightbox-toast-popup toast-' + (type || 'info');
+  toast.innerHTML = msg;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => { if (toast) toast.style.display = 'none'; }, 250);
+  }, 1600);
 }
 
-let lastFavoriteToggleTime = 0;
-function toggleCurrentLightboxFavorite(e) {
-  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-  const now = Date.now();
-  if (now - lastFavoriteToggleTime < 300) return;
-  lastFavoriteToggleTime = now;
+// ── Lightbox Select & Heart toggle (mobile + desktop) ──────────────────────
+function handleLightboxSelectClick(e) {
+  if (e) {
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+  }
 
   const photos = currentClient?.photos || [];
   if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
   const photo = photos[currentLightboxIndex];
-  if (photo) {
-    toggleFavoritePhoto(photo.id);
+  if (!photo) return;
+
+  const id = String(photo.id);
+  const isSelected = selectedPhotoIds.has(id);
+
+  if (isSelected) {
+    selectedPhotoIds.delete(id);
+    showLightboxActionToast(`Photo #${currentLightboxIndex + 1} Unselected`, 'info');
+  } else {
+    const limit = Number(currentClient.selectionLimit) || 500;
+    if (selectedPhotoIds.size >= limit) {
+      showLightboxActionToast(`Selection limit of ${limit} reached!`, 'error');
+      return;
+    }
+    selectedPhotoIds.add(id);
+    showLightboxActionToast(`✔ Photo #${currentLightboxIndex + 1} Selected!`, 'success');
   }
+
+  updatePhotoCardUI(id);
+  updateSelectionCounter();
+  updateLightboxSelectButton();
+}
+
+function handleLightboxHeartClick(e) {
+  if (e) {
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+  }
+
+  const photos = currentClient?.photos || [];
+  if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
+  const photo = photos[currentLightboxIndex];
+  if (!photo) return;
+
+  const id = String(photo.id);
+  const isFavorite = favoritePhotoIds.has(id);
+
+  if (isFavorite) {
+    favoritePhotoIds.delete(id);
+    showLightboxActionToast(`🤍 Removed from Favorites`, 'info');
+  } else {
+    favoritePhotoIds.add(id);
+    showLightboxActionToast(`❤️ Photo #${currentLightboxIndex + 1} Favorited!`, 'success');
+  }
+
+  updatePhotoCardUI(id);
+  updateStatusPillsCounts();
+  updateLightboxHeartButton();
 }
 
 // Attach lightbox overlay button events (called on page load and every time photo opens)
 function attachLightboxOverlayButtonEvents() {
-  const selButtons = [
-    document.getElementById('lightbox-action-select'),
-    document.getElementById('lightbox-overlay-select')
-  ].filter(Boolean);
-
-  selButtons.forEach(btn => {
-    btn.onpointerdown = function(e) {
-      if (e) e.stopPropagation();
-      toggleCurrentLightboxPhoto(e);
-    };
-    btn.onclick = function(e) {
-      if (e) e.stopPropagation();
-      toggleCurrentLightboxPhoto(e);
-    };
-  });
-
-  const hrtButtons = [
-    document.getElementById('lightbox-action-heart'),
-    document.getElementById('lightbox-overlay-heart')
-  ].filter(Boolean);
-
-  hrtButtons.forEach(btn => {
-    btn.onpointerdown = function(e) {
-      if (e) e.stopPropagation();
-      toggleCurrentLightboxFavorite(e);
-    };
-    btn.onclick = function(e) {
-      if (e) e.stopPropagation();
-      toggleCurrentLightboxFavorite(e);
-    };
-  });
+  const selBtn = document.getElementById('lightbox-action-select');
+  if (selBtn) {
+    selBtn.onclick = handleLightboxSelectClick;
+  }
+  const hrtBtn = document.getElementById('lightbox-action-heart');
+  if (hrtBtn) {
+    hrtBtn.onclick = handleLightboxHeartClick;
+  }
 }
+
+window.handleLightboxSelectClick = handleLightboxSelectClick;
+window.handleLightboxHeartClick = handleLightboxHeartClick;
+window.toggleCurrentLightboxPhoto = handleLightboxSelectClick;
+window.toggleCurrentLightboxFavorite = handleLightboxHeartClick;
+window.showLightboxActionToast = showLightboxActionToast;
 
 function saveCurrentLightboxComment(text) {
   const photos = currentClient.photos || [];
@@ -1322,8 +1368,10 @@ window.nextLightboxPhoto = nextLightboxPhoto;
 window.prevLightboxPhoto = prevLightboxPhoto;
 window.toggleSelectPhoto = toggleSelectPhoto;
 window.toggleFavoritePhoto = toggleFavoritePhoto;
-window.toggleCurrentLightboxPhoto = toggleCurrentLightboxPhoto;
-window.toggleCurrentLightboxFavorite = toggleCurrentLightboxFavorite;
+window.toggleCurrentLightboxPhoto = handleLightboxSelectClick;
+window.toggleCurrentLightboxFavorite = handleLightboxHeartClick;
+window.handleLightboxSelectClick = handleLightboxSelectClick;
+window.handleLightboxHeartClick = handleLightboxHeartClick;
 window.saveCurrentLightboxComment = saveCurrentLightboxComment;
 window.openSubmitModal = openSubmitModal;
 window.confirmSubmitSelection = confirmSubmitSelection;
