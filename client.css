@@ -538,17 +538,19 @@ body.lightbox-open header {
 }
 
 .lightbox-stage {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  max-width: 100vw;
-  box-sizing: border-box;
-  padding: 0.5rem;
-  min-height: 0;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  overflow: hidden !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  box-sizing: border-box !important;
+  padding: 0.5rem !important;
+  background: #000000 !important;
 }
 
 .lightbox-image-container {
@@ -1059,24 +1061,27 @@ body.lightbox-open header {
 
   /* Mobile Centered Action Buttons Bar - Exactly at Red Mark location */
   .lightbox-actions-bar {
-    bottom: 66px !important;
+    bottom: 64px !important;
     width: calc(100% - 16px) !important;
     gap: 8px !important;
+    z-index: 95 !important;
   }
 
   .lightbox-action-btn {
-    height: 44px !important;
+    height: 42px !important;
     font-size: 0.88rem !important;
     border-radius: 22px !important;
     gap: 6px !important;
   }
 
   .lightbox-photo-frame {
-    max-height: calc(100dvh - 180px) !important;
+    max-height: calc(100dvh - 185px) !important;
+    max-width: calc(100vw - 16px) !important;
   }
 
   .lightbox-img {
-    max-height: calc(100dvh - 180px) !important;
+    max-height: calc(100dvh - 185px) !important;
+    max-width: calc(100vw - 16px) !important;
   }
 
   .lightbox-onphoto-select-btn,
@@ -1086,19 +1091,25 @@ body.lightbox-open header {
 
   .lightbox-below-bar,
   .lightbox-onphoto-bottom-bar {
-    bottom: 12px !important;
+    bottom: 10px !important;
     width: calc(100% - 16px) !important;
+    height: 44px !important;
     gap: 0.45rem !important;
+    z-index: 95 !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 
   .lightbox-comment-wrap,
   .lightbox-onphoto-comment-wrap {
     padding: 2px 10px !important;
+    height: 44px !important;
   }
 
   .lightbox-comment-input,
   .lightbox-onphoto-comment-input {
-    height: 40px !important;
+    height: 38px !important;
     font-size: 0.82rem !important;
   }
 
@@ -1112,6 +1123,10 @@ body.lightbox-open header {
     height: 44px !important;
     padding: 0 0.95rem !important;
     font-size: 0.82rem !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 
   #lightbox-comment-btn {
