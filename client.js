@@ -707,12 +707,14 @@ function openLightbox(index, direction) {
   updateLightboxCommentButton();
   attachLightboxOverlayButtonEvents();
   if (modal) modal.classList.add('active');
+  document.body.classList.add('lightbox-open');
   document.body.style.overflow = 'hidden';
 }
 
 function closeLightbox() {
   const modal = document.getElementById('lightbox-modal');
   if (modal) modal.classList.remove('active');
+  document.body.classList.remove('lightbox-open');
   document.body.style.overflow = '';
   resetLightboxTransform();
 }
