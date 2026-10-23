@@ -85,85 +85,129 @@
       border-radius: 12px;
     }
 
-    .lightbox-onphoto-select-btn {
-      position: absolute;
-      top: 14px;
-      right: 14px;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(10, 14, 26, 0.85);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 2px solid rgba(255, 255, 255, 0.55);
-      color: #ffffff;
-      font-size: 1.5rem;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-      z-index: 9999 !important;
-      user-select: none !important;
-      touch-action: manipulation !important;
+    /* 1. Centered Dedicated Action Buttons Bar: Select (Left) + Favorite (Right) - Exactly at Red Mark location */
+    .lightbox-actions-bar {
+      position: absolute !important;
+      bottom: 74px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 12px !important;
+      width: calc(100% - 24px) !important;
+      max-width: 440px !important;
+      z-index: 60 !important;
+      box-sizing: border-box !important;
       pointer-events: auto !important;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .lightbox-onphoto-select-btn * {
-      pointer-events: none !important;
-    }
-    .lightbox-onphoto-select-btn:hover {
-      transform: scale(1.12);
-      border-color: var(--gold-400);
-    }
-    .lightbox-onphoto-select-btn.selected {
-      background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%) !important;
-      border-color: #fef08a !important;
-      color: #000000 !important;
-      box-shadow: 0 0 25px rgba(234, 179, 8, 0.9) !important;
-      transform: scale(1.08);
+      user-select: none !important;
+      -webkit-user-select: none !important;
     }
 
-    .lightbox-onphoto-heart-btn {
-      position: absolute;
-      top: 72px;
-      right: 14px;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(10, 14, 26, 0.85);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 2px solid rgba(255, 255, 255, 0.45);
-      color: #ffffff;
-      font-size: 1.35rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-      z-index: 9999 !important;
-      user-select: none !important;
+    .lightbox-action-btn {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      height: 46px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 8px !important;
+      border-radius: 25px !important;
+      font-family: inherit !important;
+      font-size: 0.95rem !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.02em !important;
+      cursor: pointer !important;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      box-sizing: border-box !important;
       touch-action: manipulation !important;
       pointer-events: auto !important;
-      -webkit-tap-highlight-color: transparent;
+      user-select: none !important;
+      -webkit-tap-highlight-color: transparent !important;
     }
-    .lightbox-onphoto-heart-btn * {
+
+    .lightbox-action-btn * {
       pointer-events: none !important;
     }
-    .lightbox-onphoto-heart-btn:hover {
-      transform: scale(1.12);
-      border-color: #ef4444;
+
+    .lightbox-action-btn .action-btn-icon {
+      font-size: 1.15rem !important;
+      line-height: 1 !important;
     }
-    .lightbox-onphoto-heart-btn.favorited {
-      background: #ef4444 !important;
-      border-color: #f87171 !important;
+
+    .lightbox-action-btn .action-btn-text {
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    /* Select Button (Default State) */
+    .lightbox-action-btn.select-btn {
+      background: rgba(18, 24, 38, 0.92) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      border: 1.8px solid rgba(212, 175, 55, 0.5) !important;
+      color: #fef08a !important;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    .lightbox-action-btn.select-btn:hover {
+      border-color: #fde047 !important;
+      background: rgba(30, 38, 60, 0.96) !important;
+      transform: translateY(-2px) !important;
+      box-shadow: 0 6px 22px rgba(234, 179, 8, 0.35) !important;
+    }
+
+    .lightbox-action-btn.select-btn:active {
+      transform: scale(0.97) !important;
+    }
+
+    /* Select Button (Active / Selected State - Golden Glow) */
+    .lightbox-action-btn.select-btn.selected {
+      background: linear-gradient(135deg, #fde047 0%, #eab308 50%, #ca8a04 100%) !important;
+      border-color: #fef9c3 !important;
+      color: #000000 !important;
+      font-weight: 800 !important;
+      box-shadow: 0 0 25px rgba(234, 179, 8, 0.85), 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* Heart Button (Default State) */
+    .lightbox-action-btn.heart-btn {
+      background: rgba(18, 24, 38, 0.92) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      border: 1.8px solid rgba(255, 255, 255, 0.32) !important;
       color: #ffffff !important;
-      box-shadow: 0 0 25px rgba(239, 68, 68, 0.9) !important;
-      transform: scale(1.08);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    .lightbox-action-btn.heart-btn:hover {
+      border-color: #f87171 !important;
+      background: rgba(40, 20, 28, 0.95) !important;
+      color: #fca5a5 !important;
+      transform: translateY(-2px) !important;
+      box-shadow: 0 6px 22px rgba(239, 68, 68, 0.35) !important;
+    }
+
+    .lightbox-action-btn.heart-btn:active {
+      transform: scale(0.97) !important;
+    }
+
+    /* Heart Button (Active / Favorited State - Deep Vivid Red) */
+    .lightbox-action-btn.heart-btn.favorited {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%) !important;
+      border-color: #fca5a5 !important;
+      color: #ffffff !important;
+      font-weight: 800 !important;
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.85), 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* Legacy on-photo buttons hidden to prevent face obstruction */
+    .lightbox-onphoto-select-btn,
+    .lightbox-onphoto-heart-btn {
+      display: none !important;
     }
 
     /* Below-Photo Bar: Comment Box (Left) + Close Button (Right) */
@@ -363,28 +407,29 @@
       .lightbox-next { right: 0.35rem !important; }
 
       .lightbox-photo-frame {
-        max-height: calc(100dvh - 150px) !important;
+        max-height: calc(100dvh - 180px) !important;
       }
       .lightbox-img {
-        max-height: calc(100dvh - 150px) !important;
+        max-height: calc(100dvh - 180px) !important;
       }
-      .lightbox-onphoto-select-btn {
-        top: 12px !important;
-        right: 12px !important;
-        width: 48px !important;
-        height: 48px !important;
-        font-size: 1.45rem !important;
+      .lightbox-actions-bar {
+        bottom: 66px !important;
+        width: calc(100% - 16px) !important;
+        gap: 8px !important;
       }
+      .lightbox-action-btn {
+        height: 44px !important;
+        font-size: 0.88rem !important;
+        border-radius: 22px !important;
+        gap: 6px !important;
+      }
+      .lightbox-onphoto-select-btn,
       .lightbox-onphoto-heart-btn {
-        top: 68px !important;
-        right: 12px !important;
-        width: 48px !important;
-        height: 48px !important;
-        font-size: 1.3rem !important;
+        display: none !important;
       }
       .lightbox-below-bar,
       .lightbox-onphoto-bottom-bar {
-        bottom: 14px !important;
+        bottom: 12px !important;
         width: calc(100% - 16px) !important;
         gap: 0.45rem !important;
       }
