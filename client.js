@@ -154,7 +154,7 @@ function renderClientHeader() {
   const studioBrandEl = document.getElementById('client-studio-brand');
 
   if (titleEl) titleEl.textContent = (currentClient.eventName || 'Wedding').toUpperCase();
-  if (namesEl) namesEl.textContent = currentClient.name || 'Valued Client';
+  if (namesEl) namesEl.textContent = (currentClient.name || 'Valued Client').toUpperCase();
   if (dateEl) dateEl.textContent = currentClient.eventDate ? `EVENT DATE: ${currentClient.eventDate}` : 'WEDDING COLLECTION';
   if (limitEl) limitEl.textContent = currentClient.selectionLimit || 350;
 

@@ -11,9 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=20261023_v8">
-  <link rel="stylesheet" href="client.css?v=20261023_v8">
-  <link rel="stylesheet" href="css/client.css?v=20261023_v8">
+  <link rel="stylesheet" href="css/main.css?v=20261023_v9">
+  <link rel="stylesheet" href="client.css?v=20261023_v9">
+  <link rel="stylesheet" href="css/client.css?v=20261023_v9">
 
   <style>
     /* When Lightbox is active, completely hide the entire background gallery & header so NOTHING peeks through */
@@ -557,32 +557,108 @@
         display: none !important;
       }
     }
+
+    /* Centered Couple Name Navigation Bar */
+    .client-nav-grid {
+      display: grid !important;
+      grid-template-columns: 1fr auto 1fr !important;
+      align-items: center !important;
+      width: 100% !important;
+      max-width: 1400px !important;
+      margin: 0 auto !important;
+    }
+    .client-nav-left {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      min-width: 0 !important;
+    }
+    .client-nav-center {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-align: center !important;
+      min-width: 0 !important;
+      padding: 0 0.5rem !important;
+    }
+    .client-nav-right {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-end !important;
+      min-width: 0 !important;
+    }
+    .client-header-couple {
+      font-family: var(--font-serif, 'Cinzel', serif) !important;
+      font-size: 1.35rem !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.08em !important;
+      text-transform: uppercase !important;
+      background: linear-gradient(135deg, #fff2cc 0%, #d4af37 50%, #aa8010 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      filter: drop-shadow(0 2px 8px rgba(212, 175, 55, 0.35)) !important;
+      white-space: nowrap !important;
+      text-overflow: ellipsis !important;
+      overflow: hidden !important;
+      max-width: 100% !important;
+    }
+
+    @media (max-width: 768px) {
+      .client-header-couple {
+        font-size: 1.05rem !important;
+        letter-spacing: 0.04em !important;
+      }
+      .brand-logo .brand-subtitle {
+        display: none !important;
+      }
+      .brand-logo .brand-title {
+        font-size: 1.15rem !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .client-header-couple {
+        font-size: 0.92rem !important;
+        letter-spacing: 0.02em !important;
+      }
+      .brand-logo .brand-title {
+        font-size: 1rem !important;
+      }
+      .brand-logo svg {
+        width: 22px !important;
+        height: 22px !important;
+      }
+    }
   </style>
 </head>
 <body>
 
   <!-- Site Header -->
-  <!-- Site Header -->
   <header class="site-header">
-    <div class="nav-container">
-      <a href="index.html" class="brand-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-          <circle cx="12" cy="13" r="4"></circle>
-        </svg>
-        <div>
-          <div class="brand-title" id="client-studio-brand">DM FILMS</div>
-          <div class="brand-subtitle">Client Portal</div>
-        </div>
-      </a>
+    <div class="nav-container client-nav-grid">
+      <!-- Left: Studio Logo -->
+      <div class="client-nav-left">
+        <a href="index.html" class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <div>
+            <div class="brand-title" id="client-studio-brand">DM FILMS</div>
+            <div class="brand-subtitle">Client Portal</div>
+          </div>
+        </a>
+      </div>
 
-      <!-- Event Name & Date moved up into Top Header -->
-      <div style="display:flex;align-items:center;gap:1.25rem;">
-        <div style="text-align:right;">
-          <div class="gold-gradient-text" id="client-event-title" style="font-family:var(--font-serif);font-weight:700;font-size:1.15rem;letter-spacing:0.06em;line-height:1.2;">WEDDING</div>
-          <div id="client-event-date" style="font-size:0.75rem;color:var(--text-gold);letter-spacing:0.1em;text-transform:uppercase;font-weight:500;">EVENT DATE: 2025-10-16</div>
-        </div>
-        <span class="badge badge-gold" id="client-names" style="font-size:0.85rem;padding:0.4rem 0.9rem;">Loading...</span>
+      <!-- Center: Couple Name in Luxury Gold Serif Typography -->
+      <div class="client-nav-center">
+        <div class="client-header-couple" id="client-names">Loading...</div>
+      </div>
+
+      <!-- Right: Balance spacer / Hidden elements for JS compatibility -->
+      <div class="client-nav-right">
+        <div id="client-event-title" style="display:none;"></div>
+        <div id="client-event-date" style="display:none;"></div>
       </div>
     </div>
   </header>
@@ -786,9 +862,9 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261023_v8" onerror="this.onerror=null;this.src='config.js?v=20261023_v8';"></script>
-  <script src="js/api.js?v=20261023_v8" onerror="this.onerror=null;this.src='api.js?v=20261023_v8';"></script>
-  <script src="client.js?v=20261023_v8" onerror="this.onerror=null;this.src='js/client.js?v=20261023_v8';"></script>
+  <script src="js/config.js?v=20261023_v9" onerror="this.onerror=null;this.src='config.js?v=20261023_v9';"></script>
+  <script src="js/api.js?v=20261023_v9" onerror="this.onerror=null;this.src='api.js?v=20261023_v9';"></script>
+  <script src="client.js?v=20261023_v9" onerror="this.onerror=null;this.src='js/client.js?v=20261023_v9';"></script>
 
   <!-- Gesture engine is handled by js/client.js → initLightboxZoomEvents() -->
 </body>
