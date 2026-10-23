@@ -25,7 +25,7 @@ let startPanY = 0;
 
 async function initClientPortal() {
   const urlParams = new URLSearchParams(window.location.search);
-  const clientCode = urlParams.get('code') || urlParams.get('c') || urlParams.get('id') || 'RAJ2026';
+  const clientCode = urlParams.get('code') || urlParams.get('c') || urlParams.get('id') || 'PS253';
 
   if (!clientCode) {
     showAccessCodePrompt();
@@ -796,50 +796,48 @@ window.openLightboxCommentModal = openLightboxCommentModal;
 window.saveNoteFromModal = saveNoteFromModal;
 
 // ── Lightbox Select & Heart toggle (mobile + desktop) ──────────────────────
-let _lbSelectLock = false;
+let lastSelectToggleTime = 0;
 function toggleCurrentLightboxPhoto(e) {
-  if (e) { e.stopPropagation(); e.preventDefault(); }
-  if (_lbSelectLock) return;
-  _lbSelectLock = true;
-  setTimeout(() => { _lbSelectLock = false; }, 500);
-  const photos = currentClient.photos || [];
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  const now = Date.now();
+  if (now - lastSelectToggleTime < 300) return;
+  lastSelectToggleTime = now;
+
+  const photos = currentClient?.photos || [];
   if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
   const photo = photos[currentLightboxIndex];
-  if (photo) toggleSelectPhoto(photo.id);
+  if (photo) {
+    toggleSelectPhoto(photo.id);
+  }
 }
 
-let _lbHeartLock = false;
+let lastFavoriteToggleTime = 0;
 function toggleCurrentLightboxFavorite(e) {
-  if (e) { e.stopPropagation(); e.preventDefault(); }
-  if (_lbHeartLock) return;
-  _lbHeartLock = true;
-  setTimeout(() => { _lbHeartLock = false; }, 500);
-  const photos = currentClient.photos || [];
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  const now = Date.now();
+  if (now - lastFavoriteToggleTime < 300) return;
+  lastFavoriteToggleTime = now;
+
+  const photos = currentClient?.photos || [];
   if (currentLightboxIndex < 0 || currentLightboxIndex >= photos.length) return;
   const photo = photos[currentLightboxIndex];
-  if (photo) toggleFavoritePhoto(photo.id);
+  if (photo) {
+    toggleFavoritePhoto(photo.id);
+  }
 }
 
-// Called once on page load – attaches touch listeners directly on buttons
+// Attach lightbox overlay button events (called once after DOM ready)
 function attachLightboxOverlayButtonEvents() {
-  // Select button
   const selBtn = document.getElementById('lightbox-overlay-select');
   if (selBtn) {
-    selBtn.addEventListener('touchend', function(e) {
-      e.stopPropagation();
-      e.preventDefault();         // prevents the follow-up synthetic click
-      toggleCurrentLightboxPhoto(e);
-    }, { passive: false });
+    selBtn.onclick = function(e) { toggleCurrentLightboxPhoto(e); };
+    selBtn.ontouchend = function(e) { toggleCurrentLightboxPhoto(e); };
   }
 
-  // Heart button
   const hrtBtn = document.getElementById('lightbox-overlay-heart');
   if (hrtBtn) {
-    hrtBtn.addEventListener('touchend', function(e) {
-      e.stopPropagation();
-      e.preventDefault();         // prevents the follow-up synthetic click
-      toggleCurrentLightboxFavorite(e);
-    }, { passive: false });
+    hrtBtn.onclick = function(e) { toggleCurrentLightboxFavorite(e); };
+    hrtBtn.ontouchend = function(e) { toggleCurrentLightboxFavorite(e); };
   }
 }
 
