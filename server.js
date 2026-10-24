@@ -16,9 +16,13 @@ function getLocalIpAddress() {
   let fallbackIp = null;
 
   for (const name of Object.keys(interfaces)) {
+    // Skip virtual Hyper-V, WSL, and Docker adapters
+    if (name.toLowerCase().includes('vethernet') || name.toLowerCase().includes('virtual') || name.toLowerCase().includes('wsl')) continue;
     for (const net of interfaces[name]) {
       if (net.family === 'IPv4' && !net.internal) {
-        if (net.address.startsWith('192.168.') || net.address.startsWith('10.') || net.address.startsWith('172.')) {
+        if (net.address.startsWith('192.168.')) {
+          return net.address;
+        } else if (net.address.startsWith('10.')) {
           wifiIp = net.address;
         } else {
           fallbackIp = net.address;
@@ -1697,7 +1701,7 @@ const server = http.createServer(async (req, res) => {
           const { clientId, driveFile, subfolder } = JSON.parse(body);
 
           // Skip directory objects or non-image entries
-          if (!driveFile.name || !/\.(jpe?g|png|webp|gif|bmp|heic|raw|cr2|nef|arw)$/i.test(driveFile.name)) {
+          if (!driveFile.name || !/\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(driveFile.name)) {
             sendJSON({ skipped: true });
             return;
           }
@@ -1745,7 +1749,7 @@ const server = http.createServer(async (req, res) => {
             } else {
               client.photos.push(photoObj);
             }
-            client.photos = client.photos.filter(p => p.size > 0 && /\.(jpe?g|png|webp|gif|bmp|heic|raw|cr2|nef|arw)$/i.test(p.name));
+            client.photos = client.photos.filter(p => p.size > 0 && /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(p.name));
             client.photosCount = client.photos.length;
             saveDB(db);
           }
@@ -2570,7 +2574,7 @@ async function syncClientPhotosFromDrive(client, db) {
           if (subResp.statusCode < 400) {
             const subData = subResp.json();
             for (const sf of (subData.files || [])) {
-              if (sf.name && /\.(jpe?g|png|webp|gif|bmp|heic|raw|cr2|nef|arw)$/i.test(sf.name)) {
+              if (sf.name && /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(sf.name)) {
                 const key = subfolderName + '/' + sf.name;
                 if (!seenKeys.has(key)) {
                   seenKeys.add(key);
@@ -2591,7 +2595,7 @@ async function syncClientPhotosFromDrive(client, db) {
           }
         } while (subPageToken);
 
-      } else if (item.name && /\.(jpe?g|png|webp|gif|bmp|heic|raw|cr2|nef|arw)$/i.test(item.name)) {
+      } else if (item.name && /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(item.name)) {
         const key = 'Original/' + item.name;
         if (!seenKeys.has(key)) {
           seenKeys.add(key);
@@ -2619,9 +2623,35 @@ async function syncClientPhotosFromDrive(client, db) {
   return false;
 }
 
-    // 9. Image Proxy / Streaming (Supports Thumbnails & High-Res with Automatic Redirect Following)
+    // 9. Image Proxy / Streaming with High-Speed Disk Caching & 302 Global CDN Fallback
     if (pathname.startsWith('/api/image/')) {
       const fileId = pathname.replace('/api/image/', '').trim();
+      const cacheDir = path.join(__dirname, '.cache', 'images');
+      const cachedFilePath = path.join(cacheDir, `${fileId}.webp`);
+
+      // 1. Instant Cache Hit from local SSD (0ms latency, zero API quotas consumed)
+      try {
+        if (fs.existsSync(cachedFilePath)) {
+          const stat = fs.statSync(cachedFilePath);
+          if (stat.size > 200) {
+            res.writeHead(200, {
+              'Content-Type': 'image/webp',
+              'Content-Length': stat.size,
+              'Cache-Control': 'public, max-age=604800, immutable'
+            });
+            fs.createReadStream(cachedFilePath).pipe(res);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // 2. Fetch from Google Drive API with automatic local caching + 302 CDN failover
+      try {
+        if (!fs.existsSync(cacheDir)) {
+          fs.mkdirSync(cacheDir, { recursive: true });
+        }
+      } catch (e) {}
+
       const token = await getDriveAccessToken();
 
       try {
@@ -2639,26 +2669,40 @@ async function syncClientPhotosFromDrive(client, db) {
                 return resolve(fetchImage(driveRes.headers.location, false));
               }
 
+              // If Google Drive rate limits (403, 429) or fails, seamlessly 302 redirect to Google CDN
               if (driveRes.statusCode >= 400) {
+                driveRes.resume();
                 if (!res.headersSent) {
-                  res.writeHead(driveRes.statusCode, { 'Content-Type': 'text/plain' });
-                  res.end(`Image error: ${driveRes.statusCode}`);
+                  res.writeHead(302, {
+                    'Location': `https://lh3.googleusercontent.com/d/${fileId}=w1600`,
+                    'Cache-Control': 'public, max-age=86400'
+                  });
+                  res.end();
                 }
                 return resolve();
               }
 
+              const contentType = driveRes.headers['content-type'] || 'image/webp';
               res.writeHead(200, {
-                'Content-Type': driveRes.headers['content-type'] || 'image/jpeg',
-                'Cache-Control': 'public, max-age=86400'
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=604800'
               });
+
+              // Pipe to client response AND save to local cache simultaneously
+              const fileStream = fs.createWriteStream(cachedFilePath);
               driveRes.pipe(res);
+              driveRes.pipe(fileStream);
+
+              fileStream.on('error', () => {});
               driveRes.on('end', () => resolve());
             });
 
             req.on('error', () => {
               if (!res.headersSent) {
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('Image streaming error');
+                res.writeHead(302, {
+                  'Location': `https://lh3.googleusercontent.com/d/${fileId}=w1600`
+                });
+                res.end();
               }
               resolve();
             });
@@ -2668,8 +2712,10 @@ async function syncClientPhotosFromDrive(client, db) {
         await fetchImage(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`, true);
       } catch (err) {
         if (!res.headersSent) {
-          res.writeHead(500, { 'Content-Type': 'text/plain' });
-          res.end('Image error: ' + err.message);
+          res.writeHead(302, {
+            'Location': `https://lh3.googleusercontent.com/d/${fileId}=w1600`
+          });
+          res.end();
         }
       }
       return;
@@ -2720,8 +2766,8 @@ async function syncClientPhotosFromDrive(client, db) {
           await syncClientPhotosFromDrive(client, db);
         }
 
-        // Clean & ensure only real image photos are returned
-        client.photos = (client.photos || []).filter(p => p.size > 0 && /\.(jpe?g|png|webp|gif|bmp|heic|raw|cr2|nef|arw)$/i.test(p.name));
+        // Clean & ensure all supported photo formats are returned
+        client.photos = (client.photos || []).filter(p => p.size > 0 && /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(p.name));
         client.photosCount = client.photos.length;
 
         sendJSON(client);

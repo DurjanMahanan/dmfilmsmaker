@@ -103,8 +103,8 @@ function verifyClientPin(e) {
 }
 
 function loadAndRenderClientGallery() {
-  // Clean & filter only real photos (exclude folders / zero bytes)
-  currentClient.photos = (currentClient.photos || []).filter(p => p.size > 0 && /\.(jpe?g|png|webp|gif|bmp|heic|raw|cr2|nef|arw)$/i.test(p.name));
+  // Clean & filter only real photos (exclude folders / zero bytes) - Supports ALL camera RAW & image formats
+  currentClient.photos = (currentClient.photos || []).filter(p => p.size > 0 && /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(p.name));
   
   // Natural alphanumeric sort for photos (e.g. DSC_001, DSC_002, 1, 2, 10, A, B...)
   currentClient.photos.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' }));
@@ -295,7 +295,7 @@ function renderGallery() {
     return `
       <div class="gallery-item ${isSelected ? 'selected' : ''}" id="photo-${photo.id}" data-id="${photo.id}">
         <div class="gallery-img-wrap" onclick="openLightbox(${originalIndex})">
-          <img src="${photo.thumbnailUrl || photo.url}" class="gallery-img" alt="${escapeHtml(photo.name)}" loading="lazy">
+          <img src="${photo.thumbnailUrl || photo.url}" class="gallery-img" alt="${escapeHtml(photo.name)}" loading="lazy" onerror="handlePhotoLoadError(this, '${photo.id}')">
           <span class="photo-number-badge">#${String(originalIndex + 1).padStart(3, '0')}</span>
         </div>
         <button class="photo-select-btn" onclick="toggleSelectPhoto('${photo.id}', event)" title="${isSelected ? 'Unselect Photo' : 'Select Photo'}">
@@ -317,6 +317,23 @@ function renderGallery() {
     `;
   }).join('');
 }
+
+// Multi-CDN Image Failover Handler: If local server or proxy hits Google rate limits, seamlessly fall back to Google CDN
+function handlePhotoLoadError(imgEl, photoId) {
+  if (!imgEl) return;
+  const retries = Number(imgEl.dataset.retryCount || 0);
+  if (retries === 0) {
+    imgEl.dataset.retryCount = '1';
+    imgEl.src = `https://lh3.googleusercontent.com/d/${photoId}=w1600`;
+  } else if (retries === 1) {
+    imgEl.dataset.retryCount = '2';
+    imgEl.src = `https://drive.google.com/thumbnail?id=${photoId}&sz=w1600`;
+  } else if (retries === 2) {
+    imgEl.dataset.retryCount = '3';
+    imgEl.src = `/api/image/${photoId}?t=${Date.now()}`;
+  }
+}
+window.handlePhotoLoadError = handlePhotoLoadError;
 
 // --- Selection & Favorites State Handlers ---
 function toggleSelectPhoto(photoId, event) {
@@ -748,6 +765,15 @@ function openLightbox(index, direction) {
       void img.offsetWidth; // Trigger reflow for smooth animation
       img.classList.add('slide-in-left');
     }
+    img.onerror = function() {
+      if (!this._retried) {
+        this._retried = 1;
+        this.src = `https://lh3.googleusercontent.com/d/${photo.id}=w2048`;
+      } else if (this._retried === 1) {
+        this._retried = 2;
+        this.src = `https://drive.google.com/thumbnail?id=${photo.id}&sz=w2048`;
+      }
+    };
     img.src = photo.url || photo.thumbnailUrl;
   }
   if (title) title.textContent = photo.name;
@@ -1559,3 +1585,4 @@ window.toggleStickyControls = toggleStickyControls;
 window.saveCurrentLightboxCommentExplicit = saveCurrentLightboxCommentExplicit;
 window.openPhotoCommentModal = openPhotoCommentModal;
 window.saveNoteFromModal = saveNoteFromModal;
+window.handlePhotoLoadError = handlePhotoLoadError;

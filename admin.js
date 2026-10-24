@@ -1092,7 +1092,7 @@ function handleFilesSelected(files) {
   if (client) currentUploadClientId = client.id;
 
   const validFiles = Array.from(files).filter(f => {
-    return f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|heic|heif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf)$/i.test(f.name);
+    return f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(f.name);
   });
 
   if (validFiles.length === 0) {
@@ -1171,51 +1171,163 @@ function startBatchUpload() {
   processUploadQueue();
 }
 
-// Extract Embedded JPEG Preview from Camera RAW files (.ARW, .CR2, .CR3, .NEF, .DNG, etc.)
+// Extract Embedded Full HD JPEG Preview from Camera RAW files (.ARW, .CR2, .CR3, .NEF, .DNG, .RAF, .ORF, .RW2, etc.)
 async function extractEmbeddedJpegFromRaw(file) {
   try {
-    const readSize = Math.min(file.size, 24 * 1024 * 1024);
+    const readSize = Math.min(file.size, 36 * 1024 * 1024);
     const slice = file.slice(0, readSize);
     const arrayBuffer = await slice.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     const len = bytes.length;
 
+    // 1. TIFF IFD Tag Parser (Sony ARW, Nikon NEF, Canon CR2, Adobe DNG, Pentax PEF, Olympus ORF)
+    if (len > 8 && ((bytes[0] === 0x49 && bytes[1] === 0x49 && bytes[2] === 0x2A && bytes[3] === 0x00) ||
+                   (bytes[0] === 0x4D && bytes[1] === 0x4D && bytes[2] === 0x00 && bytes[3] === 0x2A))) {
+      const isLE = bytes[0] === 0x49;
+      const read16 = (o) => isLE ? bytes[o] | (bytes[o + 1] << 8) : (bytes[o] << 8) | bytes[o + 1];
+      const read32 = (o) => isLE ? (bytes[o] | (bytes[o + 1] << 8) | (bytes[o + 2] << 16) | (bytes[o + 3] << 24)) >>> 0 :
+                                  ((bytes[o] << 24) | (bytes[o + 1] << 16) | (bytes[o + 2] << 8) | bytes[o + 3]) >>> 0;
+
+      let ifdOffset = read32(4);
+      let bestJpeg = null;
+
+      while (ifdOffset > 0 && ifdOffset < len - 2) {
+        const numEntries = read16(ifdOffset);
+        const nextOffset = ifdOffset + 2 + numEntries * 12;
+        let jpegOffset = 0, jpegLen = 0;
+        const subIfdOffsets = [];
+
+        for (let i = 0; i < numEntries; i++) {
+          const entryOffset = ifdOffset + 2 + i * 12;
+          if (entryOffset + 12 > len) break;
+          const tag = read16(entryOffset);
+          const count = read32(entryOffset + 4);
+          const valOffset = read32(entryOffset + 8);
+
+          if (tag === 0x0201) { // JPEGInterchangeFormat
+            jpegOffset = valOffset;
+          } else if (tag === 0x0202) { // JPEGInterchangeFormatLength
+            jpegLen = valOffset;
+          } else if (tag === 0x014A) { // SubIFDs
+            if (count === 1) subIfdOffsets.push(valOffset);
+            else if (count > 1 && valOffset + count * 4 <= len) {
+              for (let c = 0; c < Math.min(count, 4); c++) {
+                subIfdOffsets.push(read32(valOffset + c * 4));
+              }
+            }
+          }
+        }
+
+        if (jpegOffset > 0 && jpegLen > 25000 && jpegOffset + jpegLen <= len) {
+          if (!bestJpeg || jpegLen > bestJpeg.len) {
+            bestJpeg = { offset: jpegOffset, len: jpegLen };
+          }
+        }
+
+        for (const sOffset of subIfdOffsets) {
+          if (sOffset > 0 && sOffset < len - 2) {
+            const sEntries = read16(sOffset);
+            let sJpegOffset = 0, sJpegLen = 0;
+            for (let si = 0; si < sEntries; si++) {
+              const seOff = sOffset + 2 + si * 12;
+              if (seOff + 12 > len) break;
+              const sTag = read16(seOff);
+              const sVal = read32(seOff + 8);
+              if (sTag === 0x0201) sJpegOffset = sVal;
+              else if (sTag === 0x0202) sJpegLen = sVal;
+            }
+            if (sJpegOffset > 0 && sJpegLen > 25000 && sJpegOffset + sJpegLen <= len) {
+              if (!bestJpeg || sJpegLen > bestJpeg.len) {
+                bestJpeg = { offset: sJpegOffset, len: sJpegLen };
+              }
+            }
+          }
+        }
+
+        if (nextOffset < len - 4) {
+          ifdOffset = read32(nextOffset);
+        } else {
+          break;
+        }
+      }
+
+      if (bestJpeg) {
+        try {
+          const blob = new Blob([bytes.subarray(bestJpeg.offset, bestJpeg.offset + bestJpeg.len)], { type: 'image/jpeg' });
+          const testBmp = await createImageBitmap(blob);
+          if (testBmp && testBmp.width > 200) {
+            if (testBmp.close) testBmp.close();
+            return blob;
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 2. Canon CR3 Parser (ISOBMFF container with PRVW preview atom)
+    const prvwStr = 'PRVW';
+    for (let i = 0; i < Math.min(len - 100, 3 * 1024 * 1024); i++) {
+      if (bytes[i] === 0x50 && bytes[i + 1] === 0x52 && bytes[i + 2] === 0x56 && bytes[i + 3] === 0x57) { // PRVW
+        for (let p = i; p < Math.min(i + 256, len - 3); p++) {
+          if (bytes[p] === 0xFF && bytes[p + 1] === 0xD8 && bytes[p + 2] === 0xFF) {
+            for (let e = p + 50000; e < len - 1; e++) {
+              if (bytes[e] === 0xFF && bytes[e + 1] === 0xD9) {
+                try {
+                  const blob = new Blob([bytes.subarray(p, e + 2)], { type: 'image/jpeg' });
+                  const testBmp = await createImageBitmap(blob);
+                  if (testBmp && testBmp.width > 200) {
+                    if (testBmp.close) testBmp.close();
+                    return blob;
+                  }
+                } catch (err) {}
+                break;
+              }
+            }
+            break;
+          }
+        }
+        break;
+      }
+    }
+
+    // 3. Fuji RAF Parser (Header offset 84/88 contains JPEG preview position)
+    if (len > 92 && bytes[0] === 0x46 && bytes[1] === 0x55 && bytes[2] === 0x4A && bytes[3] === 0x49) { // FUJIFILM
+      const jOff = ((bytes[84] << 24) | (bytes[85] << 16) | (bytes[86] << 8) | bytes[87]) >>> 0;
+      const jLen = ((bytes[88] << 24) | (bytes[89] << 16) | (bytes[90] << 8) | bytes[91]) >>> 0;
+      if (jOff > 0 && jLen > 25000 && jOff + jLen <= len) {
+        try {
+          const blob = new Blob([bytes.subarray(jOff, jOff + jLen)], { type: 'image/jpeg' });
+          const testBmp = await createImageBitmap(blob);
+          if (testBmp && testBmp.width > 200) {
+            if (testBmp.close) testBmp.close();
+            return blob;
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 4. Linear Scan with Structural JPEG Validation
     const soiMarkers = [];
-    const eoiMarkers = [];
-
-    // Single linear pass over byte array (Blistering fast 2ms scan for 24MB RAW files)
-    for (let i = 0; i < len - 1; i++) {
-      if (bytes[i] === 0xFF) {
-        if (bytes[i + 1] === 0xD8 && (i + 2 < len && bytes[i + 2] === 0xFF)) {
-          soiMarkers.push(i);
-        } else if (bytes[i + 1] === 0xD9) {
-          eoiMarkers.push(i + 2);
-        }
+    for (let i = 0; i < len - 4; i++) {
+      if (bytes[i] === 0xFF && bytes[i + 1] === 0xD8 && bytes[i + 2] === 0xFF) {
+        soiMarkers.push(i);
       }
     }
 
-    const candidates = [];
-    for (const start of soiMarkers) {
-      for (const end of eoiMarkers) {
-        if (end > start + 30 * 1024 && end - start < 12 * 1024 * 1024) {
-          candidates.push({ start, end, size: end - start });
+    for (let sIdx = soiMarkers.length - 1; sIdx >= 0; sIdx--) {
+      const start = soiMarkers[sIdx];
+      for (let e = start + 30000; e < Math.min(start + 15 * 1024 * 1024, len - 1); e++) {
+        if (bytes[e] === 0xFF && bytes[e + 1] === 0xD9) {
+          try {
+            const blob = new Blob([bytes.subarray(start, e + 2)], { type: 'image/jpeg' });
+            const testBmp = await createImageBitmap(blob);
+            if (testBmp && testBmp.width > 200 && testBmp.height > 200) {
+              if (testBmp.close) testBmp.close();
+              return blob;
+            }
+            if (testBmp && testBmp.close) testBmp.close();
+          } catch (e) {}
         }
       }
-    }
-
-    // Sort candidate JPEGs by size descending (largest HD preview first)
-    candidates.sort((a, b) => b.size - a.size);
-
-    for (const cand of candidates.slice(0, 10)) {
-      try {
-        const blob = new Blob([bytes.subarray(cand.start, cand.end)], { type: 'image/jpeg' });
-        const testBmp = await createImageBitmap(blob);
-        if (testBmp && testBmp.width > 200 && testBmp.height > 200) {
-          if (testBmp.close) testBmp.close();
-          return blob;
-        }
-        if (testBmp && testBmp.close) testBmp.close();
-      } catch (e) {}
     }
   } catch (err) {
     console.warn('Linear RAW JPEG extraction fallback for:', file.name, err);
@@ -1228,7 +1340,7 @@ async function getOptimizedFileForUpload(file) {
   if (!file) return file;
 
   const isRaw = /\.(raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf)$/i.test(file.name);
-  const isStandardImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp|bmp|heic)$/i.test(file.name);
+  const isStandardImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|avif)$/i.test(file.name);
 
   if (!isRaw && !isStandardImg) return file;
   if (!isRaw && file.size <= 120 * 1024) return file;
