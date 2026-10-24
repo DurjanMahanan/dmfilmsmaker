@@ -12,8 +12,8 @@
   
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/main.css?v=20261024_v7">
-  <link rel="stylesheet" href="client.css?v=20261024_v8">
-  <link rel="stylesheet" href="css/client.css?v=20261024_v8">
+  <link rel="stylesheet" href="client.css?v=20261024_v9">
+  <link rel="stylesheet" href="css/client.css?v=20261024_v9">
 
   <style>
     /* When Lightbox is active, completely hide the entire background gallery & header so NOTHING peeks through */
@@ -497,6 +497,7 @@
         max-width: 120px !important;
       }
       #lightbox-selected-badge,
+      #lightbox-favorite-badge,
       #lightbox-zoom-badge {
         font-size: 0.72rem !important;
         padding: 0.2rem 0.55rem !important;
@@ -1216,6 +1217,7 @@
         <span id="lightbox-photo-number" class="badge badge-gold">#001</span>
         <span id="lightbox-photo-title">Photo Preview</span>
         <span id="lightbox-selected-badge" class="badge badge-gold" style="font-weight:700;font-size:0.8rem;letter-spacing:0.03em;background:rgba(212,175,55,0.2);border:1px solid rgba(212,175,55,0.45);color:#fde047;">Selected: 0 / 250</span>
+        <span id="lightbox-favorite-badge" class="badge" style="display:none;font-weight:700;font-size:0.8rem;letter-spacing:0.03em;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.45);color:#fca5a5;align-items:center;gap:4px;">❤️ Favorites: 0</span>
       </div>
       <div style="display:flex;align-items:center;gap:0.5rem;">
         <button class="modal-close" onclick="closeLightbox()" title="Close viewer">&times;</button>
@@ -1358,7 +1360,7 @@
   <!-- Scripts -->
   <script src="js/config.js?v=20261024_v7" onerror="this.onerror=null;this.src='config.js?v=20261024_v7';"></script>
   <script src="js/api.js?v=20261024_v7" onerror="this.onerror=null;this.src='api.js?v=20261024_v7';"></script>
-  <script src="client.js?v=20261024_v8" onerror="this.onerror=null;this.src='js/client.js?v=20261024_v8';"></script>
+  <script src="client.js?v=20261024_v9" onerror="this.onerror=null;this.src='js/client.js?v=20261024_v9';"></script>
 
   <!-- Gesture engine is handled by js/client.js → initLightboxZoomEvents() -->
 </body>

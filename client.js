@@ -805,27 +805,28 @@ function updateLightboxSelectButton() {
   if (!photo) return;
 
   const isSelected = selectedPhotoIds.has(String(photo.id));
+  const selCount = selectedPhotoIds.size;
 
   if (actionBtn) {
     if (isSelected) {
       actionBtn.classList.add('selected');
-      actionBtn.title = 'Click to Unselect Photo';
-      actionBtn.innerHTML = '<span class="action-btn-icon" style="pointer-events:none;font-weight:900;">✔</span> <span class="action-btn-text" style="pointer-events:none;font-weight:800;">Selected</span>';
+      actionBtn.title = `Click to Unselect Photo (${selCount} selected)`;
+      actionBtn.innerHTML = `<span class="action-btn-icon" style="pointer-events:none;font-weight:900;">✔</span> <span class="action-btn-text" style="pointer-events:none;font-weight:800;">Selected (${selCount})</span>`;
     } else {
       actionBtn.classList.remove('selected');
-      actionBtn.title = 'Click to Select Photo';
-      actionBtn.innerHTML = '<span class="action-btn-icon" style="pointer-events:none;font-weight:900;">＋</span> <span class="action-btn-text" style="pointer-events:none;font-weight:700;">Select Photo</span>';
+      actionBtn.title = `Click to Select Photo (${selCount} selected)`;
+      actionBtn.innerHTML = `<span class="action-btn-icon" style="pointer-events:none;font-weight:900;">＋</span> <span class="action-btn-text" style="pointer-events:none;font-weight:700;">Select Photo (${selCount})</span>`;
     }
   }
 
   if (overlayBtn) {
     if (isSelected) {
       overlayBtn.classList.add('selected');
-      overlayBtn.title = 'Unselect Photo';
+      overlayBtn.title = `Unselect Photo (${selCount})`;
       overlayBtn.innerHTML = '<span id="lightbox-overlay-select-icon" style="pointer-events:none;font-weight:900;">✔</span>';
     } else {
       overlayBtn.classList.remove('selected');
-      overlayBtn.title = 'Select Photo';
+      overlayBtn.title = `Select Photo (${selCount})`;
       overlayBtn.innerHTML = '<span id="lightbox-overlay-select-icon" style="pointer-events:none;font-weight:900;">+</span>';
     }
   }
@@ -838,6 +839,8 @@ function updateLightboxSelectButton() {
 function updateLightboxHeartButton() {
   const actionBtn = document.getElementById('lightbox-action-heart');
   const overlayBtn = document.getElementById('lightbox-overlay-heart');
+  const photoFrame = document.getElementById('lightbox-photo-frame');
+  const favBadge = document.getElementById('lightbox-favorite-badge');
   if (currentLightboxIndex === -1) return;
 
   const photos = currentClient?.photos || [];
@@ -845,29 +848,39 @@ function updateLightboxHeartButton() {
   if (!photo) return;
 
   const isFavorite = favoritePhotoIds.has(String(photo.id));
+  const favCount = favoritePhotoIds.size;
 
   if (actionBtn) {
     if (isFavorite) {
       actionBtn.classList.add('favorited');
-      actionBtn.title = 'Click to Remove Favorite';
-      actionBtn.innerHTML = '<span class="action-btn-icon" style="pointer-events:none;">❤️</span> <span class="action-btn-text" style="pointer-events:none;font-weight:800;">Favorited</span>';
+      actionBtn.title = `Click to Remove Favorite (${favCount} favorited)`;
+      actionBtn.innerHTML = `<span class="action-btn-icon" style="pointer-events:none;">❤️</span> <span class="action-btn-text" style="pointer-events:none;font-weight:800;">Favorited (${favCount})</span>`;
     } else {
       actionBtn.classList.remove('favorited');
-      actionBtn.title = 'Click to Mark as Favorite';
-      actionBtn.innerHTML = '<span class="action-btn-icon" style="pointer-events:none;">🤍</span> <span class="action-btn-text" style="pointer-events:none;font-weight:700;">Favorite</span>';
+      actionBtn.title = `Click to Mark as Favorite (${favCount} favorited)`;
+      actionBtn.innerHTML = `<span class="action-btn-icon" style="pointer-events:none;">🤍</span> <span class="action-btn-text" style="pointer-events:none;font-weight:700;">Favorite (${favCount})</span>`;
     }
   }
 
   if (overlayBtn) {
     if (isFavorite) {
       overlayBtn.classList.add('favorited');
-      overlayBtn.title = 'Remove Favorite';
+      overlayBtn.title = `Remove Favorite (${favCount})`;
       overlayBtn.innerHTML = '<span id="lightbox-overlay-heart-icon" style="pointer-events:none;">❤️</span>';
     } else {
       overlayBtn.classList.remove('favorited');
-      overlayBtn.title = 'Mark as Special Favorite';
+      overlayBtn.title = `Mark as Special Favorite (${favCount})`;
       overlayBtn.innerHTML = '<span id="lightbox-overlay-heart-icon" style="pointer-events:none;">🤍</span>';
     }
+  }
+
+  if (photoFrame) {
+    photoFrame.classList.toggle('favorited', isFavorite);
+  }
+
+  if (favBadge) {
+    favBadge.innerHTML = `❤️ Favorites: <strong>${favCount}</strong>`;
+    favBadge.style.display = favCount > 0 ? 'inline-flex' : 'none';
   }
 }
 
@@ -1026,7 +1039,7 @@ function handleLightboxSelectClick(e) {
 
   if (isSelected) {
     selectedPhotoIds.delete(id);
-    showLightboxActionToast(`Photo #${currentLightboxIndex + 1} Unselected`, 'info');
+    showLightboxActionToast(`Photo #${currentLightboxIndex + 1} Unselected (${selectedPhotoIds.size})`, 'info');
   } else {
     const limit = Number(currentClient.selectionLimit) || 500;
     if (selectedPhotoIds.size >= limit) {
@@ -1034,13 +1047,14 @@ function handleLightboxSelectClick(e) {
       return;
     }
     selectedPhotoIds.add(id);
-    showLightboxActionToast(`✔ Photo #${currentLightboxIndex + 1} Selected!`, 'success');
+    showLightboxActionToast(`✔ Photo #${currentLightboxIndex + 1} Selected! (${selectedPhotoIds.size})`, 'success');
   }
 
   updatePhotoCardUI(id);
   updateSelectionCounter();
   updateStatusPillsCounts();
   updateLightboxSelectButton();
+  updateLightboxHeartButton();
   if (activeStatusFilter !== 'all') {
     renderGallery();
   }
@@ -1061,15 +1075,16 @@ function handleLightboxHeartClick(e) {
 
   if (isFavorite) {
     favoritePhotoIds.delete(id);
-    showLightboxActionToast(`🤍 Removed from Favorites`, 'info');
+    showLightboxActionToast(`🤍 Removed from Favorites (${favoritePhotoIds.size})`, 'info');
   } else {
     favoritePhotoIds.add(id);
-    showLightboxActionToast(`❤️ Photo #${currentLightboxIndex + 1} Favorited!`, 'success');
+    showLightboxActionToast(`❤️ Photo #${currentLightboxIndex + 1} Favorited! (${favoritePhotoIds.size})`, 'success');
   }
 
   updatePhotoCardUI(id);
   updateStatusPillsCounts();
   updateLightboxHeartButton();
+  updateLightboxSelectButton();
   if (activeStatusFilter !== 'all') {
     renderGallery();
   }

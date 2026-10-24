@@ -758,11 +758,31 @@ body.lightbox-open header {
 .lightbox-photo-frame.selected {
   outline: 3.5px solid #eab308;
   outline-offset: -1px;
-  box-shadow: 0 0 35px rgba(234, 179, 8, 0.75), 0 0 10px rgba(234, 179, 8, 0.4);
+  box-shadow: 0 0 35px rgba(234, 179, 8, 0.8), 0 0 10px rgba(234, 179, 8, 0.45);
   border-radius: 14px;
 }
 
-.lightbox-photo-frame.selected .lightbox-img {
+.lightbox-photo-frame.favorited {
+  outline: 3.5px solid #ef4444;
+  outline-offset: -1px;
+  box-shadow: 0 0 35px rgba(239, 68, 68, 0.85), 0 0 10px rgba(239, 68, 68, 0.45);
+  border-radius: 14px;
+}
+
+/* Mixed Dual Glow: Both Selected & Favorited active at the same time */
+.lightbox-photo-frame.selected.favorited {
+  outline: 3.5px solid #eab308;
+  outline-offset: -1px;
+  box-shadow: 
+    0 0 0 3px #ef4444,
+    0 0 25px rgba(239, 68, 68, 0.9),
+    0 0 55px rgba(234, 179, 8, 0.85),
+    0 0 12px rgba(239, 68, 68, 0.6);
+  border-radius: 14px;
+}
+
+.lightbox-photo-frame.selected .lightbox-img,
+.lightbox-photo-frame.favorited .lightbox-img {
   border-radius: 12px;
 }
 
