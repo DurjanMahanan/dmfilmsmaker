@@ -390,8 +390,19 @@ function updateSelectionCounter() {
     submitBtn.innerHTML = `Submit Selection (${count})`;
   }
 
+  updateLightboxSelectedBadge();
+
   if (isControlsCollapsed) {
     updateCollapseButtonUI();
+  }
+}
+
+function updateLightboxSelectedBadge() {
+  const badge = document.getElementById('lightbox-selected-badge');
+  if (badge) {
+    const count = selectedPhotoIds.size;
+    const limit = Number(currentClient?.selectionLimit) || 250;
+    badge.innerHTML = `Selected: <strong>${count}</strong> / ${limit}`;
   }
 }
 
@@ -436,19 +447,9 @@ function resetLightboxTransform() {
 
 function applyLightboxTransform() {
   const container = document.getElementById('lightbox-image-stage');
-  const badge = document.getElementById('lightbox-zoom-badge');
   if (container) {
     container.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
     container.style.cursor = zoomScale > 1.05 ? (isPanning ? 'grabbing' : 'grab') : 'default';
-  }
-  if (badge) {
-    const percent = Math.round(zoomScale * 100);
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-      badge.textContent = `🔍 ${percent}%`;
-    } else {
-      badge.textContent = `🔍 ${percent}% ${zoomScale > 1.05 ? '(1-Finger Drag to Pan • Double-tap to reset)' : '(Pinch to Zoom • Swipe to change)'}`;
-    }
   }
   // When zoomed, hide action & bottom controls but keep them always accessible when reset
   const overlayControls = document.querySelectorAll('.lightbox-actions-bar, .lightbox-below-bar, .lightbox-onphoto-bottom-bar, .lightbox-onphoto-select-btn, .lightbox-onphoto-heart-btn');
@@ -745,6 +746,7 @@ function openLightbox(index, direction) {
   updateLightboxSelectButton();
   updateLightboxHeartButton();
   updateLightboxCommentButton();
+  updateLightboxSelectedBadge();
   attachLightboxOverlayButtonEvents();
   if (modal) modal.classList.add('active');
   document.body.classList.add('lightbox-open');

@@ -607,14 +607,18 @@ body.lightbox-open header {
   flex: 1;
 }
 
+#lightbox-selected-badge,
 #lightbox-zoom-badge {
-  background: rgba(212, 175, 55, 0.15);
-  color: var(--gold-400);
-  border: 1px solid var(--border-gold);
-  font-size: 0.75rem;
-  padding: 0.25rem 0.65rem;
+  background: rgba(212, 175, 55, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.22rem 0.65rem;
+  border-radius: 12px;
   flex-shrink: 0;
   white-space: nowrap;
+  letter-spacing: 0.03em;
 }
 
 .lightbox-header .modal-close {
@@ -1157,9 +1161,11 @@ body.lightbox-open header {
     max-width: 120px !important;
   }
 
+  #lightbox-selected-badge,
   #lightbox-zoom-badge {
-    font-size: 0.7rem !important;
-    padding: 0.2rem 0.45rem !important;
+    font-size: 0.72rem !important;
+    padding: 0.18rem 0.5rem !important;
+    font-weight: 700 !important;
   }
 
   .lightbox-header .modal-close {
