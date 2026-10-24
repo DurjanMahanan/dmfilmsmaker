@@ -389,6 +389,39 @@ function updateSelectionCounter() {
     submitBtn.disabled = count === 0;
     submitBtn.innerHTML = `Submit Selection (${count})`;
   }
+
+  if (isControlsCollapsed) {
+    updateCollapseButtonUI();
+  }
+}
+
+// --- Collapsible Sticky Controls Toggle Engine ---
+let isControlsCollapsed = false;
+
+function toggleStickyControls(event) {
+  if (event) {
+    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+  }
+  isControlsCollapsed = !isControlsCollapsed;
+  const wrapper = document.getElementById('sticky-controls-wrapper');
+  if (wrapper) {
+    wrapper.classList.toggle('is-collapsed', isControlsCollapsed);
+  }
+  updateCollapseButtonUI();
+}
+
+function updateCollapseButtonUI() {
+  const icon = document.getElementById('collapse-toggle-icon');
+  const label = document.getElementById('collapse-toggle-label');
+  if (!icon || !label) return;
+
+  if (isControlsCollapsed) {
+    icon.textContent = '▼';
+    label.textContent = `Show Filters (${selectedPhotoIds.size})`;
+  } else {
+    icon.textContent = '▲';
+    label.textContent = 'Hide';
+  }
 }
 
 // --- Lightbox Fullscreen Viewer & Zoom/Pan Engine ---
@@ -1397,3 +1430,4 @@ window.initLightboxZoomEvents = initLightboxZoomEvents;
 window.resetLightboxTransform = resetLightboxTransform;
 window.applyLightboxTransform = applyLightboxTransform;
 window.attachLightboxOverlayButtonEvents = attachLightboxOverlayButtonEvents;
+window.toggleStickyControls = toggleStickyControls;

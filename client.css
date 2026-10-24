@@ -108,7 +108,7 @@
   letter-spacing: 0.02em !important;
 }
 
-/* Sticky Controls Wrapper (Fixed on Scroll with Glassmorphism) */
+/* Sticky Controls Wrapper (Fixed on Scroll with Collapsible Drawer) */
 .sticky-controls-wrapper {
   position: sticky;
   top: 68px; /* right below site-header */
@@ -116,10 +116,93 @@
   background: rgba(10, 15, 26, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-  padding: 0.5rem 1.25rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  padding: 0.5rem 1.25rem 0.2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   margin-bottom: 0.75rem;
+  transition: background 0.3s ease, border-color 0.3s ease, padding 0.3s ease;
+}
+
+.sticky-controls-content {
+  overflow: hidden;
+  max-height: 250px;
+  opacity: 1;
+  transform: translateY(0);
+  transition: max-height 0.35s ease, opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* Collapsed State (Slides UP, frees 100% gallery screen) */
+.sticky-controls-wrapper.is-collapsed {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin-bottom: 0.25rem !important;
+  pointer-events: none !important;
+}
+
+.sticky-controls-wrapper.is-collapsed .sticky-controls-content {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  transform: translateY(-8px) !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Toggle Drawer Button Row at Bottom */
+.sticky-toggle-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 2px 0 0;
+  pointer-events: auto;
+}
+
+.sticky-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: rgba(18, 24, 38, 0.92);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 12px;
+  color: #fde047;
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sticky-collapse-btn:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #fde047;
+  transform: scale(1.04);
+}
+
+.sticky-collapse-btn:active {
+  transform: scale(0.96);
+}
+
+.sticky-controls-wrapper.is-collapsed .sticky-collapse-btn {
+  background: rgba(10, 15, 26, 0.95);
+  border: 1px solid #d4af37;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+  padding: 3px 12px;
+  margin-top: 4px;
+}
+
+.collapse-icon {
+  font-size: 0.7rem;
+  line-height: 1;
 }
 
 /* Dedicated Folder Tabs Row on Top */
