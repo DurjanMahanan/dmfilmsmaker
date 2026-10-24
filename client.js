@@ -289,6 +289,7 @@ function renderGallery() {
   container.innerHTML = filtered.map((photo, index) => {
     const isSelected = selectedPhotoIds.has(String(photo.id));
     const isFavorite = favoritePhotoIds.has(String(photo.id));
+    const hasComment = Boolean(photoComments[photo.id]);
     const originalIndex = photos.findIndex(p => p.id === photo.id);
 
     return `
@@ -305,7 +306,12 @@ function renderGallery() {
         </button>
         <div class="photo-meta-bar">
           <span class="photo-name" title="${escapeHtml(photo.name)}">${escapeHtml(photo.name)}</span>
-          <button class="photo-expand-btn" onclick="openLightbox(${originalIndex})">🔍 View</button>
+          <div class="photo-card-actions">
+            <button type="button" class="photo-card-comment-btn ${hasComment ? 'has-comment' : ''}" onclick="openPhotoCommentModal('${photo.id}', event)" title="${hasComment ? 'Edit Note: ' + escapeHtml(photoComments[photo.id]) : 'Add Note / Comment'}">
+              💬 <span class="comment-btn-label">Note</span>
+            </button>
+            <button type="button" class="photo-expand-btn" onclick="openLightbox(${originalIndex})">🔍 View</button>
+          </div>
         </div>
       </div>
     `;
@@ -370,6 +376,13 @@ function updatePhotoCardUI(photoId) {
     if (heartBtn) {
       heartBtn.classList.toggle('favorited', isFavorite);
       heartBtn.innerHTML = isFavorite ? '❤️' : '🤍';
+    }
+
+    const commentBtn = el.querySelector('.photo-card-comment-btn');
+    if (commentBtn) {
+      const hasComment = Boolean(photoComments[id]);
+      commentBtn.classList.toggle('has-comment', hasComment);
+      commentBtn.title = hasComment ? `Edit Note: ${photoComments[id]}` : 'Add Note / Comment';
     }
   }
 }
@@ -884,10 +897,37 @@ function updateLightboxCommentButton() {
   }
 }
 
+let activeCommentPhotoId = null;
+
+function openPhotoCommentModal(photoId, event) {
+  if (event) {
+    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+  }
+  const id = String(photoId);
+  activeCommentPhotoId = id;
+
+  const photos = currentClient?.photos || [];
+  const photo = photos.find(p => String(p.id) === id);
+  if (!photo) return;
+
+  const nameEl = document.getElementById('note-modal-photo-name');
+  const inputEl = document.getElementById('note-modal-input');
+  if (nameEl) nameEl.textContent = photo.name;
+  if (inputEl) inputEl.value = photoComments[id] || '';
+
+  const modal = document.getElementById('lightbox-comment-modal');
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
+    if (inputEl) setTimeout(() => inputEl.focus(), 120);
+  }
+}
+
 function openLightboxCommentModal() {
-  const photos = currentClient.photos || [];
+  const photos = currentClient?.photos || [];
   const photo = photos[currentLightboxIndex];
   if (!photo) return;
+  activeCommentPhotoId = String(photo.id);
 
   const nameEl = document.getElementById('note-modal-photo-name');
   const inputEl = document.getElementById('note-modal-input');
@@ -898,27 +938,54 @@ function openLightboxCommentModal() {
   if (modal) {
     modal.classList.add('active');
     modal.style.setProperty('display', 'flex', 'important');
-    if (inputEl) setTimeout(() => inputEl.focus(), 100);
+    if (inputEl) setTimeout(() => inputEl.focus(), 120);
   }
 }
 
 function saveNoteFromModal() {
-  const photos = currentClient.photos || [];
-  const photo = photos[currentLightboxIndex];
   const inputEl = document.getElementById('note-modal-input');
-  if (photo && inputEl) {
-    saveCurrentLightboxComment(inputEl.value);
+  const text = inputEl ? inputEl.value.trim() : '';
+
+  let targetId = activeCommentPhotoId;
+  if (!targetId && currentLightboxIndex >= 0) {
+    const photos = currentClient?.photos || [];
+    const photo = photos[currentLightboxIndex];
+    if (photo) targetId = String(photo.id);
+  }
+
+  if (targetId) {
+    if (text) {
+      photoComments[targetId] = text;
+    } else {
+      delete photoComments[targetId];
+    }
+    updatePhotoCardUI(targetId);
+
+    // If lightbox is open and viewing this photo, sync its comment input
+    const lightboxCommentInput = document.getElementById('lightbox-photo-comment');
+    if (lightboxCommentInput && currentLightboxIndex >= 0) {
+      const photos = currentClient?.photos || [];
+      const curr = photos[currentLightboxIndex];
+      if (curr && String(curr.id) === targetId) {
+        lightboxCommentInput.value = text;
+      }
+    }
     updateLightboxCommentButton();
+
     if (window.api && window.api.showToast) {
-      window.api.showToast(inputEl.value.trim() ? 'Note saved for photo' : 'Note cleared', 'success');
+      window.api.showToast(text ? '✔ Note saved for photo!' : 'Note cleared', 'success');
     }
   }
+
   const modal = document.getElementById('lightbox-comment-modal');
   if (modal) {
     modal.classList.remove('active');
     modal.style.removeProperty('display');
   }
+  activeCommentPhotoId = null;
 }
+
+window.openPhotoCommentModal = openPhotoCommentModal;
 
 window.openLightboxCommentModal = openLightboxCommentModal;
 window.saveNoteFromModal = saveNoteFromModal;
@@ -1036,6 +1103,7 @@ function saveCurrentLightboxComment(text) {
       delete photoComments[photo.id];
     }
     updateLightboxCommentButton();
+    updatePhotoCardUI(photo.id);
   }
 }
 
@@ -1443,7 +1511,13 @@ function escapeHtml(str) {
 
 function closeModal(id) {
   const modal = document.getElementById(id);
-  if (modal) modal.classList.remove('active');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.removeProperty('display');
+  }
+  if (id === 'lightbox-comment-modal') {
+    activeCommentPhotoId = null;
+  }
 }
 
 // Expose globals for HTML triggers
@@ -1468,3 +1542,5 @@ window.applyLightboxTransform = applyLightboxTransform;
 window.attachLightboxOverlayButtonEvents = attachLightboxOverlayButtonEvents;
 window.toggleStickyControls = toggleStickyControls;
 window.saveCurrentLightboxCommentExplicit = saveCurrentLightboxCommentExplicit;
+window.openPhotoCommentModal = openPhotoCommentModal;
+window.saveNoteFromModal = saveNoteFromModal;

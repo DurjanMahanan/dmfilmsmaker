@@ -507,20 +507,70 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 150px;
+  flex: 1;
+  min-width: 0;
+  margin-right: 6px;
+}
+
+.photo-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.photo-card-comment-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.photo-card-comment-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: var(--gold-400, #f6d365);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.photo-card-comment-btn.has-comment {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.12));
+  border-color: var(--gold-400, #f6d365);
+  color: var(--gold-400, #f6d365);
+  font-weight: 600;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.25);
+}
+
+.photo-card-comment-btn.has-comment:hover {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.38), rgba(212, 175, 55, 0.2));
+  color: #ffffff;
 }
 
 .photo-expand-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
   color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 3px 7px;
   cursor: pointer;
   transition: var(--transition-fast);
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  gap: 3px;
+  line-height: 1.2;
 }
 
 .photo-expand-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: var(--gold-400);
 }
 
