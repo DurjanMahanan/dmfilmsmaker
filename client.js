@@ -243,9 +243,9 @@ function updateStatusPillsCounts() {
     ? photos 
     : photos.filter(p => (p.subfolder || 'Main Photos') === activeFolderFilter);
 
-  const selectedInFolder = inCurrentFolder.filter(p => selectedPhotoIds.has(p.id)).length;
+  const selectedInFolder = inCurrentFolder.filter(p => selectedPhotoIds.has(String(p.id))).length;
   const unselectedInFolder = inCurrentFolder.length - selectedInFolder;
-  const favoritedInFolder = inCurrentFolder.filter(p => favoritePhotoIds.has(p.id)).length;
+  const favoritedInFolder = inCurrentFolder.filter(p => favoritePhotoIds.has(String(p.id))).length;
 
   const countAll = document.getElementById('pill-count-all');
   const countFav = document.getElementById('pill-count-favorites');
@@ -330,7 +330,11 @@ function toggleSelectPhoto(photoId, event) {
 
   updatePhotoCardUI(photoId);
   updateSelectionCounter();
+  updateStatusPillsCounts();
   updateLightboxSelectButton();
+  if (activeStatusFilter !== 'all') {
+    renderGallery();
+  }
 }
 
 function toggleFavoritePhoto(photoId, event) {
@@ -346,6 +350,9 @@ function toggleFavoritePhoto(photoId, event) {
   updatePhotoCardUI(photoId);
   updateStatusPillsCounts();
   updateLightboxHeartButton();
+  if (activeStatusFilter !== 'all') {
+    renderGallery();
+  }
 }
 
 function updatePhotoCardUI(photoId) {
@@ -924,7 +931,11 @@ function handleLightboxSelectClick(e) {
 
   updatePhotoCardUI(id);
   updateSelectionCounter();
+  updateStatusPillsCounts();
   updateLightboxSelectButton();
+  if (activeStatusFilter !== 'all') {
+    renderGallery();
+  }
 }
 
 function handleLightboxHeartClick(e) {
@@ -951,6 +962,9 @@ function handleLightboxHeartClick(e) {
   updatePhotoCardUI(id);
   updateStatusPillsCounts();
   updateLightboxHeartButton();
+  if (activeStatusFilter !== 'all') {
+    renderGallery();
+  }
 }
 
 // Attach lightbox overlay button events (called on page load and every time photo opens)
