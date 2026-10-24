@@ -743,6 +743,12 @@ function openLightbox(index, direction) {
     commentInput.value = photoComments[photo.id] || '';
   }
 
+  const saveBtn = document.getElementById('lightbox-comment-save-btn');
+  if (saveBtn) {
+    saveBtn.classList.remove('saved-active');
+    saveBtn.innerHTML = '<span class="save-btn-icon">✔</span> <span class="save-btn-text">Save</span>';
+  }
+
   updateLightboxSelectButton();
   updateLightboxHeartButton();
   updateLightboxCommentButton();
@@ -1031,6 +1037,34 @@ function saveCurrentLightboxComment(text) {
     }
     updateLightboxCommentButton();
   }
+}
+
+function saveCurrentLightboxCommentExplicit() {
+  const inputEl = document.getElementById('lightbox-photo-comment');
+  const btn = document.getElementById('lightbox-comment-save-btn');
+  const photos = currentClient?.photos || [];
+  const photo = photos[currentLightboxIndex];
+  if (!photo) return;
+
+  const val = inputEl ? inputEl.value : '';
+  saveCurrentLightboxComment(val);
+
+  // Visual feedback on the Save button
+  if (btn) {
+    const originalHtml = '<span class="save-btn-icon">✔</span> <span class="save-btn-text">Save</span>';
+    btn.innerHTML = '<span class="save-btn-icon">✔</span> <span class="save-btn-text">Saved!</span>';
+    btn.classList.add('saved-active');
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+      btn.classList.remove('saved-active');
+    }, 1500);
+  }
+
+  // Toast feedback
+  showLightboxActionToast(val.trim() ? `✔ Note saved for photo #${currentLightboxIndex + 1}!` : 'Note cleared', 'success');
+
+  // Blur input so mobile keyboard dismisses cleanly
+  if (inputEl) inputEl.blur();
 }
 
 // --- Submit Selection Workflow ---
@@ -1433,3 +1467,4 @@ window.resetLightboxTransform = resetLightboxTransform;
 window.applyLightboxTransform = applyLightboxTransform;
 window.attachLightboxOverlayButtonEvents = attachLightboxOverlayButtonEvents;
 window.toggleStickyControls = toggleStickyControls;
+window.saveCurrentLightboxCommentExplicit = saveCurrentLightboxCommentExplicit;

@@ -11,9 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=20261024_v6">
-  <link rel="stylesheet" href="client.css?v=20261024_v6">
-  <link rel="stylesheet" href="css/client.css?v=20261024_v6">
+  <link rel="stylesheet" href="css/main.css?v=20261024_v7">
+  <link rel="stylesheet" href="client.css?v=20261024_v7">
+  <link rel="stylesheet" href="css/client.css?v=20261024_v7">
 
   <style>
     /* When Lightbox is active, completely hide the entire background gallery & header so NOTHING peeks through */
@@ -364,6 +364,45 @@
       font-size: 0.82rem;
     }
 
+    .lightbox-comment-save-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 4px !important;
+      height: 32px !important;
+      padding: 0 0.85rem !important;
+      background: linear-gradient(135deg, #fde047 0%, #d4af37 100%) !important;
+      color: #000000 !important;
+      font-family: inherit !important;
+      font-size: 0.8rem !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.02em !important;
+      border: none !important;
+      border-radius: 16px !important;
+      cursor: pointer !important;
+      flex-shrink: 0 !important;
+      margin-left: 6px !important;
+      box-shadow: 0 2px 10px rgba(212, 175, 55, 0.4) !important;
+      transition: all 0.2s ease !important;
+      user-select: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .lightbox-comment-save-btn:hover {
+      transform: scale(1.04) !important;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.6) !important;
+    }
+
+    .lightbox-comment-save-btn:active {
+      transform: scale(0.96) !important;
+    }
+
+    .lightbox-comment-save-btn.saved-active {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.6) !important;
+    }
+
     .lightbox-close-viewer-btn,
     .lightbox-onphoto-close-btn {
       height: 44px;
@@ -542,6 +581,14 @@
       .lightbox-comment-input::placeholder,
       .lightbox-onphoto-comment-input::placeholder {
         font-size: 0.75rem !important;
+      }
+      .lightbox-comment-save-btn {
+        height: 30px !important;
+        padding: 0 0.65rem !important;
+        font-size: 0.74rem !important;
+        border-radius: 14px !important;
+        gap: 3px !important;
+        margin-left: 4px !important;
       }
       .lightbox-close-viewer-btn,
       .lightbox-onphoto-close-btn {
@@ -1207,10 +1254,21 @@
             type="text" 
             id="lightbox-photo-comment" 
             class="lightbox-comment-input" 
-            placeholder="Add special note/instructions for this photo..." 
+            placeholder="Add special note/instructions..." 
             oninput="saveCurrentLightboxComment(this.value)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();saveCurrentLightboxCommentExplicit();}"
             autocomplete="off"
           >
+          <button 
+            type="button" 
+            class="lightbox-comment-save-btn" 
+            id="lightbox-comment-save-btn" 
+            onclick="saveCurrentLightboxCommentExplicit()" 
+            title="Save Note"
+          >
+            <span class="save-btn-icon">✔</span>
+            <span class="save-btn-text">Save</span>
+          </button>
         </div>
         <button type="button" class="lightbox-close-viewer-btn" onclick="closeLightbox()" title="Close viewer">
           <span class="close-icon">✕</span>
@@ -1298,9 +1356,9 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261024_v6" onerror="this.onerror=null;this.src='config.js?v=20261024_v6';"></script>
-  <script src="js/api.js?v=20261024_v6" onerror="this.onerror=null;this.src='api.js?v=20261024_v6';"></script>
-  <script src="client.js?v=20261024_v6" onerror="this.onerror=null;this.src='js/client.js?v=20261024_v6';"></script>
+  <script src="js/config.js?v=20261024_v7" onerror="this.onerror=null;this.src='config.js?v=20261024_v7';"></script>
+  <script src="js/api.js?v=20261024_v7" onerror="this.onerror=null;this.src='api.js?v=20261024_v7';"></script>
+  <script src="client.js?v=20261024_v7" onerror="this.onerror=null;this.src='js/client.js?v=20261024_v7';"></script>
 
   <!-- Gesture engine is handled by js/client.js → initLightboxZoomEvents() -->
 </body>

@@ -943,6 +943,45 @@ body.lightbox-open header {
   font-size: 0.82rem;
 }
 
+.lightbox-comment-save-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  height: 32px !important;
+  padding: 0 0.85rem !important;
+  background: linear-gradient(135deg, #fde047 0%, #d4af37 100%) !important;
+  color: #000000 !important;
+  font-family: inherit !important;
+  font-size: 0.8rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em !important;
+  border: none !important;
+  border-radius: 16px !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  margin-left: 6px !important;
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.4) !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.lightbox-comment-save-btn:hover {
+  transform: scale(1.04) !important;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.6) !important;
+}
+
+.lightbox-comment-save-btn:active {
+  transform: scale(0.96) !important;
+}
+
+.lightbox-comment-save-btn.saved-active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.6) !important;
+}
+
 .lightbox-close-viewer-btn,
 .lightbox-onphoto-close-btn {
   height: 44px;
@@ -1264,6 +1303,15 @@ body.lightbox-open header {
   .lightbox-comment-input::placeholder,
   .lightbox-onphoto-comment-input::placeholder {
     font-size: 0.75rem !important;
+  }
+
+  .lightbox-comment-save-btn {
+    height: 30px !important;
+    padding: 0 0.65rem !important;
+    font-size: 0.74rem !important;
+    border-radius: 14px !important;
+    gap: 3px !important;
+    margin-left: 4px !important;
   }
 
   .lightbox-close-viewer-btn,
