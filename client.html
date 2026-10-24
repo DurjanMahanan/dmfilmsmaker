@@ -11,9 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=20261024_v1">
-  <link rel="stylesheet" href="client.css?v=20261024_v1">
-  <link rel="stylesheet" href="css/client.css?v=20261024_v1">
+  <link rel="stylesheet" href="css/main.css?v=20261024_v2">
+  <link rel="stylesheet" href="client.css?v=20261024_v2">
+  <link rel="stylesheet" href="css/client.css?v=20261024_v2">
 
   <style>
     /* When Lightbox is active, completely hide the entire background gallery & header so NOTHING peeks through */
@@ -715,6 +715,236 @@
         height: 18px !important;
       }
     }
+
+    /* Compact & Sleek Sticky Selection & Filter Controls */
+    .sticky-controls-wrapper {
+      position: sticky !important;
+      top: 68px !important;
+      z-index: 80 !important;
+      background: rgba(10, 15, 26, 0.96) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.2) !important;
+      padding: 0.5rem 1.25rem !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+      margin-bottom: 0.75rem !important;
+    }
+
+    .selection-bar-container {
+      max-width: 1400px !important;
+      margin: 0 auto 0.4rem !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 0.75rem !important;
+    }
+
+    .selection-metric {
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.65rem !important;
+      min-width: 0 !important;
+    }
+
+    .selection-counter {
+      font-family: var(--font-serif, 'Cinzel', serif) !important;
+      font-size: 0.95rem !important;
+      font-weight: 700 !important;
+      color: #ffffff !important;
+      white-space: nowrap !important;
+      letter-spacing: 0.04em !important;
+    }
+
+    .selection-counter span {
+      color: #fde047 !important;
+    }
+
+    .selection-progress-wrap {
+      width: 100px !important;
+      height: 6px !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      border-radius: 3px !important;
+      overflow: hidden !important;
+      flex-shrink: 0 !important;
+    }
+
+    .selection-actions {
+      display: flex !important;
+      align-items: center !important;
+      flex-shrink: 0 !important;
+    }
+
+    #submit-selection-btn {
+      height: 34px !important;
+      padding: 0 1rem !important;
+      font-size: 0.82rem !important;
+      font-weight: 700 !important;
+      border-radius: 8px !important;
+      white-space: nowrap !important;
+      letter-spacing: 0.02em !important;
+    }
+
+    /* Folder Tabs Row */
+    .folder-tabs-row {
+      max-width: 1400px !important;
+      margin: 0 auto 0.35rem !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      overflow-x: auto !important;
+      padding-bottom: 2px !important;
+      scrollbar-width: thin !important;
+    }
+    .folder-tabs-row::-webkit-scrollbar {
+      height: 3px !important;
+    }
+    .folder-tabs-row::-webkit-scrollbar-thumb {
+      background: rgba(212, 175, 55, 0.3) !important;
+      border-radius: 3px !important;
+    }
+
+    .folder-tab-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.35rem !important;
+      height: 28px !important;
+      padding: 0 0.75rem !important;
+      border-radius: 14px !important;
+      background: rgba(255, 255, 255, 0.05) !important;
+      border: 1px solid rgba(255, 255, 255, 0.14) !important;
+      color: #94a3b8 !important;
+      font-size: 0.78rem !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      white-space: nowrap !important;
+      transition: all 0.2s ease !important;
+    }
+    .folder-tab-btn:hover {
+      background: rgba(212, 175, 55, 0.15) !important;
+      color: #ffffff !important;
+      border-color: rgba(212, 175, 55, 0.5) !important;
+    }
+    .folder-tab-btn.active {
+      background: linear-gradient(135deg, #fde047 0%, #d4af37 100%) !important;
+      color: #000000 !important;
+      font-weight: 700 !important;
+      border-color: #fde047 !important;
+      box-shadow: 0 0 12px rgba(212, 175, 55, 0.35) !important;
+    }
+    .folder-tab-badge {
+      background: rgba(0, 0, 0, 0.22) !important;
+      padding: 0.05rem 0.4rem !important;
+      border-radius: 10px !important;
+      font-size: 0.7rem !important;
+      font-weight: 700 !important;
+    }
+    .folder-tab-btn.active .folder-tab-badge {
+      background: rgba(0, 0, 0, 0.28) !important;
+      color: #000000 !important;
+    }
+
+    /* Filter Pills Row */
+    .gallery-controls-row {
+      max-width: 1400px !important;
+      margin: 0 auto !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 0.5rem !important;
+    }
+
+    .filter-pills {
+      display: flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+      background: rgba(22, 27, 38, 0.7) !important;
+      padding: 2px 4px !important;
+      border-radius: 16px !important;
+      border: 1px solid rgba(212, 175, 55, 0.2) !important;
+      overflow-x: auto !important;
+      scrollbar-width: none !important;
+    }
+    .filter-pills::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    .filter-pill {
+      height: 26px !important;
+      padding: 0 0.65rem !important;
+      border-radius: 12px !important;
+      border: none !important;
+      background: transparent !important;
+      color: #94a3b8 !important;
+      font-size: 0.75rem !important;
+      font-weight: 500 !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.3rem !important;
+      white-space: nowrap !important;
+      transition: all 0.2s ease !important;
+    }
+    .filter-pill:hover {
+      color: #ffffff !important;
+    }
+    .filter-pill.active {
+      background: rgba(212, 175, 55, 0.2) !important;
+      color: #fde047 !important;
+      border: 1px solid rgba(212, 175, 55, 0.4) !important;
+      font-weight: 700 !important;
+    }
+    .pill-badge {
+      background: rgba(0, 0, 0, 0.35) !important;
+      padding: 0.05rem 0.35rem !important;
+      border-radius: 8px !important;
+      font-size: 0.68rem !important;
+      font-weight: 700 !important;
+    }
+
+    /* Mobile Compact Responsiveness for Controls */
+    @media (max-width: 768px) {
+      .sticky-controls-wrapper {
+        top: 50px !important;
+        padding: 0.38rem 0.65rem !important;
+        margin-bottom: 0.5rem !important;
+      }
+      .selection-bar-container {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 0.5rem !important;
+        margin-bottom: 0.3rem !important;
+      }
+      .selection-counter {
+        font-size: 0.82rem !important;
+      }
+      .selection-progress-wrap {
+        width: 60px !important;
+        height: 5px !important;
+      }
+      #submit-selection-btn {
+        height: 28px !important;
+        padding: 0 0.7rem !important;
+        font-size: 0.74rem !important;
+        border-radius: 6px !important;
+      }
+      .folder-tabs-row {
+        gap: 5px !important;
+        margin-bottom: 0.25rem !important;
+      }
+      .folder-tab-btn {
+        height: 25px !important;
+        padding: 0 0.55rem !important;
+        font-size: 0.72rem !important;
+        border-radius: 12px !important;
+      }
+      .filter-pill {
+        height: 24px !important;
+        padding: 0 0.45rem !important;
+        font-size: 0.7rem !important;
+        border-radius: 10px !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -754,7 +984,7 @@
 
   <!-- Sticky Photo Selection & Filter Controls (Fixed on Scroll) -->
   <div class="sticky-controls-wrapper">
-    <div class="selection-bar-container" style="margin-bottom:0.75rem;">
+    <div class="selection-bar-container">
       <div class="selection-metric">
         <div class="selection-counter">
           Selected: <span id="selected-count-display">0</span> / <span id="selection-max-limit">350</span>
@@ -775,7 +1005,7 @@
       <!-- Dynamically rendered folder tabs -->
     </div>
 
-    <!-- Filter & Search Controls Row -->
+    <!-- Filter Controls Row (Search Box Removed) -->
     <div class="gallery-controls-row">
       <div class="filter-pills" id="category-pills">
         <button class="filter-pill active" onclick="setStatusFilter('all')">
@@ -790,10 +1020,6 @@
         <button class="filter-pill" onclick="setStatusFilter('unselected')">
           <span>⚪ Unselected</span> <span class="pill-badge" id="pill-count-unselected">0</span>
         </button>
-      </div>
-      <div class="gallery-search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="gallery-search-input" class="form-control" placeholder="Search by photo name or #...">
       </div>
     </div>
   </div>
@@ -951,9 +1177,9 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261024_v1" onerror="this.onerror=null;this.src='config.js?v=20261024_v1';"></script>
-  <script src="js/api.js?v=20261024_v1" onerror="this.onerror=null;this.src='api.js?v=20261024_v1';"></script>
-  <script src="client.js?v=20261024_v1" onerror="this.onerror=null;this.src='js/client.js?v=20261024_v1';"></script>
+  <script src="js/config.js?v=20261024_v2" onerror="this.onerror=null;this.src='config.js?v=20261024_v2';"></script>
+  <script src="js/api.js?v=20261024_v2" onerror="this.onerror=null;this.src='api.js?v=20261024_v2';"></script>
+  <script src="client.js?v=20261024_v2" onerror="this.onerror=null;this.src='js/client.js?v=20261024_v2';"></script>
 
   <!-- Gesture engine is handled by js/client.js → initLightboxZoomEvents() -->
 </body>
