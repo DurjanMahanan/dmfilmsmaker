@@ -290,55 +290,34 @@ function setupEventListeners() {
     });
   }
 
-  // Auto-generate client code when typing name
+  // Auto-generate client code when typing name (starts empty, fills on name input)
   const nameInput = document.getElementById('client-name');
   const codeInput = document.getElementById('client-code');
   if (nameInput && codeInput) {
     nameInput.addEventListener('input', () => {
       if (!codeInput.dataset.userEdited) {
-        codeInput.value = generateAutoClientCode(nameInput.value);
+        const clean = nameInput.value.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase();
+        if (clean) {
+          if (!codeInput._codeSuffix) {
+            codeInput._codeSuffix = Math.floor(100 + Math.random() * 900);
+          }
+          codeInput.value = clean + codeInput._codeSuffix;
+        } else {
+          codeInput.value = '';
+          delete codeInput._codeSuffix;
+        }
       }
     });
     codeInput.addEventListener('input', () => {
       if (!codeInput.value.trim()) {
         delete codeInput.dataset.userEdited;
+        delete codeInput._codeSuffix;
       } else {
         codeInput.dataset.userEdited = 'true';
       }
     });
   }
 }
-
-function generateAutoClientCode(name) {
-  let prefix = '';
-  if (name && typeof name === 'string' && name.trim()) {
-    const parts = name.split(/\s*(&|\band\b|\+)\s*/i).filter(p => p && !/^[&+]$/i.test(p) && p.toLowerCase() !== 'and');
-    if (parts.length >= 2) {
-      const p1 = parts[0].trim().replace(/[^a-zA-Z0-9]/g, '');
-      const p2 = parts[1].trim().replace(/[^a-zA-Z0-9]/g, '');
-      if (p1 && p2) {
-        prefix = (p1.substring(0, 4) + p2.substring(0, 3)).toUpperCase();
-      }
-    }
-    if (!prefix) {
-      prefix = name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase();
-    }
-  }
-  if (!prefix || prefix.length < 2) prefix = 'DM';
-  const num = Math.floor(100 + Math.random() * 900);
-  return `${prefix}${num}`;
-}
-
-function regenerateNewClientCode() {
-  const nameInput = document.getElementById('client-name');
-  const codeInput = document.getElementById('client-code');
-  if (codeInput) {
-    delete codeInput.dataset.userEdited;
-    codeInput.value = generateAutoClientCode(nameInput?.value || '');
-  }
-}
-window.generateAutoClientCode = generateAutoClientCode;
-window.regenerateNewClientCode = regenerateNewClientCode;
 
 window.toggleMobileSidebar = function() {
   const sb = document.getElementById('admin-sidebar');
@@ -707,7 +686,8 @@ async function handleCreateClient(e) {
   let code = (document.getElementById('client-code')?.value || '').trim();
   
   if (!code && name) {
-    code = generateAutoClientCode(name);
+    const clean = name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase() || 'DM';
+    code = clean + Math.floor(100 + Math.random() * 900);
     const codeEl = document.getElementById('client-code');
     if (codeEl) codeEl.value = code;
   }
