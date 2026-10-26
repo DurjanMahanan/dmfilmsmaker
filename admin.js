@@ -2195,13 +2195,13 @@ async function copyClientLink(clientCode) {
   const client = allClients.find(c => c.code === clientCode || c.id === clientCode) || {
     name: 'Valued Client',
     code: clientCode,
-    eventName: 'Wedding',
+    eventName: 'Wedding Ceremony',
     mobile: ''
   };
 
   const studio = currentStudio || JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
-  const studioName = studio.studioName || 'DM Films & Photography';
-  const studioPhone = studio.phone || '+91 98765 43210';
+  const studioName = studio.studioName || 'DM STUDIO';
+  const studioPhone = studio.phone || '8249861208';
   
   let baseOrigin = window.location.origin;
   
@@ -2222,9 +2222,17 @@ async function copyClientLink(clientCode) {
 
   currentShareClientMobile = client.mobile || '';
 
-  currentShareMessageText = `Hello Sir/Madam,
+  const clientNameStr = (client.name && client.name.trim() && client.name.trim() !== 'Valued Client')
+    ? client.name.trim()
+    : '';
 
-Your premium photo selection panel is ready for the event: *${client.eventName || 'Wedding'}*.
+  const greetingLine = clientNameStr
+    ? `Hello Sir/Madam,                     ❤️❤️ ${clientNameStr}❤️❤️`
+    : `Hello Sir/Madam,`;
+
+  currentShareMessageText = `${greetingLine}
+
+Your premium photo selection panel is ready for the event: *${client.eventName || 'Wedding Ceremony'}*.
 
 Please click the link below to view the gallery and select your favorite images:
 
@@ -2238,6 +2246,10 @@ Phone / WhatsApp: ${studioPhone}`;
   const previewEl = document.getElementById('share-message-preview');
   if (previewEl) {
     previewEl.textContent = currentShareMessageText;
+  }
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(currentShareMessageText).catch(() => {});
   }
 
   openModal('share-invitation-modal');
