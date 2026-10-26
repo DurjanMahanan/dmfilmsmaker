@@ -2104,21 +2104,21 @@
         <h3 class="gold-gradient-text">Create New Client Event</h3>
         <button class="modal-close" onclick="closeModal('create-client-modal')">&times;</button>
       </div>
-      <form id="create-client-form">
+      <form id="create-client-form" autocomplete="off">
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Client / Couple Name *</label>
-            <input type="text" id="client-name" class="form-control" placeholder="e.g. Rahul & Sneha" required>
+            <input type="text" id="client-name" class="form-control" placeholder="e.g. Rahul & Sneha" autocomplete="off" required>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div class="form-group">
               <label class="form-label">Client Code (Auto-generated)</label>
-              <input type="text" id="client-code" class="form-control" placeholder="e.g. RAHUL582" required>
+              <input type="text" id="client-code" class="form-control" placeholder="e.g. RAHUL582" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" required>
             </div>
             <div class="form-group">
               <label class="form-label">Mobile / WhatsApp Number</label>
-              <input type="tel" id="client-mobile" class="form-control" placeholder="+91 98765 43210">
+              <input type="tel" id="client-mobile" class="form-control" placeholder="+91 98765 43210" autocomplete="off">
             </div>
           </div>
 
@@ -2168,22 +2168,22 @@
         <h3 class="gold-gradient-text">✏️ Edit Client Details & Limits</h3>
         <button class="modal-close" onclick="closeModal('edit-client-modal')">&times;</button>
       </div>
-      <form id="edit-client-form" onsubmit="saveClientEdit(event)">
+      <form id="edit-client-form" onsubmit="saveClientEdit(event)" autocomplete="off">
         <input type="hidden" id="edit-client-id">
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Client / Couple Name *</label>
-            <input type="text" id="edit-client-name" class="form-control" required>
+            <input type="text" id="edit-client-name" class="form-control" autocomplete="off" required>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div class="form-group">
               <label class="form-label">Client Code</label>
-              <input type="text" id="edit-client-code" class="form-control" readonly style="background:rgba(0,0,0,0.3);">
+              <input type="text" id="edit-client-code" class="form-control" readonly style="background:rgba(0,0,0,0.3);" autocomplete="off">
             </div>
             <div class="form-group">
               <label class="form-label">Mobile / WhatsApp Number</label>
-              <input type="tel" id="edit-client-mobile" class="form-control" placeholder="+91 98765 43210">
+              <input type="tel" id="edit-client-mobile" class="form-control" placeholder="+91 98765 43210" autocomplete="off">
             </div>
           </div>
 
