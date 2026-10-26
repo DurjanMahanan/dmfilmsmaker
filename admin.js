@@ -3834,18 +3834,37 @@ window.scrollInnerSheetsTray = scrollInnerSheetsTray;
 
 // (Modal helpers defined in top of script)
 
-// Click on modal backdrop to close
-document.addEventListener('DOMContentLoaded', () => {
+// Click on modal backdrop to close (Protected for data entry modals like create-client-modal)
+function setupModalBackdropClickHandlers() {
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) {
-        overlay.classList.remove('active');
-        overlay.style.opacity = '0';
-        overlay.style.visibility = 'hidden';
+        // Prevent accidental closing for forms with user inputs!
+        const protectedModals = [
+          'create-client-modal',
+          'edit-client-modal',
+          'create-invoice-modal',
+          'create-flipbook-modal',
+          'upgrade-plan-modal',
+          'checkout-payment-modal',
+          'edit-payment-modal',
+          'change-password-modal'
+        ];
+        if (protectedModals.includes(overlay.id)) {
+          // Do NOT close on outside click! User must explicitly click Cancel or [X]
+          return;
+        }
+        closeModal(overlay.id);
       }
     });
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupModalBackdropClickHandlers);
+} else {
+  setupModalBackdropClickHandlers();
+}
 
 // --- Profile Settings Management (Golden Dashboard) ---
 let activeProfileData = null;
