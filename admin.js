@@ -643,8 +643,8 @@ function renderClientsTable() {
             ${client.selectionLocked || client.selectionSubmittedAt ? '✔ SUBMITTED' : 'PENDING'}
           </span>
         </td>
-        <td>
-          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+        <td style="white-space:nowrap;">
+          <div style="display:flex;gap:0.35rem;flex-wrap:nowrap;align-items:center;">
             ${client.selectionLocked ? `
               <button class="btn btn-sm" onclick="unlockClientSelectionPrompt('${client.id}')" title="Currently Locked - Click to Unlock Gallery" style="background:rgba(239,68,68,0.22);border:1.5px solid #ef4444;color:#fca5a5;font-weight:800;padding:4px 8px;font-size:0.75rem;border-radius:6px;cursor:pointer;box-shadow:0 0 10px rgba(239,68,68,0.3);">
                 🔒 Lock
