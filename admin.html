@@ -425,6 +425,16 @@
           return;
         }
       }
+      // Reset form and auto-generate fresh code immediately
+      const form = document.getElementById('create-client-form');
+      if (form) form.reset();
+      const codeInput = document.getElementById('client-code');
+      if (codeInput) {
+        delete codeInput.dataset.userEdited;
+        if (typeof window.generateAutoClientCode === 'function') {
+          codeInput.value = window.generateAutoClientCode('');
+        }
+      }
       openModal('create-client-modal');
     }
 
@@ -2113,7 +2123,12 @@
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div class="form-group">
-              <label class="form-label">Client Code (Auto-generated)</label>
+              <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>Client Code (Auto-generated) *</span>
+                <button type="button" onclick="regenerateNewClientCode()" style="background:none;border:none;color:var(--gold,#d4af37);cursor:pointer;font-size:0.78rem;font-weight:600;display:inline-flex;align-items:center;gap:3px;" title="Regenerate new PIN / Code">
+                  🔄 Regenerate
+                </button>
+              </label>
               <input type="text" id="client-code" class="form-control" placeholder="e.g. RAHUL582" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" required>
             </div>
             <div class="form-group">
@@ -3431,10 +3446,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261026_1835"></script>
-  <script src="js/api.js?v=20261026_1835"></script>
-  <script src="js/admin.js?v=20261026_1835"></script>
-  <script src="admin.js?v=20261026_1835" onerror="this.remove()"></script>
+  <script src="js/config.js?v=20261026_2136"></script>
+  <script src="js/api.js?v=20261026_2136"></script>
+  <script src="js/admin.js?v=20261026_2136"></script>
+  <script src="admin.js?v=20261026_2136" onerror="this.remove()"></script>
   <!-- Inline Direct Profile Settings Engine (Zero Latency & 100% Reliable) -->
   <script>
     function openCheckoutModalDirect(planName, price) {
