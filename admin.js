@@ -225,7 +225,16 @@ function setupEventListeners() {
   // Create Client Form
   const createClientForm = document.getElementById('create-client-form');
   if (createClientForm) {
-    createClientForm.addEventListener('submit', handleCreateClient);
+    createClientForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleCreateClient(e);
+    });
+    createClientForm.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+        e.preventDefault();
+        handleCreateClient(e);
+      }
+    });
   }
 
   // Drag and Drop Upload Handlers
@@ -681,7 +690,7 @@ function renderClientsTable() {
 
 // --- Create Client Handler ---
 async function handleCreateClient(e) {
-  e.preventDefault();
+  if (e && e.preventDefault) e.preventDefault();
   let name = (document.getElementById('client-name')?.value || '').trim();
   let code = (document.getElementById('client-code')?.value || '').trim();
   
@@ -703,7 +712,8 @@ async function handleCreateClient(e) {
     return;
   }
 
-  const btn = e.target.querySelector('button[type="submit"]');
+  const form = document.getElementById('create-client-form');
+  const btn = form?.querySelector('button.btn-primary') || (e?.target?.tagName === 'BUTTON' ? e.target : null);
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Creating Client Folders...';
@@ -717,7 +727,7 @@ async function handleCreateClient(e) {
     if (created && created.id) {
       window.api.showToast(`✔ Client "${name}" created successfully!`, 'success');
       closeModal('create-client-modal');
-      e.target.reset();
+      if (form) form.reset();
       await loadClientsAndStats();
       startUploadForClient(created.id);
     } else {
@@ -740,6 +750,7 @@ async function handleCreateClient(e) {
     }
   }
 }
+window.handleCreateClient = handleCreateClient;
 
 // --- Upload Management & High-Speed Parallel Engine ---
 function populateClientSelectDropdowns() {
