@@ -471,6 +471,74 @@ async function deleteDriveFolder(fileId, accessToken) {
   }
 }
 
+// Rename an existing Google Drive Folder or File (avoids duplicate folders on name change)
+async function renameDriveFolder(fileId, newName, accessToken) {
+  if (!fileId || !newName || !accessToken) return false;
+  try {
+    console.log(`[Google Drive] Renaming folder ID ${fileId} to "${newName}"...`);
+    const payload = JSON.stringify({ name: newName });
+    const resp = await httpsRequest({
+      hostname: 'www.googleapis.com',
+      path: `/drive/v3/files/${fileId}?supportsAllDrives=true`,
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    }, payload);
+    const ok = resp.statusCode >= 200 && resp.statusCode < 300;
+    if (ok) {
+      console.log(`✔ [Google Drive] Renamed folder ID ${fileId} to "${newName}" successfully!`);
+    } else {
+      console.warn(`[Google Drive] Rename returned status ${resp.statusCode}:`, resp.text());
+    }
+    return ok;
+  } catch (err) {
+    console.warn(`[Google Drive] Error renaming folder ${fileId}:`, err.message);
+    return false;
+  }
+}
+
+// Rename Studio Folders in Google Drive (Photo Selection & 3D Flipbooks)
+async function syncStudioDriveFolderRename(studio, newStudioName) {
+  if (!studio || !newStudioName) return;
+  const cleanNewName = newStudioName.trim().replace(/[^a-zA-Z0-9 _-]/g, '_');
+  try {
+    const token = await getDriveAccessToken();
+    if (!token) return;
+
+    // 1. Rename Photo Selection Studio Folder if studio.driveFolderId exists
+    if (studio.driveFolderId) {
+      await renameDriveFolder(studio.driveFolderId, cleanNewName, token);
+    }
+
+    // 2. Also check and rename 3D Flipbooks studio folder if it exists
+    const MASTER_WAPSITE_FOLDER_ID = "1Glh2NLXhJMIKO89jz2OsGBzI3fW8HZJf";
+    const root3DFolder = await findOrCreateDriveFolder('3D Flipbooks', MASTER_WAPSITE_FOLDER_ID, token);
+    if (root3DFolder && root3DFolder.id) {
+      const oldCleanName = (studio.studioName || '').trim().replace(/[^a-zA-Z0-9 _-]/g, '_');
+      if (oldCleanName && oldCleanName !== cleanNewName) {
+        const q = encodeURIComponent(`'${root3DFolder.id}' in parents and name = '${oldCleanName.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+        const searchResp = await httpsRequest({
+          hostname: 'www.googleapis.com',
+          path: `/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=5`,
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = searchResp.json();
+        if (data.files && data.files.length > 0) {
+          for (const f of data.files) {
+            await renameDriveFolder(f.id, cleanNewName, token);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Google Drive] Studio folder rename sync notice:', e.message);
+  }
+}
+
 // Check if file with same name already exists in target folder in Drive, and if so, delete/overwrite it!
 async function findAndRemoveDuplicateDriveFile(fileName, parentId, accessToken) {
   if (!fileName || !parentId || !accessToken) return;
@@ -1195,11 +1263,18 @@ const server = http.createServer(async (req, res) => {
           const db = loadDB();
           const studio = db.studios.find(s => s.id === studioId);
           if (studio) {
+            const oldStudioName = studio.studioName;
             if (studioName) studio.studioName = studioName.trim();
             if (phone !== undefined) studio.phone = phone;
             if (logoUrl !== undefined) studio.logoUrl = logoUrl;
             if (tagline !== undefined) studio.tagline = tagline;
             saveDB(db);
+
+            // Rename Google Drive studio folder if name changed (prevents new/duplicate folders)
+            if (studioName && oldStudioName && oldStudioName.trim() !== studioName.trim()) {
+              syncStudioDriveFolderRename(studio, studioName.trim()).catch(() => {});
+            }
+
             sendJSON({ success: true, studio });
           } else {
             sendJSON({ success: true, message: 'Settings updated' });
@@ -1428,14 +1503,56 @@ const server = http.createServer(async (req, res) => {
           const mainFolderId = client.folders?.main || client.id;
           const rootMasterId = "1Glh2NLXhJMIKO89jz2OsGBzI3fW8HZJf";
 
-          if (mainFolderId && mainFolderId !== rootMasterId) {
-            try {
-              const token = await getDriveAccessToken();
-              console.log(`[Google Drive] Deleting client "${client.name}" folder forever: ${mainFolderId}...`);
-              await deleteDriveFolder(mainFolderId, token);
-            } catch (err) {
-              console.warn('[Google Drive] Error deleting Drive folder on client delete:', err.message);
+          try {
+            const token = await getDriveAccessToken();
+            if (token) {
+              // 1. Delete main client event folder by ID
+              if (mainFolderId && mainFolderId !== rootMasterId && !mainFolderId.startsWith('folder_')) {
+                console.log(`[Google Drive] Deleting client "${client.name}" folder forever (ID: ${mainFolderId})...`);
+                await deleteDriveFolder(mainFolderId, token);
+              }
+
+              // 2. Also search Studio folder for client's folder by code or name to ensure 100% cleanup forever
+              const studio = getTargetStudio(db, client.studioId);
+              let studioFolderId = studio?.driveFolderId;
+              if (!studioFolderId && studio) {
+                const sFolder = await getStudioPhotoSelectionFolder(studio.studioName, token);
+                studioFolderId = sFolder.id;
+              }
+
+              if (studioFolderId) {
+                const searchNames = [
+                  client.code,
+                  client.name,
+                  `${client.name} - ${client.eventName || 'Wedding'} (${client.code})`
+                ].filter(Boolean);
+
+                for (const sName of searchNames) {
+                  try {
+                    const q = encodeURIComponent(`'${studioFolderId}' in parents and name contains '${sName.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+                    const sResp = await httpsRequest({
+                      hostname: 'www.googleapis.com',
+                      path: `/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true`,
+                      method: 'GET',
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const sData = sResp.json();
+                    if (sData.files && sData.files.length > 0) {
+                      for (const f of sData.files) {
+                        if (f.id !== rootMasterId && f.id !== studioFolderId) {
+                          console.log(`[Google Drive] Permanently deleting matched client folder "${f.name}" (${f.id})...`);
+                          await deleteDriveFolder(f.id, token);
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    console.warn('[Google Drive] Client folder name search cleanup warning:', e.message);
+                  }
+                }
+              }
             }
+          } catch (err) {
+            console.warn('[Google Drive] Error deleting Drive folder on client delete:', err.message);
           }
 
           db.clients = db.clients.filter(c => c.id !== clientIdMatch && c.code !== clientIdMatch);
@@ -1818,9 +1935,16 @@ const server = http.createServer(async (req, res) => {
             db.studios.push(studio);
           }
 
+          const oldStudioName = studio.studioName;
+          let studioNameChanged = false;
+
           if (payload.studioName !== undefined && payload.studioName.trim()) {
-            studio.studioName = payload.studioName.trim();
-            studio.ownerName = payload.studioName.trim();
+            const newName = payload.studioName.trim();
+            if (oldStudioName && oldStudioName.trim() !== newName) {
+              studioNameChanged = true;
+            }
+            studio.studioName = newName;
+            studio.ownerName = newName;
           }
           if (payload.email !== undefined) studio.email = payload.email.trim();
           if (payload.phone !== undefined) studio.phone = payload.phone.trim();
@@ -1834,6 +1958,12 @@ const server = http.createServer(async (req, res) => {
 
           studio.updatedAt = new Date().toISOString();
           saveDB(db);
+
+          // Rename Google Drive studio folder if name changed (prevents new/duplicate folders)
+          if (studioNameChanged && oldStudioName) {
+            syncStudioDriveFolderRename(studio, studio.studioName).catch(() => {});
+          }
+
           sendJSON({ success: true, studio });
         } catch (e) {
           sendJSON({ error: 'Failed to save studio profile: ' + e.message }, 400);
@@ -1948,16 +2078,28 @@ const server = http.createServer(async (req, res) => {
           let studio = (studioId && db.studios.find(s => s.id === studioId)) || db.studios[0];
           
           if (studio) {
+            const oldStudioName = studio.studioName;
+            let studioNameChanged = false;
+
             studio.websiteConfig = { ...(studio.websiteConfig || {}), ...newConfig };
             if (newConfig.studioName && newConfig.studioName.trim()) {
-              studio.studioName = newConfig.studioName.trim();
-              studio.ownerName = newConfig.studioName.trim();
+              const newName = newConfig.studioName.trim();
+              if (oldStudioName && oldStudioName.trim() !== newName) {
+                studioNameChanged = true;
+              }
+              studio.studioName = newName;
+              studio.ownerName = newName;
             }
             if (newConfig.phone) studio.phone = newConfig.phone.trim();
             if (newConfig.email) studio.email = newConfig.email.trim();
             if (newConfig.studioSubtitle) studio.tagline = newConfig.studioSubtitle;
             studio.updatedAt = new Date().toISOString();
             saveDB(db);
+
+            // Rename Google Drive studio folder if name changed (prevents new/duplicate folders)
+            if (studioNameChanged && oldStudioName) {
+              syncStudioDriveFolderRename(studio, studio.studioName).catch(() => {});
+            }
 
             // Auto clean up any removed local slide files in uploads/Slideshow folder
             if (Array.isArray(newConfig.sliderImages)) {
