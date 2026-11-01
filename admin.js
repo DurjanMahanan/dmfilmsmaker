@@ -5530,6 +5530,7 @@ function selectPlanUpgrade(planName, price) {
     amount: price,
     durationDays: (price === 999 ? 180 : 30)
   };
+  window.currentCheckoutPlan = currentCheckoutPlan;
 
   const studio = currentStudio || JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
   const studioName = studio.studioName || 'DM FILMS MAKER';
@@ -5537,136 +5538,31 @@ function selectPlanUpgrade(planName, price) {
   // 1. Immediately reset views and populate UI elements
   const checkoutView = document.getElementById('payment-checkout-view');
   const successView = document.getElementById('payment-success-view');
-  if (checkoutView) checkoutView.style.display = 'grid';
-  if (successView) successView.style.display = 'none';
+  if (checkoutView) checkoutView.style.setProperty('display', 'block', 'important');
+  if (successView) successView.style.setProperty('display', 'none', 'important');
 
   const studioNameEl = document.getElementById('pay-studio-name');
   const totalAmountEl = document.getElementById('pay-total-amount');
   const planBadgeEl = document.getElementById('pay-plan-badge');
-  const qrImgEl = document.getElementById('pay-upi-qr-image');
-  const mobileBtnEl = document.getElementById('pay-mobile-upi-btn');
-  const liveStatusText = document.getElementById('pay-live-status-text');
+  const payLabelEl = document.getElementById('btn-pay-label');
 
   if (studioNameEl) studioNameEl.textContent = studioName;
   if (totalAmountEl) totalAmountEl.textContent = `₹${price}.00`;
   if (planBadgeEl) {
-    planBadgeEl.textContent = planName === 'Silver Edition' 
-      ? '💎 Silver Edition (30 Days Unlimited Access)' 
-      : '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)';
+    planBadgeEl.textContent = (price === 999 || (planName && planName.includes('Gold'))) 
+      ? '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)' 
+      : '💎 Silver Edition (30 Days Unlimited Access)';
   }
-  if (liveStatusText) {
-    liveStatusText.textContent = 'Waiting for UPI payment... Auto-detecting live';
-  }
-
-  // Pre-render local QR immediately so user sees it with 0 latency
-  const directUpi = `upi://pay?pa=9668584247@ybl&pn=DURJAN%20MAHANAND&am=${price}&cu=INR&tn=${encodeURIComponent('DM Photo SaaS - ' + planName)}`;
-  if (qrImgEl) {
-    qrImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(directUpi)}`;
-  }
-  if (mobileBtnEl) {
-    mobileBtnEl.href = directUpi;
+  if (payLabelEl) {
+    payLabelEl.textContent = `⚡ Pay ₹${price}.00 with Razorpay (Instant Activation)`;
   }
 
   // 2. Open Modal Immediately!
   closeModal('upgrade-plan-modal');
   openModal('checkout-payment-modal');
-  startCheckoutCountdown();
-
-  // 3. Register live PhonePe backend order and start automatic polling
-  const planType = (price === 999 || planName.includes('Gold')) ? 'YEARLY' : 'MONTHLY';
-  fetch('/api/payment/phonepe/create-order', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      plan: planType,
-      planName: planName,
-      studioId: studio.id || 'studio_master_dm'
-    })
-  })
-  .then(res => res.json())
-  .then(orderData => {
-    if (orderData && orderData.orderId) {
-      currentOrderId = orderData.orderId;
-      if (orderData.upiUri && qrImgEl) {
-        qrImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(orderData.upiUri)}`;
-      }
-      if (orderData.upiUri && mobileBtnEl) {
-        mobileBtnEl.href = orderData.upiUri;
-      }
-      startLivePaymentPolling(currentOrderId);
-    }
-  })
-  .catch(err => {
-    console.error('Failed to create PhonePe payment order:', err);
-    currentOrderId = 'DM_' + Date.now();
-    startLivePaymentPolling(currentOrderId);
-  });
 }
-
-function startLivePaymentPolling(orderId) {
-  if (livePaymentPollingInterval) clearInterval(livePaymentPollingInterval);
-
-  livePaymentPollingInterval = setInterval(async () => {
-    try {
-      const res = await fetch(`/api/payment/status?orderId=${encodeURIComponent(orderId)}`);
-      const data = await res.json();
-
-      if (data && (data.status === 'SUCCESS' || data.status === 'PAID')) {
-        clearInterval(livePaymentPollingInterval);
-        if (checkoutTimerInterval) clearInterval(checkoutTimerInterval);
-
-        currentActiveSubscription = data.subscription;
-        updateSidebarSubscriptionBadge(data.subscription);
-
-        // Automatic Live Payment Success Trigger!
-        showLivePaymentSuccess(data.planName || data.plan, data.amount, data.utr, data.durationDays || 30);
-      } else if (data && data.status === 'FAILED') {
-        clearInterval(livePaymentPollingInterval);
-        if (window.api && window.api.showToast) {
-          window.api.showToast(data.message || 'Payment was not successful. Please try again.', 'error');
-        }
-      }
-    } catch (e) {
-      console.warn('PhonePe status polling check:', e);
-    }
-  }, 1800);
-}
-
-function startCheckoutCountdown() {
-  if (checkoutTimerInterval) clearInterval(checkoutTimerInterval);
-  checkoutTimerSeconds = 15 * 60; // 15:00
-
-  const pill = document.getElementById('pay-countdown-pill');
-  const timeoutClock = document.getElementById('phonepe-timeout-clock');
-  
-  function updatePill() {
-    const mins = Math.floor(checkoutTimerSeconds / 60);
-    const secs = checkoutTimerSeconds % 60;
-    const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    if (pill) pill.textContent = `This QR will expire in ${formatted}`;
-    if (timeoutClock) timeoutClock.textContent = formatted;
-  }
-
-  updatePill();
-
-  checkoutTimerInterval = setInterval(() => {
-    checkoutTimerSeconds--;
-    if (checkoutTimerSeconds <= 0) {
-      clearInterval(checkoutTimerInterval);
-      if (pill) pill.textContent = 'This QR has expired';
-      if (timeoutClock) timeoutClock.textContent = '00:00';
-    } else {
-      updatePill();
-    }
-  }, 1000);
-}
-
-async function submitPaymentVerification() {
-  const utrInput = document.getElementById('pay-utr-input');
-  const utrVal = (utrInput?.value || '').trim() || ('UPI' + Date.now().toString().slice(-8));
-
-  await executeActivateSubscription(currentCheckoutPlan.name, currentCheckoutPlan.amount, utrVal);
-}
+window.selectPlanUpgrade = selectPlanUpgrade;
+window.openCheckoutModalDirect = selectPlanUpgrade;
 
 async function executeActivateSubscription(planName, amount, utr) {
   try {
@@ -5677,8 +5573,8 @@ async function executeActivateSubscription(planName, amount, utr) {
         studioId: currentStudio?.id,
         planName,
         amount,
-        utr: utr || ('UPI' + Date.now().toString().slice(-8)),
-        paymentMethod: 'PhonePe / UPI QR (9668584247@ybl)'
+        utr: utr || ('RZP' + Date.now().toString().slice(-8)),
+        paymentMethod: 'Razorpay Gateway (Official)'
       })
     });
 
@@ -5743,7 +5639,7 @@ async function payWithRazorpay() {
     });
     const orderData = await res.json();
     if (!orderData.success) {
-      alert(orderData.error || 'Failed to initiate Razorpay order. Please try direct UPI QR below.');
+      alert(orderData.error || 'Failed to initiate Razorpay order. Please check your connection and try again.');
       if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
       return;
     }
@@ -5836,7 +5732,7 @@ async function payWithRazorpay() {
     rzpInstance.open();
   } catch (err) {
     console.error('Razorpay initiation error:', err);
-    alert('Could not open Razorpay. Please use direct UPI QR option below.');
+    alert('Could not open Razorpay. Please check your internet connection and try again.');
     if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
   }
 }

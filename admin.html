@@ -58,7 +58,7 @@
     }
 
     function openCheckoutModalDirect(planName, price) {
-      console.log('🚀 Direct opening PhonePe checkout modal for:', planName, price);
+      console.log('🚀 Direct opening Razorpay checkout modal for:', planName, price);
       
       // 1. Hide plan selection modal
       const upModal = document.getElementById('upgrade-plan-modal');
@@ -77,29 +77,25 @@
       const studioNameEl = document.getElementById('pay-studio-name');
       const totalAmountEl = document.getElementById('pay-total-amount');
       const planBadgeEl = document.getElementById('pay-plan-badge');
-      const qrImgEl = document.getElementById('pay-upi-qr-image');
-      const mobileBtnEl = document.getElementById('pay-mobile-upi-btn');
+      const payLabelEl = document.getElementById('btn-pay-label');
       const checkoutView = document.getElementById('payment-checkout-view');
       const successView = document.getElementById('payment-success-view');
 
-      if (checkoutView) checkoutView.style.setProperty('display', 'grid', 'important');
+      if (checkoutView) checkoutView.style.setProperty('display', 'block', 'important');
       if (successView) successView.style.setProperty('display', 'none', 'important');
 
       if (studioNameEl) studioNameEl.textContent = studioName;
       if (totalAmountEl) totalAmountEl.textContent = '₹' + price + '.00';
       if (planBadgeEl) {
-        planBadgeEl.textContent = (price === 999 ? '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)' : '💎 Silver Edition (30 Days Unlimited Access)');
+        planBadgeEl.textContent = (price === 999 || (planName && planName.includes('Gold'))) 
+          ? '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)' 
+          : '💎 Silver Edition (30 Days Unlimited Access)';
+      }
+      if (payLabelEl) {
+        payLabelEl.textContent = `⚡ Pay ₹${price}.00 with Razorpay (Instant Activation)`;
       }
 
       window.currentCheckoutPlan = { name: planName, amount: price, durationDays: price === 999 ? 180 : 30 };
-
-      const directUpi = `upi://pay?pa=9668584247@ybl&pn=DURJAN%20MAHANAND&am=${price}&cu=INR&tn=${encodeURIComponent('DM Photo SaaS - ' + planName)}`;
-      if (qrImgEl) {
-        qrImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(directUpi)}`;
-      }
-      if (mobileBtnEl) {
-        mobileBtnEl.href = directUpi;
-      }
 
       // 3. Open Checkout Modal
       const checkoutModal = document.getElementById('checkout-payment-modal');
@@ -110,23 +106,6 @@
         checkoutModal.style.setProperty('visibility', 'visible', 'important');
         checkoutModal.style.setProperty('z-index', '9999999', 'important');
       }
-
-      if (typeof startCheckoutCountdown === 'function') startCheckoutCountdown();
-
-      const planType = (price === 999 || (planName && planName.includes('Gold'))) ? 'YEARLY' : 'MONTHLY';
-      fetch('/api/payment/phonepe/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planType, planName: planName, studioId: studio.id || 'studio_master_dm' })
-      })
-      .then(r => r.json())
-      .then(d => {
-        if (d && d.orderId) {
-          if (d.upiUri && qrImgEl) qrImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(d.upiUri)}`;
-          if (typeof startLivePaymentPolling === 'function') startLivePaymentPolling(d.orderId);
-        }
-      })
-      .catch(console.warn);
     }
 
     async function loadCurrentSubscription() {
@@ -2959,236 +2938,96 @@
     </div>
   </div>
 
-  <!-- MODAL: PHONEPE OFFICIAL PAYMENT GATEWAY (PIXEL-PERFECT REPLICA) -->
-  <div class="modal-overlay" id="checkout-payment-modal" style="z-index:9999999;background:rgba(15,23,42,0.75);backdrop-filter:blur(6px);">
-    <div class="modal-container" style="max-width:960px;width:95%;background:#ffffff;border-radius:16px;box-shadow:0 25px 70px rgba(0,0,0,0.5);color:#0f172a;overflow:hidden;padding:0;position:relative;font-family:'Inter',system-ui,-apple-system,sans-serif;">
+  <!-- MODAL: RAZORPAY OFFICIAL SECURE PAYMENT GATEWAY -->
+  <div class="modal-overlay" id="checkout-payment-modal" style="z-index:9999999;background:rgba(15,23,42,0.8);backdrop-filter:blur(8px);">
+    <div class="modal-container" style="max-width:540px;width:94%;background:#ffffff;border-radius:20px;box-shadow:0 25px 70px rgba(0,0,0,0.45);color:#0f172a;overflow:hidden;padding:0;position:relative;font-family:'Inter',system-ui,-apple-system,sans-serif;">
       
-      <!-- VIEW 1: OFFICIAL PHONEPE CHECKOUT VIEW -->
-      <div id="payment-checkout-view" style="display:grid;grid-template-columns:290px 1fr;width:100%;min-height:510px;">
+      <!-- VIEW 1: OFFICIAL RAZORPAY CHECKOUT VIEW -->
+      <div id="payment-checkout-view" style="display:block;width:100%;">
         
-        <!-- Left Column: Merchant Header, Total Pill & Official PhonePe Graphic -->
-        <div style="background:#ffffff;border-right:1px solid #eef2f6;padding:1.5rem 1.4rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;">
-          
-          <div>
-            <!-- Top Merchant Profile -->
-            <div style="display:flex;align-items:center;gap:0.75rem;">
-              <div style="width:38px;height:38px;border-radius:10px;background:#f97316;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.15rem;box-shadow:0 3px 10px rgba(249,115,22,0.35);">
-                🛍️
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg, #0b192c 0%, #1e3a8a 100%);padding:1.4rem 1.6rem;color:#ffffff;display:flex;align-items:center;justify-content:space-between;position:relative;">
+          <div style="display:flex;align-items:center;gap:0.85rem;">
+            <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,0.12);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:1.35rem;border:1px solid rgba(255,255,255,0.2);">
+              ⚡
+            </div>
+            <div>
+              <div style="font-weight:800;font-size:1.05rem;line-height:1.2;color:#ffffff;display:flex;align-items:center;gap:6px;">
+                <span id="pay-studio-name">DM FILMS MAKER</span>
+                <span style="background:#22c55e;color:#ffffff;font-size:0.62rem;font-weight:800;padding:2px 6px;border-radius:10px;text-transform:uppercase;">Verified</span>
               </div>
+              <div style="font-size:0.75rem;color:#93c5fd;font-weight:500;margin-top:2px;display:flex;align-items:center;gap:4px;">
+                <span>🔒 100% Secure Checkout</span>
+                <span>•</span>
+                <span>Razorpay Gateway</span>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="modal-close" onclick="closeModal('checkout-payment-modal')" style="background:rgba(255,255,255,0.12);border:none;color:#ffffff;font-size:1.3rem;cursor:pointer;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">&times;</button>
+        </div>
+
+        <!-- Body Content -->
+        <div style="padding:1.6rem 1.6rem 1.4rem 1.6rem;">
+          
+          <!-- Plan Summary Card -->
+          <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:16px;padding:1.25rem 1.35rem;margin-bottom:1.25rem;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.85rem;">
               <div>
-                <div style="font-weight:700;font-size:0.95rem;color:#0f172a;line-height:1.2;" id="pay-studio-name">Studio Line India</div>
-                <div style="font-size:0.72rem;color:#64748b;font-weight:500;">Verified Merchant</div>
+                <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:4px;">Selected Subscription</div>
+                <div style="font-size:1.15rem;font-weight:800;color:#0f172a;" id="pay-plan-badge">💎 Silver Edition (30 Days Unlimited)</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:0.72rem;font-weight:700;color:#64748b;margin-bottom:2px;">Amount</div>
+                <div style="font-size:1.6rem;font-weight:900;color:#1e40af;font-family:'Outfit',sans-serif;" id="pay-total-amount">₹199.00</div>
               </div>
             </div>
 
-            <!-- Total Amount Card with Down Chevron -->
-            <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:0.85rem 1.1rem;box-shadow:0 2px 8px rgba(0,0,0,0.03);margin-top:1.5rem;display:flex;justify-content:space-between;align-items:center;">
-              <div style="display:flex;align-items:center;gap:0.6rem;">
-                <span style="font-weight:700;font-size:0.95rem;color:#0f172a;">Total</span>
-                <span style="color:#94a3b8;font-size:0.9rem;">:</span>
+            <!-- Features Checklist -->
+            <div style="border-top:1px dashed #cbd5e1;padding-top:0.85rem;display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.78rem;color:#334155;font-weight:600;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:#16a34a;font-weight:900;">✓</span> Unlimited Client Galleries
               </div>
-              <div style="display:flex;align-items:center;gap:0.35rem;">
-                <span style="font-size:1.25rem;font-weight:800;color:#0f172a;font-family:'Outfit',sans-serif;" id="pay-total-amount">₹599.00</span>
-                <span style="color:#64748b;font-size:0.8rem;font-weight:bold;">⌵</span>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:#16a34a;font-weight:900;">✓</span> 3D Virtual Album / Flipbook
               </div>
-            </div>
-            
-            <div style="font-size:0.72rem;color:#5f259f;font-weight:700;margin-top:6px;padding-left:4px;" id="pay-plan-badge">
-              💎 Silver Edition (30 Days Unlimited)
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:#16a34a;font-weight:900;">✓</span> High-Speed Cloud Downloads
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:#16a34a;font-weight:900;">✓</span> Instant Automated Activation
+              </div>
             </div>
           </div>
 
-          <!-- Bottom: PhonePe Signature Illustration & Powered by PhonePe -->
-          <div>
-            <!-- Custom Vector PhonePe Art -->
-            <div style="width:100%;margin-bottom:0.75rem;border-radius:12px;overflow:hidden;background:#faf5ff;">
-              <svg viewBox="0 0 280 150" style="width:100%;height:auto;display:block;">
-                <defs>
-                  <linearGradient id="pgPurple" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#5f259f"/>
-                    <stop offset="100%" stop-color="#451475"/>
-                  </linearGradient>
-                  <linearGradient id="pgShield" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#ffffff"/>
-                    <stop offset="100%" stop-color="#e2e8f0"/>
-                  </linearGradient>
-                </defs>
-                <path d="M0 50 C90 10 190 20 280 75 L280 150 L0 150 Z" fill="url(#pgPurple)"/>
-                
-                <!-- Rising Chart Bars & Arrow -->
-                <rect x="40" y="110" width="12" height="30" rx="2" fill="#ffffff" opacity="0.95"/>
-                <rect x="58" y="95" width="12" height="45" rx="2" fill="#ffffff" opacity="0.95"/>
-                <rect x="76" y="80" width="12" height="60" rx="2" fill="#ffffff" opacity="0.95"/>
-                <path d="M34 100 L52 85 L68 90 L98 62" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <polygon points="99,57 99,70 87,62" fill="#ffffff"/>
-
-                <!-- 3D Security Shield -->
-                <g transform="translate(138, 40)">
-                  <path d="M22 0 C36 0 44 8 44 22 C44 40 22 56 22 56 C22 56 0 40 0 22 C0 8 8 0 22 0 Z" fill="url(#pgShield)"/>
-                  <path d="M14 23 L20 29 L30 16" fill="none" stroke="#5f259f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                </g>
-
-                <!-- Money Bag & Coins -->
-                <g transform="translate(175, 75)">
-                  <circle cx="30" cy="35" r="18" fill="#e2e8f0"/>
-                  <path d="M24 18 Q30 14 36 18 L34 23 Q30 25 26 23 Z" fill="#94a3b8"/>
-                  <ellipse cx="10" cy="45" rx="8" ry="3.5" fill="#cbd5e1"/>
-                  <ellipse cx="10" cy="40" rx="8" ry="3.5" fill="#e2e8f0"/>
-                  <ellipse cx="10" cy="35" rx="8" ry="3.5" fill="#f8fafc"/>
-                </g>
-              </svg>
-            </div>
-
-            <!-- Official Footer -->
-            <div style="display:flex;align-items:center;justify-content:center;gap:0.4rem;font-size:0.75rem;color:#64748b;font-weight:600;">
-              <span>Powered by</span>
-              <span style="display:inline-flex;align-items:center;gap:3px;font-weight:900;color:#5f259f;font-size:0.85rem;letter-spacing:-0.01em;">
-                <span style="background:#5f259f;color:#fff;font-size:0.68rem;padding:1px 5px;border-radius:4px;font-weight:900;">पे</span> PhonePe
+          <!-- Accepted Payment Methods Banner -->
+          <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:0.9rem 1.1rem;margin-bottom:1.35rem;">
+            <div style="font-size:0.74rem;font-weight:700;color:#475569;margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.04em;">Supported Payment Modes:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+              <span style="background:#f1f5f9;border:1px solid #e2e8f0;padding:4px 9px;border-radius:6px;font-size:0.75rem;font-weight:800;color:#0f172a;display:inline-flex;align-items:center;gap:4px;">
+                <span style="color:#2563eb;">⚡</span> UPI (GPay, PhonePe, Paytm, CRED)
+              </span>
+              <span style="background:#f1f5f9;border:1px solid #e2e8f0;padding:4px 9px;border-radius:6px;font-size:0.75rem;font-weight:800;color:#0f172a;display:inline-flex;align-items:center;gap:4px;">
+                💳 All Debit & Credit Cards
+              </span>
+              <span style="background:#f1f5f9;border:1px solid #e2e8f0;padding:4px 9px;border-radius:6px;font-size:0.75rem;font-weight:800;color:#0f172a;display:inline-flex;align-items:center;gap:4px;">
+                🏦 Net Banking (50+ Banks)
               </span>
             </div>
           </div>
 
-        </div>
+          <!-- Pay Button -->
+          <button type="button" id="btn-pay-razorpay" onclick="payWithRazorpay()" style="width:100%;height:52px;background:linear-gradient(135deg, #0284c7 0%, #1d4ed8 50%, #4338ca 100%);color:#ffffff;border:none;border-radius:14px;font-size:1.02rem;font-weight:900;display:flex;align-items:center;justify-content:center;gap:0.65rem;cursor:pointer;box-shadow:0 8px 25px rgba(29,78,216,0.38);transition:all 0.2s;" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 12px 30px rgba(29,78,216,0.5)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 8px 25px rgba(29,78,216,0.38)'">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#38bdf8" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span id="btn-pay-label">⚡ Pay with Razorpay (Instant Activation)</span>
+          </button>
 
-        <!-- Right Column: Header, Payment Methods & Clean QR Canvas -->
-        <div style="padding:1.25rem 1.75rem;display:flex;flex-direction:column;justify-content:space-between;background:#ffffff;">
-          
-          <!-- Top Header with Centered Title and Close Cross -->
-          <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f1f5f9;padding-bottom:0.75rem;position:relative;">
-            <div style="width:30px;"></div>
-            <div style="font-size:1rem;font-weight:700;color:#0f172a;text-align:center;">Payment Options</div>
-            <button type="button" class="modal-close" onclick="closeModal('checkout-payment-modal')" style="background:transparent;border:none;color:#64748b;font-size:1.3rem;cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">&times;</button>
-          </div>
-
-          <!-- Two-Column Interior: Tabs & QR Area -->
-          <div style="display:grid;grid-template-columns:230px 1fr;gap:1.5rem;align-items:start;margin-top:1.25rem;flex:1;">
-            
-            <!-- Left Tabs (UPI Active, Cards, Net Banking) -->
-            <div>
-              <div style="font-size:0.75rem;font-weight:700;color:#0f172a;margin-bottom:0.6rem;">UPI Payment</div>
-              
-              <!-- Active UPI Option (Exact PhonePe Lilac Background + Left Purple Line) -->
-              <div style="background:#f3e8ff;border-left:4px solid #5f259f;border-radius:0 10px 10px 0;padding:0.75rem 0.85rem;display:flex;align-items:center;gap:0.65rem;cursor:pointer;">
-                <!-- Multi-Color UPI Symbol -->
-                <svg width="22" height="22" viewBox="0 0 32 32" style="flex-shrink:0;">
-                  <polygon points="16,2 30,26 16,20" fill="#f97316"/>
-                  <polygon points="16,2 2,26 16,20" fill="#22c55e"/>
-                </svg>
-                <div>
-                  <div style="font-weight:800;font-size:0.85rem;color:#0f172a;">UPI</div>
-                  <div style="font-size:0.68rem;color:#64748b;line-height:1.2;">Pay via UPI apps, number or ID</div>
-                </div>
-              </div>
-
-              <!-- Razorpay Gateway Option -->
-              <div onclick="payWithRazorpay()" style="background:#f0f9ff;border-left:4px solid #0284c7;border-radius:0 10px 10px 0;padding:0.75rem 0.85rem;display:flex;align-items:center;gap:0.65rem;cursor:pointer;margin-bottom:0.75rem;transition:all 0.2s;" onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='#f0f9ff'">
-                <span style="font-size:1.15rem;">⚡</span>
-                <div>
-                  <div style="font-weight:800;font-size:0.85rem;color:#0369a1;">Razorpay Gateway</div>
-                  <div style="font-size:0.68rem;color:#0284c7;line-height:1.2;">Instant Auto-Activate</div>
-                </div>
-              </div>
-
-              <div style="font-size:0.75rem;font-weight:700;color:#0f172a;margin-top:1.25rem;margin-bottom:0.6rem;">Other Methods</div>
-
-              <!-- Debit/Credit Card Option -->
-              <div onclick="payWithRazorpay()" style="display:flex;align-items:center;gap:0.65rem;padding:0.65rem 0.75rem;border-radius:8px;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                <span style="font-size:1.1rem;color:#475569;">💳</span>
-                <div>
-                  <div style="font-weight:600;font-size:0.8rem;color:#334155;display:flex;align-items:center;gap:4px;">
-                    Debit/Credit Card
-                    <span style="font-size:0.62rem;background:#e2e8f0;padding:1px 4px;border-radius:3px;color:#475569;font-weight:700;">VISA</span>
-                    <span style="font-size:0.62rem;background:#e2e8f0;padding:1px 4px;border-radius:3px;color:#475569;font-weight:700;">+2</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Net Banking Option -->
-              <div onclick="payWithRazorpay()" style="display:flex;align-items:center;gap:0.65rem;padding:0.65rem 0.75rem;border-radius:8px;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                <span style="font-size:1.1rem;color:#475569;">🏦</span>
-                <div>
-                  <div style="font-weight:600;font-size:0.8rem;color:#334155;display:flex;align-items:center;gap:4px;">
-                    Net Banking
-                    <span style="font-size:0.62rem;background:#e2e8f0;padding:1px 4px;border-radius:3px;color:#475569;font-weight:700;">SBI</span>
-                    <span style="font-size:0.62rem;background:#e2e8f0;padding:1px 4px;border-radius:3px;color:#475569;font-weight:700;">+57</span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <!-- Right QR Box (White Rounded Card Container) -->
-            <div style="border:1px solid #e2e8f0;border-radius:16px;padding:1.25rem 1rem;display:flex;flex-direction:column;align-items:center;text-align:center;background:#ffffff;box-shadow:0 2px 10px rgba(0,0,0,0.02);">
-              
-              <!-- Official Razorpay Instant Pay Button -->
-              <button type="button" id="btn-pay-razorpay" onclick="payWithRazorpay()" style="width:100%;height:46px;background:linear-gradient(135deg, #0c2340 0%, #1d4ed8 100%);color:#ffffff;border:none;border-radius:12px;font-size:0.9rem;font-weight:800;display:flex;align-items:center;justify-content:center;gap:0.6rem;cursor:pointer;box-shadow:0 4px 15px rgba(29,78,216,0.32);margin-bottom:0.9rem;transition:all 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#38bdf8" stroke="#38bdf8" stroke-width="1.5" stroke-linejoin="round"/></svg>
-                <span>⚡ Pay with Razorpay (Instant Activation)</span>
-              </button>
-
-              <div style="width:100%;display:flex;align-items:center;gap:0.6rem;margin-bottom:0.85rem;">
-                <div style="flex:1;height:1px;background:#e2e8f0;"></div>
-                <span style="font-size:0.66rem;color:#94a3b8;font-weight:700;letter-spacing:0.04em;">OR DIRECT UPI QR SCAN</span>
-                <div style="flex:1;height:1px;background:#e2e8f0;"></div>
-              </div>
-
-              <div style="font-weight:700;font-size:0.95rem;color:#0f172a;margin-bottom:0.45rem;">
-                Scan via any UPI app
-              </div>
-
-              <!-- Brand Logos Row: PhonePe, GPay, Paytm, CRED, BHIM -->
-              <div style="display:flex;align-items:center;gap:0.45rem;margin-bottom:1rem;">
-                <span style="background:#5f259f;color:#fff;font-weight:800;font-size:0.65rem;padding:2px 6px;border-radius:4px;">पे PhonePe</span>
-                <span style="background:#ffffff;border:1px solid #e2e8f0;color:#1a73e8;font-weight:800;font-size:0.65rem;padding:1px 6px;border-radius:4px;">G Pay</span>
-                <span style="background:#00baf2;color:#fff;font-weight:800;font-size:0.65rem;padding:2px 6px;border-radius:4px;">Paytm</span>
-                <span style="background:#000000;color:#fff;font-weight:800;font-size:0.65rem;padding:2px 6px;border-radius:4px;">CRED</span>
-                <span style="background:#22c55e;color:#fff;font-weight:800;font-size:0.65rem;padding:2px 6px;border-radius:4px;">UPI</span>
-              </div>
-
-              <!-- High-Resolution Clean QR Code Box -->
-              <div style="position:relative;width:190px;height:190px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:10px;box-shadow:0 4px 15px rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center;margin-bottom:0.85rem;">
-                <img id="pay-upi-qr-image" src="" alt="UPI QR Code" style="width:100%;height:100%;object-fit:contain;border-radius:4px;">
-                <!-- Center Official PhonePe 'पे' Badge -->
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);background:#000000;color:#ffffff;font-weight:900;font-size:0.75rem;padding:3px 6px;border-radius:6px;border:2px solid #ffffff;box-shadow:0 2px 6px rgba(0,0,0,0.35);">
-                  पे
-                </div>
-              </div>
-
-              <!-- Gray Rounded Expiration Pill (Exact Official PhonePe Style) -->
-              <div style="background:#f1f5f9;color:#64748b;font-size:0.75rem;font-weight:600;padding:4px 16px;border-radius:20px;margin-bottom:0.75rem;" id="pay-countdown-pill">
-                This QR will expire in 14:59
-              </div>
-
-              <!-- Live Automated Bank Detection Radar Pulse -->
-              <div style="width:100%;background:rgba(34,197,94,0.08);border:1.5px solid #86efac;border-radius:10px;padding:0.6rem 0.8rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:0.65rem;">
-                <div style="position:relative;width:9px;height:9px;flex-shrink:0;">
-                  <div style="position:absolute;width:100%;height:100%;background:#22c55e;border-radius:50%;animation:livePulse 1.4s infinite ease-out;"></div>
-                  <div style="position:absolute;width:100%;height:100%;background:#16a34a;border-radius:50%;"></div>
-                </div>
-                <span style="font-size:0.75rem;color:#15803d;font-weight:800;letter-spacing:0.01em;" id="pay-live-status-text">
-                  Waiting for payment... Auto-detecting live
-                </span>
-              </div>
-
-              <!-- Optional Instant Verification Toggle / Button for Real Payments -->
-              <div style="width:100%;border-top:1px dashed #e2e8f0;padding-top:0.6rem;">
-                <div style="display:flex;gap:0.4rem;">
-                  <input type="text" id="pay-utr-input" placeholder="Enter Bank UTR / Ref (Optional)" style="flex:1;height:34px;background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;padding:0 0.5rem;font-size:0.75rem;font-family:monospace;color:#0f172a;">
-                  <button type="button" class="btn" style="height:34px;background:#5f259f;color:#fff;font-weight:800;font-size:0.78rem;border:none;border-radius:6px;padding:0 0.75rem;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(95,37,159,0.3);" onclick="submitPaymentVerification()">
-                    Instant Verify ⚡
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-
-          <!-- Bottom Right Timeout Alert (Exact Orange Pill) -->
-          <div style="margin-top:1rem;text-align:right;">
-            <span style="background:#fef3c7;border:1px solid #fde68a;color:#b45309;font-size:0.72rem;font-weight:600;padding:4px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;">
-              <span style="color:#d97706;font-size:0.8rem;">⏱</span> This page will timeout in <span id="phonepe-timeout-clock">14:59</span> mins
-            </span>
+          <!-- Security Footnote -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-top:1rem;font-size:0.73rem;color:#64748b;font-weight:600;">
+            <span>🔒 256-Bit Bank Grade SSL</span>
+            <span>•</span>
+            <span>⚡ Instant Auto-Activation</span>
+            <span>•</span>
+            <span>🛡️ Powered by Razorpay</span>
           </div>
 
         </div>
@@ -3214,7 +3053,7 @@
           Payment Successful! <span id="success-paid-amount" style="color:#16a34a;">₹199.00</span>
         </h2>
         <p style="color:#64748b;font-size:0.95rem;margin:0 0 1.75rem 0;">
-          Paid directly to <strong style="color:#0f172a;">Durjan Mahanand</strong> (9668584247@ybl)
+          Paid securely via <strong style="color:#0f172a;">Razorpay Official Gateway</strong>
         </p>
 
         <!-- Receipt Card -->
@@ -3224,8 +3063,8 @@
             <strong id="success-plan-name" style="color:#0f172a;">💎 Silver Edition</strong>
           </div>
           <div style="display:flex;justify-content:space-between;border-bottom:1px dashed #e2e8f0;padding-bottom:0.4rem;">
-            <span style="color:#64748b;">Transaction UTR</span>
-            <strong id="success-utr-code" style="color:#5f259f;font-family:monospace;">UPI892839120</strong>
+            <span style="color:#64748b;">Transaction ID</span>
+            <strong id="success-utr-code" style="color:#1d4ed8;font-family:monospace;">rzp_live_xxx</strong>
           </div>
           <div style="display:flex;justify-content:space-between;border-bottom:1px dashed #e2e8f0;padding-bottom:0.4rem;">
             <span style="color:#64748b;">Validity Duration</span>
@@ -3238,6 +3077,10 @@
         </div>
 
         <button type="button" class="btn" style="height:48px;padding:0 2.5rem;background:linear-gradient(135deg, #22c55e 0%, #16a34a 100%);color:#fff;font-weight:900;font-size:1rem;border:none;border-radius:12px;cursor:pointer;box-shadow:0 0 25px rgba(34,197,94,0.5);transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'" onclick="closeModal('checkout-payment-modal')">
+          🚀 Go to Studio Dashboard
+        </button>
+
+      </div>
           🚀 Go to Studio Dashboard
         </button>
 
@@ -3460,7 +3303,7 @@
   <!-- Inline Direct Profile Settings Engine (Zero Latency & 100% Reliable) -->
   <script>
     function openCheckoutModalDirect(planName, price) {
-      console.log('🚀 Direct opening checkout modal for:', planName, price);
+      console.log('🚀 Direct opening Razorpay checkout modal for:', planName, price);
       
       // Close plan chooser
       const upgradeModal = document.getElementById('upgrade-plan-modal');
@@ -3477,31 +3320,25 @@
       const studioNameEl = document.getElementById('pay-studio-name');
       const totalAmountEl = document.getElementById('pay-total-amount');
       const planBadgeEl = document.getElementById('pay-plan-badge');
-      const qrImgEl = document.getElementById('pay-upi-qr-image');
-      const mobileBtnEl = document.getElementById('pay-mobile-upi-btn');
+      const payLabelEl = document.getElementById('btn-pay-label');
       const checkoutView = document.getElementById('payment-checkout-view');
       const successView = document.getElementById('payment-success-view');
 
-      if (checkoutView) checkoutView.style.setProperty('display', 'grid', 'important');
+      if (checkoutView) checkoutView.style.setProperty('display', 'block', 'important');
       if (successView) successView.style.setProperty('display', 'none', 'important');
 
       if (studioNameEl) studioNameEl.textContent = studioName;
       if (totalAmountEl) totalAmountEl.textContent = '₹' + price + '.00';
       if (planBadgeEl) {
-        planBadgeEl.textContent = price === 999 
+        planBadgeEl.textContent = (price === 999 || (planName && planName.includes('Gold'))) 
           ? '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)' 
           : '💎 Silver Edition (30 Days Unlimited Access)';
       }
+      if (payLabelEl) {
+        payLabelEl.textContent = `⚡ Pay ₹${price}.00 with Razorpay (Instant Activation)`;
+      }
 
       window.currentCheckoutPlan = { name: planName, amount: price, durationDays: price === 999 ? 180 : 30 };
-
-      const directUpi = `upi://pay?pa=9668584247@ybl&pn=DURJAN%20MAHANAND&am=${price}&cu=INR&tn=${encodeURIComponent('DM Photo SaaS - ' + planName)}`;
-      if (qrImgEl) {
-        qrImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(directUpi)}`;
-      }
-      if (mobileBtnEl) {
-        mobileBtnEl.href = directUpi;
-      }
 
       // Open Checkout Modal forcefully
       const checkoutModal = document.getElementById('checkout-payment-modal');
@@ -3512,24 +3349,6 @@
         checkoutModal.style.setProperty('visibility', 'visible', 'important');
         checkoutModal.style.setProperty('z-index', '9999999', 'important');
       }
-
-      // Start countdown
-      if (typeof startCheckoutCountdown === 'function') startCheckoutCountdown();
-
-      const planType = price === 999 ? 'YEARLY' : 'MONTHLY';
-      fetch('/api/payment/phonepe/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planType, planName: planName, studioId: studio.id || 'studio_master_dm' })
-      })
-      .then(r => r.json())
-      .then(d => {
-        if (d && d.orderId) {
-          if (d.upiUri && qrImgEl) qrImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(d.upiUri)}`;
-          if (typeof startLivePaymentPolling === 'function') startLivePaymentPolling(d.orderId);
-        }
-      })
-      .catch(console.warn);
     }
     window.openCheckoutModalDirect = openCheckoutModalDirect;
     window.selectPlanUpgrade = openCheckoutModalDirect;
@@ -4101,64 +3920,6 @@
     window.closeModal = closeModal;
     window.openUpgradeModal = openUpgradeModal;
 
-    let livePaymentPollingInterval = null;
-    let checkoutTimerInterval = null;
-    let checkoutTimerSeconds = 15 * 60;
-
-    function startCheckoutCountdown() {
-      if (checkoutTimerInterval) clearInterval(checkoutTimerInterval);
-      checkoutTimerSeconds = 15 * 60;
-
-      const pill = document.getElementById('pay-countdown-pill');
-      const timeoutClock = document.getElementById('phonepe-timeout-clock');
-
-      function updatePill() {
-        const mins = Math.floor(checkoutTimerSeconds / 60);
-        const secs = checkoutTimerSeconds % 60;
-        const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        if (pill) pill.textContent = `This QR will expire in ${formatted}`;
-        if (timeoutClock) timeoutClock.textContent = formatted;
-      }
-
-      updatePill();
-
-      checkoutTimerInterval = setInterval(() => {
-        checkoutTimerSeconds--;
-        if (checkoutTimerSeconds <= 0) {
-          clearInterval(checkoutTimerInterval);
-          if (pill) pill.textContent = 'This QR has expired';
-          if (timeoutClock) timeoutClock.textContent = '00:00';
-        } else {
-          updatePill();
-        }
-      }, 1000);
-    }
-    window.startCheckoutCountdown = startCheckoutCountdown;
-
-    function startLivePaymentPolling(orderId) {
-      console.log('⚡ Starting live PhonePe payment polling for order:', orderId);
-      if (livePaymentPollingInterval) clearInterval(livePaymentPollingInterval);
-
-      livePaymentPollingInterval = setInterval(async () => {
-        try {
-          const res = await fetch(`/api/payment/status?orderId=${encodeURIComponent(orderId)}`);
-          const data = await res.json();
-          console.log('Polling check result:', data);
-
-          if (data && (data.status === 'SUCCESS' || data.status === 'PAID')) {
-            clearInterval(livePaymentPollingInterval);
-            if (checkoutTimerInterval) clearInterval(checkoutTimerInterval);
-
-            showLivePaymentSuccess(data.planName || data.plan, data.amount, data.utr, data.durationDays || 30);
-            if (typeof loadCurrentSubscription === 'function') loadCurrentSubscription();
-          }
-        } catch (e) {
-          console.warn('Live polling error:', e);
-        }
-      }, 1500);
-    }
-    window.startLivePaymentPolling = startLivePaymentPolling;
-
     function showLivePaymentSuccess(planName, amount, utr, durationDays) {
       console.log('🎉 Showing Live Payment Success:', planName, amount, utr);
       const checkoutView = document.getElementById('payment-checkout-view');
@@ -4173,8 +3934,8 @@
         const validityEl = document.getElementById('success-validity');
 
         if (paidAmtEl) paidAmtEl.textContent = `₹${amount || 199}.00`;
-        if (planNameEl) planNameEl.textContent = planName === 'Gold (Pro)' ? '👑 Gold (Pro) VIP' : '💎 Silver Edition';
-        if (utrEl) utrEl.textContent = utr || ('UPI' + Date.now().toString().slice(-8));
+        if (planNameEl) planNameEl.textContent = (planName && planName.includes('Gold')) ? '👑 Gold (Pro) VIP' : '💎 Silver Edition';
+        if (utrEl) utrEl.textContent = utr || ('RZP' + Date.now().toString().slice(-8));
         if (validityEl) validityEl.textContent = `${durationDays || 30} Days Unlimited Access`;
       }
 
@@ -4225,90 +3986,31 @@
       // 1. Reset views
       const checkoutView = document.getElementById('payment-checkout-view');
       const successView = document.getElementById('payment-success-view');
-      if (checkoutView) checkoutView.style.display = 'grid';
-      if (successView) successView.style.display = 'none';
+      if (checkoutView) checkoutView.style.setProperty('display', 'block', 'important');
+      if (successView) successView.style.setProperty('display', 'none', 'important');
 
       // 2. Populate UI
       const studioNameEl = document.getElementById('pay-studio-name');
       const totalAmountEl = document.getElementById('pay-total-amount');
       const planBadgeEl = document.getElementById('pay-plan-badge');
-      const qrImgEl = document.getElementById('pay-upi-qr-image');
-      const mobileBtnEl = document.getElementById('pay-mobile-upi-btn');
-      const liveStatusText = document.getElementById('pay-live-status-text');
+      const payLabelEl = document.getElementById('btn-pay-label');
 
       if (studioNameEl) studioNameEl.textContent = studioName;
       if (totalAmountEl) totalAmountEl.textContent = '₹' + price + '.00';
       if (planBadgeEl) {
-        planBadgeEl.textContent = planName === 'Silver Edition' 
-          ? '💎 Silver Edition (30 Days Unlimited Access)' 
-          : '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)';
+        planBadgeEl.textContent = (price === 999 || (planName && planName.includes('Gold'))) 
+          ? '👑 Gold Pro VIP (6 Months / 180 Days Unlimited Access)' 
+          : '💎 Silver Edition (30 Days Unlimited Access)';
       }
-      if (liveStatusText) {
-        liveStatusText.textContent = 'Waiting for UPI payment... Auto-detecting live';
-      }
-
-      const directUpi = `upi://pay?pa=9668584247@ybl&pn=DURJAN%20MAHANAND&am=${price}&cu=INR&tn=${encodeURIComponent('DM Photo SaaS - ' + planName)}`;
-      if (qrImgEl) {
-        qrImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(directUpi)}`;
-      }
-      if (mobileBtnEl) {
-        mobileBtnEl.href = directUpi;
+      if (payLabelEl) {
+        payLabelEl.textContent = `⚡ Pay ₹${price}.00 with Razorpay (Instant Activation)`;
       }
 
       // 3. Open Checkout Modal Instantly!
       closeModal('upgrade-plan-modal');
       openModal('checkout-payment-modal');
-
-      // 4. Start timer & backend order
-      startCheckoutCountdown();
-      const planType = (price === 999 || planName.includes('Gold')) ? 'YEARLY' : 'MONTHLY';
-      fetch('/api/payment/phonepe/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planType, planName: planName, studioId: studio.id || 'studio_master_dm' })
-      })
-      .then(r => r.json())
-      .then(d => {
-        if (d && d.orderId) {
-          if (d.upiUri && qrImgEl) qrImgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(d.upiUri)}`;
-          startLivePaymentPolling(d.orderId);
-        }
-      })
-      .catch(console.warn);
     }
     window.selectPlanUpgrade = selectPlanUpgrade;
-
-    async function submitPaymentVerification() {
-      const utrInput = document.getElementById('pay-utr-input');
-      const utrVal = (utrInput?.value || '').trim() || ('UPI' + Date.now().toString().slice(-8));
-
-      const plan = window.currentCheckoutPlan || { name: 'Silver Edition', amount: 199 };
-      const studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
-      const headers = { 'Content-Type': 'application/json' };
-      if (studio && studio.id) headers['X-Studio-Id'] = studio.id;
-
-      try {
-        const res = await fetch('/api/subscription/activate', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            studioId: studio?.id,
-            planName: plan.name,
-            amount: plan.amount,
-            utr: utrVal,
-            paymentMethod: 'PhonePe / UPI QR (9668584247@ybl)'
-          })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showLivePaymentSuccess(plan.name, plan.amount, utrVal, plan.name.includes('Gold') ? 180 : 30);
-          if (typeof loadCurrentSubscription === 'function') loadCurrentSubscription();
-        }
-      } catch (err) {
-        console.error('Payment verification error:', err);
-      }
-    }
-    window.submitPaymentVerification = submitPaymentVerification;
 
     async function payWithRazorpay() {
       const plan = window.currentCheckoutPlan || { name: 'Silver Edition', amount: 199, durationDays: 30 };
@@ -4337,7 +4039,7 @@
         });
         const orderData = await res.json();
         if (!orderData.success) {
-          alert(orderData.error || 'Failed to initiate Razorpay order. Please try direct UPI QR below.');
+          alert(orderData.error || 'Failed to initiate Razorpay order. Please check your connection and try again.');
           if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
           return;
         }
@@ -4427,7 +4129,7 @@
         rzpInstance.open();
       } catch (err) {
         console.error('Razorpay initiation error:', err);
-        alert('Could not open Razorpay. Please use direct UPI QR option below.');
+        alert('Could not open Razorpay. Please check your internet connection and try again.');
         if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
       }
     }
