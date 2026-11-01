@@ -3810,8 +3810,8 @@ async function syncClientPhotosFromDrive(client, db) {
     // =========================================================================
 
     const RAZORPAY_CONFIG = {
-      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TprgssuNmmuuQL',
-      keySecret: process.env.RAZORPAY_KEY_SECRET || 'eSnJwJwrfJRZOQ8XBZ3pnli2'
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_live_Tuu3e43inBERVG',
+      keySecret: process.env.RAZORPAY_KEY_SECRET || '85eZxda81l3EXY3RzLDkAmA0'
     };
 
     function createRazorpayOrder({ amountPaise, currency = 'INR', receipt, notes }) {
