@@ -253,6 +253,9 @@ function saveOAuth(tokens) {
       const b64 = Buffer.from(JSON.stringify(tokens, null, 2)).toString('base64');
       db.oauth_backup = { data: b64, note: "Encrypted OAuth token bundle" };
       fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+      if (typeof syncDatabaseToDriveImmediate === 'function') {
+        syncDatabaseToDriveImmediate(db).catch(() => {});
+      }
     }
   } catch (e) {}
 }
@@ -790,6 +793,62 @@ async function restoreDatabaseFromDrive() {
       const localDB = loadDB();
       let hasChanges = false;
 
+      // 0. Smart restore OAuth Tokens from Cloud Backup if present in Google Drive
+      if (cloudDB.oauth_backup) {
+        try {
+          let shouldRestore = false;
+          if (!localDB.oauth_backup) {
+            shouldRestore = true;
+          } else {
+            const cStr = typeof cloudDB.oauth_backup === 'string' ? cloudDB.oauth_backup : (cloudDB.oauth_backup.data || JSON.stringify(cloudDB.oauth_backup));
+            const lStr = typeof localDB.oauth_backup === 'string' ? localDB.oauth_backup : (localDB.oauth_backup.data || JSON.stringify(localDB.oauth_backup));
+            if (cStr !== lStr) shouldRestore = true;
+          }
+
+          if (shouldRestore) {
+            localDB.oauth_backup = cloudDB.oauth_backup;
+            hasChanges = true;
+            const rawTokenData = typeof cloudDB.oauth_backup === 'string'
+              ? JSON.parse(Buffer.from(cloudDB.oauth_backup, 'base64').toString('utf8'))
+              : (cloudDB.oauth_backup.data ? JSON.parse(Buffer.from(cloudDB.oauth_backup.data, 'base64').toString('utf8')) : cloudDB.oauth_backup);
+            if (rawTokenData && rawTokenData.refresh_token) {
+              const b64 = Buffer.from(JSON.stringify(rawTokenData, null, 2)).toString('base64');
+              fs.writeFileSync(OAUTH_FILE, JSON.stringify({ data: b64, note: "Encrypted OAuth token bundle" }, null, 2));
+              console.log('✔ [Cloud DB Restore] Restored fresh Google Drive OAuth token bundle from Cloud DB!');
+            }
+          }
+        } catch (e) {
+          console.warn('[Cloud DB Restore] Could not write restored OAuth file:', e.message);
+        }
+      }
+
+      // Merge tombstone deletion lists (Prevents deleted clients/flipbooks from resurrecting!)
+      const allDeletedClientIds = new Set([
+        ...(localDB.deletedClientIds || []),
+        ...(cloudDB.deletedClientIds || [])
+      ]);
+      localDB.deletedClientIds = Array.from(allDeletedClientIds);
+      cloudDB.deletedClientIds = Array.from(allDeletedClientIds);
+
+      const allDeletedFlipbookIds = new Set([
+        ...(localDB.deletedFlipbookIds || []),
+        ...(cloudDB.deletedFlipbookIds || [])
+      ]);
+      localDB.deletedFlipbookIds = Array.from(allDeletedFlipbookIds);
+      cloudDB.deletedFlipbookIds = Array.from(allDeletedFlipbookIds);
+
+      // Purge any deleted clients from BOTH local and cloud
+      const initialLocalClientCount = localDB.clients?.length || 0;
+      localDB.clients = (localDB.clients || []).filter(c => !allDeletedClientIds.has(c.id) && !allDeletedClientIds.has(c.code));
+      cloudDB.clients = (cloudDB.clients || []).filter(c => !allDeletedClientIds.has(c.id) && !allDeletedClientIds.has(c.code));
+      if (localDB.clients.length !== initialLocalClientCount) hasChanges = true;
+
+      // Purge any deleted flipbooks from BOTH local and cloud
+      const initialLocalFbCount = localDB.flipbooks?.length || 0;
+      localDB.flipbooks = (localDB.flipbooks || []).filter(f => !allDeletedFlipbookIds.has(f.id) && !allDeletedFlipbookIds.has(f.code) && !allDeletedFlipbookIds.has(f.clientCode));
+      cloudDB.flipbooks = (cloudDB.flipbooks || []).filter(f => !allDeletedFlipbookIds.has(f.id) && !allDeletedFlipbookIds.has(f.code) && !allDeletedFlipbookIds.has(f.clientCode));
+      if (localDB.flipbooks.length !== initialLocalFbCount) hasChanges = true;
+
       // Smart merge Studios (by email & id)
       cloudDB.studios = cloudDB.studios || [];
       localDB.studios = localDB.studios || [];
@@ -830,10 +889,11 @@ async function restoreDatabaseFromDrive() {
         }
       }
 
-      // Smart merge Clients (by id)
+      // Smart merge Clients (by id, respecting deletion tombstones)
       cloudDB.clients = cloudDB.clients || [];
       localDB.clients = localDB.clients || [];
       for (const cc of cloudDB.clients) {
+        if (allDeletedClientIds.has(cc.id) || allDeletedClientIds.has(cc.code)) continue;
         const matchIdx = localDB.clients.findIndex(lc => lc.id === cc.id);
         if (matchIdx === -1) {
           localDB.clients.push(cc);
@@ -851,22 +911,25 @@ async function restoreDatabaseFromDrive() {
         }
       }
       for (const lc of localDB.clients) {
+        if (allDeletedClientIds.has(lc.id) || allDeletedClientIds.has(lc.code)) continue;
         if (!cloudDB.clients.some(cc => cc.id === lc.id)) {
           cloudDB.clients.push(lc);
           hasChanges = true;
         }
       }
 
-      // Smart merge Flipbooks (by id)
+      // Smart merge Flipbooks (by id, respecting deletion tombstones)
       cloudDB.flipbooks = cloudDB.flipbooks || [];
       localDB.flipbooks = localDB.flipbooks || [];
       for (const cf of cloudDB.flipbooks) {
+        if (allDeletedFlipbookIds.has(cf.id) || allDeletedFlipbookIds.has(cf.code) || allDeletedFlipbookIds.has(cf.clientCode)) continue;
         if (!localDB.flipbooks.some(lf => lf.id === cf.id)) {
           localDB.flipbooks.push(cf);
           hasChanges = true;
         }
       }
       for (const lf of localDB.flipbooks) {
+        if (allDeletedFlipbookIds.has(lf.id) || allDeletedFlipbookIds.has(lf.code) || allDeletedFlipbookIds.has(lf.clientCode)) continue;
         if (!cloudDB.flipbooks.some(cf => cf.id === lf.id)) {
           cloudDB.flipbooks.push(lf);
           hasChanges = true;
@@ -1313,20 +1376,68 @@ const server = http.createServer(async (req, res) => {
 
         if (tokenResp.statusCode >= 200 && tokenResp.statusCode < 300) {
           const tokens = tokenResp.json();
-          saveOAuth({
+          const mergedTokens = {
             ...oauth,
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token || oauth.refresh_token,
             expiry_date: Date.now() + (tokens.expires_in * 1000)
-          });
+          };
+          saveOAuth(mergedTokens);
+
+          const refreshToken = mergedTokens.refresh_token || '';
+
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(`
-            <html><body style="background:#0a0c10;color:#d4af37;font-family:sans-serif;text-align:center;padding:4rem;">
-              <h2>✔ Google Drive Connected Successfully!</h2>
-              <p style="color:#94a3b8;">Your personal Google Drive storage is now linked for photo uploads.</p>
-              <a href="/admin.html" style="color:#facc15;font-weight:bold;text-decoration:none;">&larr; Return to Admin Dashboard</a>
-              <script>setTimeout(() => window.location.href = '/admin.html', 1500);</script>
-            </body></html>
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Google Drive Connected - DM Photo Wapsite</title>
+              <style>
+                body { background: #080a0f; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+                .card { background: #0f172a; border: 1px solid rgba(234,179,8,0.3); border-radius: 16px; padding: 2.5rem; max-width: 580px; width: 100%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); }
+                h2 { color: #facc15; margin: 0 0 0.5rem 0; font-size: 1.6rem; }
+                p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin: 0 0 1.5rem 0; }
+                .box { background: #1e293b; border: 1px dashed rgba(234,179,8,0.4); border-radius: 12px; padding: 1.25rem; text-align: left; margin-bottom: 1.5rem; }
+                .box-title { color: #fde047; font-weight: bold; font-size: 0.9rem; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+                .box-desc { color: #cbd5e1; font-size: 0.82rem; line-height: 1.5; margin-bottom: 10px; }
+                .token-row { display: flex; gap: 8px; }
+                input { flex: 1; background: #0b1120; border: 1px solid #334155; border-radius: 8px; padding: 10px 12px; color: #38bdf8; font-family: monospace; font-size: 0.82rem; }
+                .copy-btn { background: #eab308; color: #000; font-weight: 700; border: none; border-radius: 8px; padding: 10px 16px; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+                .copy-btn:hover { background: #facc15; }
+                .action-link { display: inline-block; background: #3b82f6; color: #fff; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-size: 0.95rem; }
+                .action-link:hover { background: #2563eb; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <h2>✔ Google Drive Connected!</h2>
+                <p>Aapka personal Google Drive storage photo uploads ke liye successfully connect ho gaya hai.</p>
+
+                ${refreshToken ? `
+                <div class="box">
+                  <div class="box-title">⚡ Render Lifetime Permanent Connection (Recommended):</div>
+                  <div class="box-desc">
+                    Render free servers sleep hone par temporary files wipe kar dete hain. Google Drive ko <strong>hamesha ke liye bina disconnect hue</strong> chalane ke liye:
+                    <br>1. Yeh Refresh Token copy karein:
+                  </div>
+                  <div class="token-row">
+                    <input id="refTok" type="text" readonly value="${refreshToken}" />
+                    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('refTok').value);this.textContent='Copied ✔';">Copy Token</button>
+                  </div>
+                  <div class="box-desc" style="margin-top:10px;margin-bottom:0;">
+                    2. Render Dashboard me jaayein &rarr; <strong>Environment</strong> &rarr; Add Variable:
+                    <br>&bull; Key: <code>GOOGLE_REFRESH_TOKEN</code>
+                    <br>&bull; Value: [Token paste karein] &rarr; Save Changes.
+                  </div>
+                </div>
+                ` : ''}
+
+                <a href="/admin.html" class="action-link">&larr; Return to Admin Dashboard</a>
+              </div>
+            </body>
+            </html>
           `);
           return;
         } else {
@@ -1361,11 +1472,13 @@ const server = http.createServer(async (req, res) => {
         });
         if (aboutResp.statusCode === 200) {
           const about = aboutResp.json();
+          const oauth = loadOAuth() || {};
           sendJSON({
             connected: true,
             isOAuth: true,
             user: about.user,
-            storageQuota: about.storageQuota
+            storageQuota: about.storageQuota,
+            refreshToken: oauth.refresh_token || process.env.GOOGLE_REFRESH_TOKEN || ''
           });
         } else {
           sendJSON({
@@ -1555,8 +1668,19 @@ const server = http.createServer(async (req, res) => {
             console.warn('[Google Drive] Error deleting Drive folder on client delete:', err.message);
           }
 
-          db.clients = db.clients.filter(c => c.id !== clientIdMatch && c.code !== clientIdMatch);
+          // Record tombstones so this client is never resurrected on startup / login sync
+          db.deletedClientIds = db.deletedClientIds || [];
+          if (client.id && !db.deletedClientIds.includes(client.id)) db.deletedClientIds.push(client.id);
+          if (client.code && !db.deletedClientIds.includes(client.code)) db.deletedClientIds.push(client.code);
+          if (clientIdMatch && !db.deletedClientIds.includes(clientIdMatch)) db.deletedClientIds.push(clientIdMatch);
+
+          db.clients = (db.clients || []).filter(c => c.id !== clientIdMatch && c.code !== clientIdMatch);
           saveDB(db);
+          try {
+            await syncDatabaseToDriveImmediate(db);
+          } catch (syncErr) {
+            console.warn('[Google Drive] Notice on client delete cloud sync:', syncErr.message);
+          }
           console.log(`✔ [Database] Client "${client.name}" and its Google Drive folders deleted forever.`);
           sendJSON({ success: true, deleted: true });
         } else {
@@ -3319,8 +3443,17 @@ async function syncClientPhotosFromDrive(client, db) {
           }
         })();
 
+        db.deletedFlipbookIds = db.deletedFlipbookIds || [];
+        if (fbId && !db.deletedFlipbookIds.includes(fbId)) db.deletedFlipbookIds.push(fbId);
+        if (targetFb.id && !db.deletedFlipbookIds.includes(targetFb.id)) db.deletedFlipbookIds.push(targetFb.id);
+        if (targetFb.code && !db.deletedFlipbookIds.includes(targetFb.code)) db.deletedFlipbookIds.push(targetFb.code);
+        if (targetFb.clientCode && !db.deletedFlipbookIds.includes(targetFb.clientCode)) db.deletedFlipbookIds.push(targetFb.clientCode);
+
         db.flipbooks = (db.flipbooks || []).filter(f => f.id !== fbId && f.code !== fbId && f.clientCode !== fbId);
         saveDB(db);
+        if (typeof syncDatabaseToDriveImmediate === 'function') {
+          syncDatabaseToDriveImmediate(db).catch(() => {});
+        }
         sendJSON({ success: true, message: 'Permanently deleted from Database and Google Drive!' });
       } else {
         db.flipbooks = (db.flipbooks || []).filter(f => f.id !== fbId && f.code !== fbId && f.clientCode !== fbId);

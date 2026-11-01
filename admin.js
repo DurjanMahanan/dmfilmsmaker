@@ -2345,12 +2345,6 @@ function openWhatsAppShare() {
 }
 
 function connectGoogleOAuth() {
-  if (!isDeveloperUser()) {
-    if (window.api && window.api.showToast) {
-      window.api.showToast('🔒 Access Restricted: Google Drive Storage is configured by Developer only.', 'error');
-    }
-    return;
-  }
   const clientId = atob("MzMzNTAzNzc0MzM0LTcwcmJoZDJjNGluYW12c2VwYzdxMHFwOGsyZjE0YjB0LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29t");
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const redirectUri = isLocal ? "http://localhost:3000/oauth2callback" : (window.location.origin + "/oauth2callback");
@@ -2360,7 +2354,6 @@ function connectGoogleOAuth() {
 }
 
 async function checkDriveStatus() {
-  if (!isDeveloperUser()) return;
   try {
     const res = await fetch('/api/admin/drive-status');
     const data = await res.json();
@@ -2386,6 +2379,13 @@ async function checkDriveStatus() {
       }
       if (uploadBanner) uploadBanner.style.display = 'none';
       window.__driveConnected = true;
+
+      const renderTokBox = document.getElementById('drive-render-token-box');
+      const renderTokInput = document.getElementById('drive-refresh-token-val');
+      if (renderTokBox && renderTokInput && data.refreshToken) {
+        renderTokInput.value = data.refreshToken;
+        renderTokBox.style.display = 'block';
+      }
     } else {
       if (badge) {
         badge.textContent = 'DISCONNECTED ⚠️';
@@ -2402,6 +2402,15 @@ async function checkDriveStatus() {
     console.warn('checkDriveStatus error:', e);
   }
 }
+
+function copyDriveRefreshToken() {
+  const el = document.getElementById('drive-refresh-token-val');
+  if (el && el.value) {
+    navigator.clipboard.writeText(el.value);
+    if (window.api && window.api.showToast) window.api.showToast('✔ Refresh Token copied to clipboard!', 'success');
+  }
+}
+window.copyDriveRefreshToken = copyDriveRefreshToken;
 
 async function cleanDummyPhotosPrompt() {
   if (!isDeveloperUser()) {
