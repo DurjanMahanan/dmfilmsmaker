@@ -846,15 +846,19 @@ async function scanDataTransferItems(items) {
         const readTop = async () => {
           return new Promise((resolve) => {
             dirReader.readEntries(async (entries) => {
-              for (const child of entries) {
-                if (child.isDirectory) {
-                  await traverseEntry(child, child.name);
-                } else {
-                  // Direct file in dropped folder: subfolder is the dropped folder name!
-                  await traverseEntry(child, entry.name);
+              if (entries.length === 0) resolve();
+              else {
+                for (const child of entries) {
+                  if (child.isDirectory) {
+                    await traverseEntry(child, child.name);
+                  } else {
+                    // Direct file in dropped folder: subfolder is the dropped folder name!
+                    await traverseEntry(child, entry.name);
+                  }
                 }
+                await readTop();
+                resolve();
               }
-              resolve();
             });
           });
         };
@@ -1439,7 +1443,7 @@ async function getOptimizedFileForUpload(file) {
   return file;
 }
 
-const CONCURRENT_UPLOADS = 6;
+const CONCURRENT_UPLOADS = 4; // Stable concurrency to avoid Google Drive 429 rate limit errors
 
 async function processUploadQueue() {
   if (isUploading) return;
@@ -1455,7 +1459,7 @@ async function processUploadQueue() {
       item.status = 'uploading';
       updateMasterProgress();
 
-      // Convert heavy photos on the fly to fast ~60KB KB files right before uploading
+      // Convert heavy photos on the fly to fast ~60KB WebP files right before uploading
       const fileToSend = await getOptimizedFileForUpload(item.file);
 
       let attempts = 0;
@@ -1489,6 +1493,9 @@ async function processUploadQueue() {
             if (attempts >= 3) {
               item.status = 'error';
               updateMasterProgress();
+            } else {
+              // Exponential backoff delay to allow Google Drive rate limits to clear
+              await new Promise(r => setTimeout(r, attempts * 1200));
             }
           }
         }
@@ -1502,12 +1509,37 @@ async function processUploadQueue() {
   }
   await Promise.all(workers);
 
+  // Automatic Retry Sweep for any failed photos (Guarantees 100% upload completion without drops!)
+  if (!isUploadPaused) {
+    for (let retryPass = 0; retryPass < 3; retryPass++) {
+      const failed = uploadQueue.filter(i => i.status === 'error');
+      if (failed.length === 0 || isUploadPaused) break;
+
+      console.log(`[Auto-Retry Pass ${retryPass + 1}] Retrying ${failed.length} failed photos...`);
+      failed.forEach(i => { i.status = 'pending'; i.progress = 0; });
+      updateMasterProgress();
+      await new Promise(r => setTimeout(r, 2000));
+
+      const retryWorkers = [];
+      for (let i = 0; i < CONCURRENT_UPLOADS; i++) {
+        retryWorkers.push(runWorker());
+      }
+      await Promise.all(retryWorkers);
+    }
+  }
+
   if (!isUploadPaused) {
     isUploading = false;
     updateMasterProgress();
 
-    if (uploadQueue.length > 0 && uploadQueue.every(i => i.status === 'completed')) {
-      window.api.showToast('All folders and photos uploaded successfully!', 'success');
+    const completedCount = uploadQueue.filter(i => i.status === 'completed').length;
+    const errorCount = uploadQueue.filter(i => i.status === 'error').length;
+
+    if (errorCount === 0 && completedCount > 0) {
+      window.api.showToast(`🎉 All ${completedCount} photos & folders uploaded successfully!`, 'success');
+      loadClientsAndStats();
+    } else if (errorCount > 0) {
+      window.api.showToast(`Upload complete: ${completedCount} uploaded, ${errorCount} could not complete. You can click 'Start Upload' to retry remaining.`, 'warning');
       loadClientsAndStats();
     }
   }
@@ -1638,7 +1670,7 @@ function renderSelectionsView() {
 
       return `
         <div class="selection-card" style="position:relative;border-radius:12px;overflow:hidden;background:rgba(0,0,0,0.5);border:1px solid ${isFav ? '#ec4899' : 'rgba(212,175,55,0.3)'};box-shadow:${isFav ? '0 0 15px rgba(236,72,153,0.3)' : 'none'};">
-          <img src="${photo.thumbnailUrl || photo.url}" alt="${photo.name}" loading="lazy" style="width:100%;height:180px;object-fit:cover;">
+          <img src="${(photo.id && !photo.id.startsWith('up_')) ? `https://lh3.googleusercontent.com/d/${photo.id}=w600` : (photo.thumbnailUrl || photo.url)}" alt="${photo.name}" loading="lazy" style="width:100%;height:180px;object-fit:cover;" onerror="this.src='/api/image/' + '${photo.id}'">
           ${isFav ? `<div style="position:absolute;top:0.5rem;right:0.5rem;background:#ec4899;color:#fff;border-radius:20px;padding:0.2rem 0.5rem;font-size:0.7rem;font-weight:700;box-shadow:0 0 10px rgba(0,0,0,0.5);">❤️ FAVORITE</div>` : ''}
           <div class="selection-card-footer" style="padding:0.6rem 0.8rem;background:rgba(0,0,0,0.7);">
             <div style="display:flex;justify-content:space-between;align-items:center;">

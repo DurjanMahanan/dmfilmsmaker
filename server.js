@@ -61,6 +61,27 @@ function saveDB(data) {
   }
 }
 
+// Clean corrupted/truncated image cache files on startup
+(function cleanCorruptedImageCache() {
+  try {
+    const cacheDir = path.join(__dirname, '.cache', 'images');
+    if (fs.existsSync(cacheDir)) {
+      const files = fs.readdirSync(cacheDir);
+      for (const f of files) {
+        const fullPath = path.join(cacheDir, f);
+        try {
+          if (f.endsWith('.tmp')) {
+            fs.unlinkSync(fullPath);
+          } else {
+            const stat = fs.statSync(fullPath);
+            if (stat.size < 1024) fs.unlinkSync(fullPath);
+          }
+        } catch (e) {}
+      }
+    }
+  } catch (e) {}
+})();
+
 // Strict Exact-Match Whitelist for Developer / Master Owner (Fraud Prevention)
 const DEVELOPER_WHITELIST_EMAILS = [
   'dmfilmsmaker@gmail.com'
@@ -376,7 +397,30 @@ async function getServiceAccountToken() {
   return data.access_token;
 }
 
-// Create Google Drive Folder
+// Ensure a file or folder is readable by anyone with the link (enables high-speed Google Edge CDN)
+async function ensureDriveItemPublic(fileOrFolderId, accessToken) {
+  if (!fileOrFolderId || !accessToken) return;
+  try {
+    const payload = JSON.stringify({
+      role: 'reader',
+      type: 'anyone'
+    });
+    await httpsRequest({
+      hostname: 'www.googleapis.com',
+      path: `/drive/v3/files/${fileOrFolderId}/permissions?supportsAllDrives=true`,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    }, payload);
+  } catch (err) {
+    // If already public or permission exists, ignore
+  }
+}
+
+// Create Google Drive Folder with automatic public read access
 async function createDriveFolder(name, parentId, accessToken) {
   const payload = JSON.stringify({
     name: name,
@@ -398,7 +442,11 @@ async function createDriveFolder(name, parentId, accessToken) {
   if (resp.statusCode >= 400) {
     throw new Error(`Failed to create Google Drive folder: ${resp.text()}`);
   }
-  return resp.json();
+  const folderData = resp.json();
+  if (folderData && folderData.id) {
+    ensureDriveItemPublic(folderData.id, accessToken).catch(() => {});
+  }
+  return folderData;
 }
 
 // Find existing folder or create only if missing (prevents any duplicate folders in Drive)
@@ -1807,7 +1855,36 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // 6. Direct Resumable Upload Initializer (Supports Nested Subfolders with Self-Healing)
+    // Mutex promise queue for atomic database updates (prevents lost photos during parallel uploads)
+    let uploadDbSaveQueue = Promise.resolve();
+    function queueClientPhotoAddition(clientId, photoObj) {
+      return new Promise((resolve) => {
+        uploadDbSaveQueue = uploadDbSaveQueue.then(async () => {
+          try {
+            const db = loadDB();
+            const client = db.clients.find(c => c.id === clientId || c.code === clientId);
+            if (client) {
+              client.photos = client.photos || [];
+              const idx = client.photos.findIndex(p => p.id === photoObj.id || (p.name === photoObj.name && (p.subfolder || '') === (photoObj.subfolder || '')));
+              if (idx >= 0) {
+                client.photos[idx] = photoObj;
+              } else {
+                client.photos.push(photoObj);
+              }
+              client.photos = client.photos.filter(p => p.size > 0 && /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(p.name));
+              client.photosCount = client.photos.length;
+              saveDB(db);
+            }
+            resolve(photoObj);
+          } catch (err) {
+            console.error('queueClientPhotoAddition error:', err);
+            resolve(photoObj);
+          }
+        });
+      });
+    }
+
+    // 6. Direct Resumable Upload Initializer (Supports Nested Subfolders with Rate-Limit Backoff)
     if (pathname === '/api/upload/init' && req.method === 'POST') {
       let body = '';
       req.on('data', c => body += c);
@@ -1829,48 +1906,31 @@ const server = http.createServer(async (req, res) => {
           const token = userToken;
 
           // Handle Subfolder (e.g. "DEMO", "New folder", "Haldi", etc.)
-          if (subfolder && subfolder.trim() && subfolder.trim() !== 'Main Photos') {
-            const cleanSubfolder = subfolder.trim();
+          const cleanSub = (subfolder || '').trim();
+          if (cleanSub && cleanSub !== 'Main Photos') {
             client.subfolders = client.subfolders || {};
 
-            let subfolderId = client.subfolders[cleanSubfolder];
+            let subfolderId = client.subfolders[cleanSub];
             if (!subfolderId) {
               try {
-                const sf = await findOrCreateDriveFolder(cleanSubfolder, parentFolderId, token);
+                const sf = await findOrCreateDriveFolder(cleanSub, parentFolderId, token);
                 subfolderId = sf.id;
-                client.subfolders[cleanSubfolder] = sf.id;
+                client.subfolders[cleanSub] = sf.id;
                 saveDB(db);
               } catch (e) {
-                console.warn(`Error resolving subfolder "${cleanSubfolder}":`, e.message);
+                console.warn(`Error resolving subfolder "${cleanSub}":`, e.message);
                 subfolderId = parentFolderId;
               }
             }
             parentFolderId = subfolderId;
           }
 
-          // Check if file with same name already exists in parentFolderId to override/replace instead of creating duplicate
+          // Fast In-Memory Check for Existing Photo (Eliminates hundreds of redundant Google search requests!)
           let existingFileId = null;
-          try {
-            const q = encodeURIComponent(`'${parentFolderId}' in parents and name = '${filename.replace(/'/g, "\\'")}' and trashed = false`);
-            const sResp = await httpsRequest({
-              hostname: 'www.googleapis.com',
-              path: `/drive/v3/files?q=${q}&fields=files(id,name)`,
-              method: 'GET',
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (sResp.statusCode < 400) {
-              const sData = sResp.json();
-              if (sData.files && sData.files.length > 0) {
-                existingFileId = sData.files[0].id;
-                // Delete any extra duplicate files from Google Drive if present
-                if (sData.files.length > 1) {
-                  for (let i = 1; i < sData.files.length; i++) {
-                    deleteDriveFolder(sData.files[i].id, token).catch(() => {});
-                  }
-                }
-              }
-            }
-          } catch (e) {}
+          const existingPhoto = (client?.photos || []).find(p => p.name === filename && (p.subfolder || '') === cleanSub);
+          if (existingPhoto && existingPhoto.id && !existingPhoto.id.startsWith('up_')) {
+            existingFileId = existingPhoto.id;
+          }
 
           let metaPayload = JSON.stringify(existingFileId ? { name: filename } : { name: filename, parents: [parentFolderId] });
           let httpMethod = existingFileId ? 'PATCH' : 'POST';
@@ -1878,27 +1938,38 @@ const server = http.createServer(async (req, res) => {
             ? `/upload/drive/v3/files/${existingFileId}?uploadType=resumable&supportsAllDrives=true&fields=id,name,size,thumbnailLink`
             : '/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,size,thumbnailLink';
 
-          let initResp = await httpsRequest({
-            hostname: 'www.googleapis.com',
-            path: uploadPath,
-            method: httpMethod,
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json; charset=UTF-8',
-              'X-Upload-Content-Type': contentType || 'image/jpeg',
-              'X-Upload-Content-Length': fileSize.toString(),
-              'Content-Length': Buffer.byteLength(metaPayload)
+          // Resumable upload session with automatic 429/403 rate-limit backoff retry
+          let initResp;
+          for (let retry = 0; retry < 3; retry++) {
+            initResp = await httpsRequest({
+              hostname: 'www.googleapis.com',
+              path: uploadPath,
+              method: httpMethod,
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json; charset=UTF-8',
+                'X-Upload-Content-Type': contentType || 'image/jpeg',
+                'X-Upload-Content-Length': fileSize.toString(),
+                'Content-Length': Buffer.byteLength(metaPayload)
+              }
+            }, metaPayload);
+
+            if (initResp.statusCode === 429 || (initResp.statusCode === 403 && initResp.text().includes('rateLimit'))) {
+              console.warn(`[Google Drive] Rate limited on init upload for ${filename}, retrying in ${(retry + 1) * 1200}ms...`);
+              await new Promise(r => setTimeout(r, (retry + 1) * 1200));
+              continue;
             }
-          }, metaPayload);
+            break;
+          }
 
           // If folder was not found (404), self-heal by creating subfolder fresh in client main folder
           if (initResp.statusCode === 404) {
             console.warn(`Folder ${parentFolderId} was not found (404). Self-healing with fresh folder...`);
             let fallbackParent = client?.folders?.original || client?.folders?.main || rootMasterId;
-            if (subfolder && subfolder.trim()) {
+            if (cleanSub) {
               try {
-                const freshSf = await createDriveFolder(subfolder.trim(), fallbackParent, token);
-                client.subfolders[subfolder.trim()] = freshSf.id;
+                const freshSf = await createDriveFolder(cleanSub, fallbackParent, token);
+                client.subfolders[cleanSub] = freshSf.id;
                 fallbackParent = freshSf.id;
                 saveDB(db);
               } catch (err) {}
@@ -1933,7 +2004,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 7. Record Completed Upload Photo Metadata (With Subfolder Tag)
+    // 7. Record Completed Upload Photo Metadata (Thread-Safe Atomic Queue)
     if (pathname === '/api/upload/complete' && req.method === 'POST') {
       let body = '';
       req.on('data', c => body += c);
@@ -1947,53 +2018,22 @@ const server = http.createServer(async (req, res) => {
             return;
           }
 
-          const db = loadDB();
-          const client = db.clients.find(c => c.id === clientId || c.code === clientId);
-
-          // If dummy ID sent by client fallback, query Google Drive for the real file ID
-          if (client && (!driveFile.id || driveFile.id.startsWith('drive_') || driveFile.id.startsWith('file_') || driveFile.id.startsWith('up_'))) {
-            try {
-              const token = await getDriveAccessToken();
-              const targetFolder = (subfolder && client.subfolders?.[subfolder]) || client.folders?.original || client.folders?.main;
-              if (targetFolder) {
-                const q = encodeURIComponent(`'${targetFolder}' in parents and name = '${driveFile.name.replace(/'/g, "\\'")}' and trashed = false`);
-                const sResp = await httpsRequest({
-                  hostname: 'www.googleapis.com',
-                  path: `/drive/v3/files?q=${q}&fields=files(id,name,size)`,
-                  method: 'GET',
-                  headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (sResp.statusCode < 400) {
-                  const sData = sResp.json();
-                  if (sData.files && sData.files.length > 0) {
-                    driveFile.id = sData.files[0].id;
-                  }
-                }
-              }
-            } catch (err) {}
-          }
-
           const photoObj = {
             id: driveFile.id,
             name: driveFile.name,
             size: Number(driveFile.size) || 0,
             subfolder: subfolder || '',
-            url: `/api/image/${driveFile.id}`,
-            thumbnailUrl: `/api/image/${driveFile.id}`
+            url: `https://lh3.googleusercontent.com/d/${driveFile.id}=w1600`,
+            thumbnailUrl: `https://lh3.googleusercontent.com/d/${driveFile.id}=w600`
           };
 
-          if (client) {
-            client.photos = client.photos || [];
-            const idx = client.photos.findIndex(p => p.id === photoObj.id || (p.name === photoObj.name && (p.subfolder || '') === (photoObj.subfolder || '')));
-            if (idx >= 0) {
-              client.photos[idx] = photoObj;
-            } else {
-              client.photos.push(photoObj);
-            }
-            client.photos = client.photos.filter(p => p.size > 0 && /\.(jpe?g|png|webp|gif|bmp|heic|heif|hif|tiff?|raw|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|raf|avif)$/i.test(p.name));
-            client.photosCount = client.photos.length;
-            saveDB(db);
+          // Asynchronously ensure Google Edge CDN public read permission on the file
+          const token = await getDriveAccessToken();
+          if (token && driveFile.id && !driveFile.id.startsWith('up_')) {
+            ensureDriveItemPublic(driveFile.id, token).catch(() => {});
           }
+
+          await queueClientPhotoAddition(clientId, photoObj);
           sendJSON(photoObj);
         } catch (e) { sendJSON({ error: 'Bad Request' }, 400); }
       });
@@ -2849,8 +2889,8 @@ async function syncClientPhotosFromDrive(client, db) {
                     name: sf.name,
                     size: Number(sf.size) || 0,
                     subfolder: subfolderName,
-                    url: `/api/image/${sf.id}`,
-                    thumbnailUrl: `/api/image/${sf.id}`
+                    url: `https://lh3.googleusercontent.com/d/${sf.id}=w1600`,
+                    thumbnailUrl: `https://lh3.googleusercontent.com/d/${sf.id}=w600`
                   });
                 }
               }
@@ -2870,8 +2910,8 @@ async function syncClientPhotosFromDrive(client, db) {
             name: item.name,
             size: Number(item.size) || 0,
             subfolder: 'Original',
-            url: `/api/image/${item.id}`,
-            thumbnailUrl: `/api/image/${item.id}`
+            url: `https://lh3.googleusercontent.com/d/${item.id}=w1600`,
+            thumbnailUrl: `https://lh3.googleusercontent.com/d/${item.id}=w600`
           });
         }
       }
@@ -2889,17 +2929,17 @@ async function syncClientPhotosFromDrive(client, db) {
   return false;
 }
 
-    // 9. Image Proxy / Streaming with High-Speed Disk Caching & 302 Global CDN Fallback
+    // 9. High-Speed Image Streaming & Caching Engine (Protected against truncated half-black files)
     if (pathname.startsWith('/api/image/')) {
       const fileId = pathname.replace('/api/image/', '').trim();
       const cacheDir = path.join(__dirname, '.cache', 'images');
       const cachedFilePath = path.join(cacheDir, `${fileId}.webp`);
 
-      // 1. Instant Cache Hit from local SSD (0ms latency, zero API quotas consumed)
+      // 1. Instant Cache Hit from local SSD (Only serve valid, non-corrupted images > 1KB)
       try {
         if (fs.existsSync(cachedFilePath)) {
           const stat = fs.statSync(cachedFilePath);
-          if (stat.size > 200) {
+          if (stat.size >= 1024) {
             res.writeHead(200, {
               'Content-Type': 'image/webp',
               'Content-Length': stat.size,
@@ -2907,11 +2947,14 @@ async function syncClientPhotosFromDrive(client, db) {
             });
             fs.createReadStream(cachedFilePath).pipe(res);
             return;
+          } else {
+            // Delete corrupted truncated file
+            try { fs.unlinkSync(cachedFilePath); } catch(e){}
           }
         }
       } catch (e) {}
 
-      // 2. Fetch from Google Drive API with automatic local caching + 302 CDN failover
+      // 2. Fetch from Google Drive API with safe atomic temp-file caching + 302 CDN failover
       try {
         if (!fs.existsSync(cacheDir)) {
           fs.mkdirSync(cacheDir, { recursive: true });
@@ -2922,6 +2965,8 @@ async function syncClientPhotosFromDrive(client, db) {
 
       try {
         let redirectCount = 0;
+        const tempFilePath = path.join(cacheDir, `${fileId}_${Date.now()}_${Math.random().toString(36).substring(2,7)}.tmp`);
+
         const fetchImage = (url, isFirst = true) => {
           return new Promise((resolve) => {
             const urlObj = new URL(url);
@@ -2935,9 +2980,10 @@ async function syncClientPhotosFromDrive(client, db) {
                 return resolve(fetchImage(driveRes.headers.location, false));
               }
 
-              // If Google Drive rate limits (403, 429) or fails, seamlessly 302 redirect to Google CDN
+              // If Google Drive rate limits (403, 429) or fails, seamlessly 302 redirect to Google Edge CDN
               if (driveRes.statusCode >= 400) {
                 driveRes.resume();
+                try { if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath); } catch(e){}
                 if (!res.headersSent) {
                   res.writeHead(302, {
                     'Location': `https://lh3.googleusercontent.com/d/${fileId}=w1600`,
@@ -2954,16 +3000,42 @@ async function syncClientPhotosFromDrive(client, db) {
                 'Cache-Control': 'public, max-age=604800'
               });
 
-              // Pipe to client response AND save to local cache simultaneously
-              const fileStream = fs.createWriteStream(cachedFilePath);
+              // Write to temp file first. Only promote to cachedFilePath if 100% complete!
+              const fileStream = fs.createWriteStream(tempFilePath);
+              let totalBytes = 0;
+
+              driveRes.on('data', chunk => {
+                totalBytes += chunk.length;
+              });
+
               driveRes.pipe(res);
               driveRes.pipe(fileStream);
 
-              fileStream.on('error', () => {});
-              driveRes.on('end', () => resolve());
+              fileStream.on('error', () => {
+                try { if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath); } catch(e){}
+              });
+
+              driveRes.on('end', () => {
+                fileStream.end(() => {
+                  if (totalBytes >= 1024) {
+                    try {
+                      fs.renameSync(tempFilePath, cachedFilePath);
+                    } catch (e) {}
+                  } else {
+                    try { if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath); } catch(e){}
+                  }
+                  resolve();
+                });
+              });
+
+              driveRes.on('error', () => {
+                try { if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath); } catch(e){}
+                resolve();
+              });
             });
 
             req.on('error', () => {
+              try { if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath); } catch(e){}
               if (!res.headersSent) {
                 res.writeHead(302, {
                   'Location': `https://lh3.googleusercontent.com/d/${fileId}=w1600`

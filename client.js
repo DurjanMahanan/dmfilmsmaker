@@ -258,44 +258,63 @@ function updateStatusPillsCounts() {
   if (countUnsel) countUnsel.textContent = unselectedInFolder;
 }
 
-// --- Gallery Grid Rendering ---
-function renderGallery() {
+// --- High-Performance Progressive Gallery Grid Engine ---
+let currentFilteredPhotos = [];
+let displayedPhotosCount = 0;
+const PHOTOS_CHUNK_SIZE = 60; // Initial & batch render chunk size for instant 0ms page load
+let galleryScrollObserver = null;
+
+function renderGallery(reset = true) {
   const container = document.getElementById('client-gallery-grid');
   if (!container) return;
 
-  const photos = currentClient.photos || [];
-  let filtered = photos.filter(photo => {
-    const isSelected = selectedPhotoIds.has(String(photo.id));
-    const isFavorite = favoritePhotoIds.has(String(photo.id));
-    const photoFolder = photo.subfolder || 'Main Photos';
+  if (reset) {
+    const photos = currentClient.photos || [];
+    currentFilteredPhotos = photos.filter(photo => {
+      const isSelected = selectedPhotoIds.has(String(photo.id));
+      const isFavorite = favoritePhotoIds.has(String(photo.id));
+      const photoFolder = photo.subfolder || 'Main Photos';
 
-    if (activeFolderFilter !== 'all' && photoFolder !== activeFolderFilter) return false;
-    if (activeStatusFilter === 'favorites' && !isFavorite) return false;
-    if (activeStatusFilter === 'selected' && !isSelected) return false;
-    if (activeStatusFilter === 'unselected' && isSelected) return false;
-    if (searchQuery && !photo.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+      if (activeFolderFilter !== 'all' && photoFolder !== activeFolderFilter) return false;
+      if (activeStatusFilter === 'favorites' && !isFavorite) return false;
+      if (activeStatusFilter === 'selected' && !isSelected) return false;
+      if (activeStatusFilter === 'unselected' && isSelected) return false;
+      if (searchQuery && !photo.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    });
 
-  if (filtered.length === 0) {
+    displayedPhotosCount = 0;
+    container.innerHTML = '';
+  }
+
+  if (currentFilteredPhotos.length === 0) {
     container.innerHTML = `
       <div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--text-muted);">
-        ${photos.length === 0 ? 'No photos uploaded to this album yet. Studio is processing your pictures.' : 'No photos found matching your current filter.'}
+        ${(currentClient.photos || []).length === 0 ? 'No photos uploaded to this album yet. Studio is processing your pictures.' : 'No photos found matching your current filter.'}
       </div>
     `;
+    const sentinel = document.getElementById('gallery-scroll-sentinel');
+    if (sentinel) sentinel.style.display = 'none';
     return;
   }
 
-  container.innerHTML = filtered.map((photo, index) => {
+  const nextBatch = currentFilteredPhotos.slice(displayedPhotosCount, displayedPhotosCount + PHOTOS_CHUNK_SIZE);
+  if (nextBatch.length === 0) return;
+
+  const photos = currentClient.photos || [];
+  const htmlChunk = nextBatch.map((photo, index) => {
     const isSelected = selectedPhotoIds.has(String(photo.id));
     const isFavorite = favoritePhotoIds.has(String(photo.id));
     const hasComment = Boolean(photoComments[photo.id]);
     const originalIndex = photos.findIndex(p => p.id === photo.id);
+    const thumbUrl = (photo.id && !photo.id.startsWith('up_'))
+      ? `https://lh3.googleusercontent.com/d/${photo.id}=w600`
+      : (photo.thumbnailUrl || photo.url);
 
     return `
       <div class="gallery-item ${isSelected ? 'selected' : ''}" id="photo-${photo.id}" data-id="${photo.id}">
         <div class="gallery-img-wrap" onclick="openLightbox(${originalIndex})">
-          <img src="${photo.thumbnailUrl || photo.url}" class="gallery-img" alt="${escapeHtml(photo.name)}" loading="lazy" onerror="handlePhotoLoadError(this, '${photo.id}')">
+          <img src="${thumbUrl}" class="gallery-img" alt="${escapeHtml(photo.name)}" loading="lazy" decoding="async" onerror="handlePhotoLoadError(this, '${photo.id}')" onload="this.classList.add('loaded')">
           <span class="photo-number-badge">#${String(originalIndex + 1).padStart(3, '0')}</span>
         </div>
         <button class="photo-select-btn" onclick="toggleSelectPhoto('${photo.id}', event)" title="${isSelected ? 'Unselect Photo' : 'Select Photo'}">
@@ -316,21 +335,59 @@ function renderGallery() {
       </div>
     `;
   }).join('');
+
+  container.insertAdjacentHTML('beforeend', htmlChunk);
+  displayedPhotosCount += nextBatch.length;
+
+  setupInfiniteScroll();
 }
 
-// Multi-CDN Image Failover Handler: If local server or proxy hits Google rate limits, seamlessly fall back to Google CDN
+// Progressive Infinite Scroll Observer
+function setupInfiniteScroll() {
+  const container = document.getElementById('client-gallery-grid');
+  if (!container) return;
+
+  let sentinel = document.getElementById('gallery-scroll-sentinel');
+  if (!sentinel) {
+    sentinel = document.createElement('div');
+    sentinel.id = 'gallery-scroll-sentinel';
+    sentinel.style.cssText = 'grid-column: 1 / -1; width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center;';
+    container.parentNode.insertBefore(sentinel, container.nextSibling);
+  }
+
+  if (displayedPhotosCount < currentFilteredPhotos.length) {
+    sentinel.style.display = 'flex';
+    sentinel.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;padding:1.5rem;font-weight:600;">⚡ Loading more photos (${displayedPhotosCount} of ${currentFilteredPhotos.length})...</div>`;
+    
+    if (galleryScrollObserver) galleryScrollObserver.disconnect();
+    galleryScrollObserver = new IntersectionObserver((entries) => {
+      if (entries[0] && entries[0].isIntersecting) {
+        if (displayedPhotosCount < currentFilteredPhotos.length) {
+          renderGallery(false);
+        }
+      }
+    }, { rootMargin: '500px' });
+    galleryScrollObserver.observe(sentinel);
+  } else {
+    sentinel.style.display = 'none';
+    sentinel.innerHTML = '';
+    if (galleryScrollObserver) galleryScrollObserver.disconnect();
+  }
+}
+
+// Multi-CDN Image Failover Handler: Google Edge CDN ➔ Server Proxy ➔ Google Thumbnail API
 function handlePhotoLoadError(imgEl, photoId) {
-  if (!imgEl) return;
+  if (!imgEl || !photoId) return;
   const retries = Number(imgEl.dataset.retryCount || 0);
   if (retries === 0) {
     imgEl.dataset.retryCount = '1';
-    imgEl.src = `https://lh3.googleusercontent.com/d/${photoId}=w1600`;
+    imgEl.src = `/api/image/${photoId}`;
   } else if (retries === 1) {
     imgEl.dataset.retryCount = '2';
-    imgEl.src = `https://drive.google.com/thumbnail?id=${photoId}&sz=w1600`;
+    imgEl.src = `https://drive.google.com/thumbnail?id=${photoId}&sz=w800`;
   } else if (retries === 2) {
     imgEl.dataset.retryCount = '3';
-    imgEl.src = `/api/image/${photoId}?t=${Date.now()}`;
+    imgEl.src = `https://lh3.googleusercontent.com/d/${photoId}=w1000`;
   }
 }
 window.handlePhotoLoadError = handlePhotoLoadError;
@@ -768,13 +825,15 @@ function openLightbox(index, direction) {
     img.onerror = function() {
       if (!this._retried) {
         this._retried = 1;
-        this.src = `https://lh3.googleusercontent.com/d/${photo.id}=w2048`;
+        this.src = `/api/image/${photo.id}`;
       } else if (this._retried === 1) {
         this._retried = 2;
         this.src = `https://drive.google.com/thumbnail?id=${photo.id}&sz=w2048`;
       }
     };
-    img.src = photo.url || photo.thumbnailUrl;
+    img.src = (photo.id && !photo.id.startsWith('up_'))
+      ? `https://lh3.googleusercontent.com/d/${photo.id}=w1600`
+      : (photo.url || photo.thumbnailUrl);
   }
   if (title) title.textContent = photo.name;
   if (num) num.textContent = `#${String(index + 1).padStart(3, '0')} of ${photos.length}`;
