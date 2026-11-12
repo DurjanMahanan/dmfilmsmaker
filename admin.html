@@ -111,12 +111,19 @@
     async function loadCurrentSubscription() {
       try {
         const studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
-        const headers = (studio && studio.id) ? { 'X-Studio-Id': studio.id } : {};
+        const headers = {};
+        if (studio && studio.id) headers['X-Studio-Id'] = studio.id;
+        if (studio && studio.email) headers['X-Studio-Email'] = studio.email;
+        const token = localStorage.getItem('dm_admin_token');
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const res = await fetch('/api/subscription/current', { headers });
         const sub = await res.json();
         if (sub) {
           window.currentActiveSubscription = sub;
           updateTopAndSidebarSubscriptionBadges(sub);
+          if (typeof updateSidebarSubscriptionBadge === 'function') {
+            updateSidebarSubscriptionBadge(sub);
+          }
         }
       } catch (e) {
         console.warn('Subscription fetch error:', e);
@@ -319,6 +326,7 @@
     }
 
     function handleFreeTrialClick() {
+      if (window.__activatingTrial) return;
       const sub = window.currentActiveSubscription;
       if (sub && sub.trialClaimed) {
         const msg = '⚠️ Free Trial Already Used!\n\nAapne is studio account par pehle hi 7-Day Free Trial use kar liya hai (1 Free Trial per studio).\n\nStudio workspace continue rakhne ke liye kripya Silver Edition (₹199 / Month) ya Gold Pro (₹999 / Year) plan select karein! 💎';
@@ -329,29 +337,49 @@
         return;
       }
 
-      const studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
+      let studio = {};
+      try { studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}'); } catch (e) {}
       const headers = { 'Content-Type': 'application/json' };
       if (studio && studio.id) headers['X-Studio-Id'] = studio.id;
+      if (studio && studio.email) headers['X-Studio-Email'] = studio.email;
+      const token = localStorage.getItem('dm_admin_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const trialBtn = document.getElementById('btn-claim-free-trial');
       if (trialBtn) {
         trialBtn.disabled = true;
-        trialBtn.innerHTML = 'Activating Trial...';
+        trialBtn.innerHTML = '⏳ Activating Trial...';
       }
+      window.__activatingTrial = true;
 
       fetch('/api/subscription/activate', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ studioId: studio?.id, planName: 'Free Trial', amount: 0, utr: 'FREE_TRIAL_START' })
+        body: JSON.stringify({
+          studioId: studio?.id,
+          email: studio?.email,
+          planName: 'Free Trial',
+          amount: 0,
+          utr: 'FREE_TRIAL_START',
+          paymentMethod: 'Free Trial Activation'
+        })
       })
       .then(r => r.json())
       .then(data => {
-        if (data.success) {
-          window.currentActiveSubscription = data.subscription;
-          if (window.currentActiveSubscription) {
-            window.currentActiveSubscription.isLocked = false;
-            window.currentActiveSubscription.status = 'ACTIVE';
+        window.__activatingTrial = false;
+        if (data && data.success && data.subscription) {
+          window.currentActiveSubscription = {
+            ...data.subscription,
+            isLocked: false,
+            isExpired: false,
+            status: 'ACTIVE'
+          };
+          if (studio && studio.id) {
+            studio.subscription = window.currentActiveSubscription;
+            studio.claimedTrial = true;
+            try { localStorage.setItem('dm_current_studio', JSON.stringify(studio)); } catch(e){}
           }
+
           const m = document.getElementById('upgrade-plan-modal');
           if (m) {
             m.classList.remove('active');
@@ -359,28 +387,40 @@
             m.style.setProperty('opacity', '0', 'important');
             m.style.setProperty('visibility', 'hidden', 'important');
           }
-          updateTopAndSidebarSubscriptionBadges(data.subscription);
-          if (typeof updateSidebarSubscriptionBadge === 'function') {
-            updateSidebarSubscriptionBadge(data.subscription);
+          const lockOverlay = document.getElementById('admin-workspace-lock-overlay');
+          if (lockOverlay) lockOverlay.style.display = 'none';
+
+          if (trialBtn) {
+            trialBtn.disabled = false;
+            trialBtn.innerHTML = '🎁 Start 7-Day Free Trial';
           }
-          if (window.api && window.api.showToast) window.api.showToast('🎉 Free Trial Activated for 7 Days! Workspace Unlocked ✨', 'success');
+
+          updateTopAndSidebarSubscriptionBadges(window.currentActiveSubscription);
+          if (typeof updateSidebarSubscriptionBadge === 'function') {
+            updateSidebarSubscriptionBadge(window.currentActiveSubscription);
+          }
+          if (window.api && window.api.showToast) {
+            window.api.showToast('🎉 Free Trial Activated for 7 Days! Workspace Unlocked ✨', 'success');
+          }
+          if (typeof loadClientsAndStats === 'function') loadClientsAndStats();
           loadCurrentSubscription();
         } else {
           if (trialBtn) {
             trialBtn.disabled = false;
-            trialBtn.innerHTML = 'Start Free Trial';
+            trialBtn.innerHTML = '🎁 Start 7-Day Free Trial';
           }
-          const errMsg = data.error || 'Free Trial already used on this account. Please choose a paid plan!';
+          const errMsg = (data && data.error) || 'Could not activate Free Trial. Please try again.';
           if (window.api && window.api.showToast) window.api.showToast('⚠️ ' + errMsg, 'warning');
           else alert(errMsg);
         }
       })
       .catch(() => {
+        window.__activatingTrial = false;
         if (trialBtn) {
           trialBtn.disabled = false;
-          trialBtn.innerHTML = 'Start Free Trial';
+          trialBtn.innerHTML = '🎁 Start 7-Day Free Trial';
         }
-        alert('Error activating Free Trial');
+        alert('Network error activating Free Trial. Please try again.');
       });
     }
 
@@ -448,6 +488,7 @@
     window.openUpgradeModal = openUpgradeModal;
     window.openCheckoutModalDirect = openCheckoutModalDirect;
     window.selectPlanUpgrade = openCheckoutModalDirect;
+    window.handleFreeTrialClick = handleFreeTrialClick;
     window.openCreateClientModal = openCreateClientModal;
     window.checkFlipbookLimit = checkFlipbookLimit;
     window.loadCurrentSubscription = loadCurrentSubscription;
@@ -557,6 +598,17 @@
     @keyframes modalScaleIn {
       0% { opacity: 0; transform: scale(0.92) translateY(20px); }
       100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .pricing-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      align-items: stretch;
+    }
+    @media (max-width: 900px) {
+      .pricing-cards-grid {
+        grid-template-columns: 1fr !important;
+      }
     }
     .pricing-tier-card {
       transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
@@ -2743,9 +2795,9 @@
     </div>
   </div>
 
-  <!-- MODAL: CHOOSE YOUR PLAN / UPGRADE (NO SCROLL, FULL SCREEN FIT) -->
+  <!-- MODAL: CHOOSE YOUR PLAN / UPGRADE (RESPONSIVE & SCROLL SAFE) -->
   <div class="modal-overlay" id="upgrade-plan-modal" style="z-index:999999;">
-    <div class="modal-container" style="max-width:1120px;width:95%;background:radial-gradient(circle at 50% 10%, #15112e 0%, #080614 100%);border:1.5px solid rgba(168,85,247,0.35);border-radius:22px;box-shadow:0 0 70px rgba(0,0,0,0.98);color:#fff;overflow:hidden;position:relative;padding:1.25rem 1.75rem 1.4rem 1.75rem;box-sizing:border-box;">
+    <div class="modal-container" style="max-width:1120px;width:95%;max-height:92vh;overflow-y:auto;background:radial-gradient(circle at 50% 10%, #15112e 0%, #080614 100%);border:1.5px solid rgba(168,85,247,0.35);border-radius:22px;box-shadow:0 0 70px rgba(0,0,0,0.98);color:#fff;position:relative;padding:1.25rem 1.75rem 1.4rem 1.75rem;box-sizing:border-box;">
       
       <!-- Close Button with Hover Rotate -->
       <button type="button" class="modal-close" onclick="closeModal('upgrade-plan-modal')" style="position:absolute;top:14px;right:18px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;font-size:1.3rem;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:all 0.2s;" onmouseover="this.style.transform='rotate(90deg) scale(1.1)';this.style.color='#fff'" onmouseout="this.style.transform='rotate(0deg) scale(1)';this.style.color='#cbd5e1'">&times;</button>
@@ -2767,8 +2819,8 @@
         <!-- Modal Alert Banner -->
         <div id="modal-plan-alert-banner" style="display:none;margin-bottom:1rem;padding:0.75rem 1rem;border-radius:12px;font-size:0.85rem;line-height:1.4;text-align:center;"></div>
 
-        <!-- 3 Pricing Cards Grid (All Content + Buttons Fit on Screen!) -->
-        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:1.25rem;align-items:stretch;">
+        <!-- 3 Pricing Cards Grid -->
+        <div class="pricing-cards-grid">
           
           <!-- CARD 1: FREE TRIAL -->
           <div id="pricing-card-trial" class="pricing-tier-card free" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:1.25rem 1.25rem;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;" onclick="handleFreeTrialClick()">
@@ -3081,10 +3133,6 @@
         </button>
 
       </div>
-          🚀 Go to Studio Dashboard
-        </button>
-
-      </div>
 
     </div>
   </div>
@@ -3296,10 +3344,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=20261026_2338"></script>
-  <script src="js/api.js?v=20261026_2338"></script>
-  <script src="js/admin.js?v=20261026_2338"></script>
-  <script src="admin.js?v=20261026_2338" onerror="this.remove()"></script>
+  <script src="js/config.js?v=20261112_0740"></script>
+  <script src="js/api.js?v=20261112_0740"></script>
+  <script src="js/admin.js?v=20261112_0740"></script>
+  <script src="admin.js?v=20261112_0740" onerror="this.remove()"></script>
   <!-- Inline Direct Profile Settings Engine (Zero Latency & 100% Reliable) -->
   <script>
     function openCheckoutModalDirect(planName, price) {
@@ -3887,11 +3935,15 @@
     }
 
     function closeModal(id) {
-      if (id === 'upgrade-plan-modal' && window.__currentSubscription && window.__currentSubscription.isLocked) {
-        if (typeof showToast === 'function') {
-          showToast('⚠️ Plan expired! Kripya continue karne ke liye plan upgrade karein.', 'warning');
+      const sub = window.currentActiveSubscription;
+      if (id === 'upgrade-plan-modal' && sub && (sub.isLocked || sub.isExpired || sub.status === 'NO_PLAN' || sub.status === 'EXPIRED')) {
+        const msg = '⚠️ Active plan required! Continue karne ke liye Free Trial start karein ya plan choose karein.';
+        if (window.api?.showToast) {
+          window.api.showToast(msg, 'warning');
+        } else if (typeof showToast === 'function') {
+          showToast(msg, 'warning');
         } else {
-          alert('⚠️ Plan expired! Kripya continue karne ke liye plan upgrade karein.');
+          alert(msg);
         }
         return;
       }
@@ -4014,8 +4066,9 @@
 
     async function payWithRazorpay() {
       const plan = window.currentCheckoutPlan || { name: 'Silver Edition', amount: 199, durationDays: 30 };
-      const studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
-      const planType = (plan.amount === 999 || (plan.name && plan.name.includes('Gold'))) ? 'YEARLY' : 'MONTHLY';
+      let studio = {};
+      try { studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}'); } catch (e) {}
+      const planType = (Number(plan.amount) >= 999 || (plan.name && (plan.name.includes('Gold') || plan.name.includes('Pro')))) ? 'YEARLY' : 'MONTHLY';
       
       const btn = document.getElementById('btn-pay-razorpay');
       const originalHtml = btn ? btn.innerHTML : '';
@@ -4026,7 +4079,10 @@
 
       try {
         const headers = { 'Content-Type': 'application/json' };
+        const tok = localStorage.getItem('dm_admin_token');
+        if (tok) headers['Authorization'] = `Bearer ${tok}`;
         if (studio && studio.id) headers['X-Studio-Id'] = studio.id;
+        if (studio && studio.email) headers['X-Studio-Email'] = studio.email;
 
         const res = await fetch('/api/payment/razorpay/create-order', {
           method: 'POST',
@@ -4034,7 +4090,9 @@
           body: JSON.stringify({
             plan: planType,
             planName: plan.name,
-            studioId: studio.id || 'studio_master_dm'
+            amount: plan.amount,
+            studioId: studio.id || '',
+            email: studio.email || ''
           })
         });
         const orderData = await res.json();
@@ -4065,7 +4123,9 @@
           },
           notes: {
             studioId: studio.id || '',
+            email: studio.email || '',
             plan: orderData.plan,
+            planName: orderData.planName,
             orderId: orderData.orderId
           },
           theme: {
@@ -4073,26 +4133,55 @@
           },
           handler: async function (response) {
             if (btn) {
-              btn.innerHTML = '<span>⚡ Verifying Payment...</span>';
+              btn.innerHTML = '<span>⚡ Verifying & Activating Plan...</span>';
             }
             try {
               const verifyHeaders = { 'Content-Type': 'application/json' };
+              if (tok) verifyHeaders['Authorization'] = `Bearer ${tok}`;
               if (studio && studio.id) verifyHeaders['X-Studio-Id'] = studio.id;
+              if (studio && studio.email) verifyHeaders['X-Studio-Email'] = studio.email;
 
-              const verifyRes = await fetch('/api/payment/razorpay/verify', {
-                method: 'POST',
-                headers: verifyHeaders,
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  orderId: orderData.orderId,
-                  studioId: studio.id
-                })
-              });
-              const verifyData = await verifyRes.json();
-              if (verifyData.success) {
+              let verifyData = null;
+              let lastErr = null;
+              for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                  const verifyRes = await fetch('/api/payment/razorpay/verify', {
+                    method: 'POST',
+                    headers: verifyHeaders,
+                    body: JSON.stringify({
+                      razorpay_order_id: response.razorpay_order_id,
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      razorpay_signature: response.razorpay_signature,
+                      orderId: orderData.orderId,
+                      studioId: studio.id || '',
+                      email: studio.email || '',
+                      plan: orderData.plan || planType,
+                      planName: orderData.planName || plan.name,
+                      amount: plan.amount
+                    })
+                  });
+                  verifyData = await verifyRes.json();
+                  if (verifyData && verifyData.success) break;
+                  lastErr = new Error(verifyData?.error || 'Verification rejected');
+                } catch (err) {
+                  lastErr = err;
+                }
+                if (attempt < 2) await new Promise(r => setTimeout(r, 800));
+              }
+
+              if (verifyData && verifyData.success) {
                 window.currentActiveSubscription = verifyData.subscription;
+                try {
+                  if (studio && studio.id) {
+                    studio.subscription = verifyData.subscription;
+                    localStorage.setItem('dm_current_studio', JSON.stringify(studio));
+                  }
+                } catch (e) {}
+
+                const lockOverlay = document.getElementById('admin-workspace-lock-overlay');
+                if (lockOverlay) lockOverlay.style.setProperty('display', 'none', 'important');
+                closeModal('upgrade-plan-modal');
+
                 if (typeof window.updateTopAndSidebarSubscriptionBadges === 'function') {
                   window.updateTopAndSidebarSubscriptionBadges(verifyData.subscription);
                 }
@@ -4101,16 +4190,21 @@
                 }
                 if (window.checkoutTimerInterval) clearInterval(window.checkoutTimerInterval);
                 if (window.livePaymentPollingInterval) clearInterval(window.livePaymentPollingInterval);
+                if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
 
-                showLivePaymentSuccess(orderData.planName, plan.amount, response.razorpay_payment_id, verifyData.durationDays || orderData.durationDays);
+                const activePlanName = verifyData.subscription?.planName || orderData.planName || plan.name;
+                const activeAmount = verifyData.subscription?.amount ?? plan.amount;
+                const activeDays = verifyData.subscription?.durationDays || verifyData.durationDays || orderData.durationDays;
+                showLivePaymentSuccess(activePlanName, activeAmount, response.razorpay_payment_id, activeDays);
                 if (typeof loadCurrentSubscription === 'function') loadCurrentSubscription();
               } else {
-                alert('Verification Error: ' + (verifyData.error || 'Payment could not be verified.'));
+                alert('Verification Error: ' + (verifyData?.error || lastErr?.message || 'Payment could not be verified.'));
                 if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
               }
             } catch (vErr) {
               console.error('Razorpay verification call failed:', vErr);
-              alert('Payment received! (Txn ID: ' + response.razorpay_payment_id + '). Your subscription is being activated!');
+              alert('Payment received! (Txn ID: ' + response.razorpay_payment_id + '). Refreshing your subscription status...');
+              if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
               if (typeof loadCurrentSubscription === 'function') loadCurrentSubscription();
             }
           },
@@ -4179,11 +4273,17 @@
         if (logoBox) logoBox.innerHTML = `<img src="${logoImg}" style="max-height:45px;max-width:90%;object-fit:contain;">`;
       }
 
-      // Also fetch latest from server
-      fetch('/api/admin/studio-profile')
+      // Also fetch latest from server WITH strict studio headers so we never overwrite a logged-in studio
+      const profHeaders = {};
+      const tok = localStorage.getItem('dm_admin_token');
+      if (tok) profHeaders['Authorization'] = `Bearer ${tok}`;
+      if (studio && studio.id) profHeaders['X-Studio-Id'] = studio.id;
+      if (studio && studio.email) profHeaders['X-Studio-Email'] = studio.email;
+
+      fetch('/api/admin/studio-profile', { headers: profHeaders })
         .then(r => r.json())
         .then(fresh => {
-          if (fresh && fresh.studioName) {
+          if (fresh && fresh.studioName && (!studio?.id || fresh.id === studio.id)) {
             localStorage.setItem('dm_current_studio', JSON.stringify(fresh));
             if (profName) profName.textContent = fresh.studioName;
             if (profEmail && fresh.email) profEmail.textContent = fresh.email;

@@ -99,6 +99,82 @@ function isDeveloperAccount(studioOrEmail) {
   );
 }
 
+// Canonical email normalization so same email (including Gmail dot / +alias tricks) can claim 7-day trial only ONCE
+function normalizeEmailForTrial(email) {
+  const clean = (email || '').toLowerCase().trim();
+  const atIdx = clean.indexOf('@');
+  if (atIdx === -1) return clean;
+  let local = clean.slice(0, atIdx);
+  let domain = clean.slice(atIdx + 1);
+  const plusIdx = local.indexOf('+');
+  if (plusIdx !== -1) local = local.slice(0, plusIdx);
+  if (domain === 'googlemail.com') domain = 'gmail.com';
+  if (domain === 'gmail.com') {
+    local = local.replace(/\./g, '');
+  }
+  return `${local}@${domain}`;
+}
+
+function hasClaimedTrial(db, studio, email, studioId) {
+  if (studio && studio.claimedTrial) return true;
+  const claimedIds = db?.claimedTrialStudioIds || [];
+  if (studioId && claimedIds.includes(studioId)) return true;
+  const rawEmail = (email || studio?.email || '').toLowerCase().trim();
+  if (!rawEmail) return false;
+  const normEmail = normalizeEmailForTrial(rawEmail);
+  const claimedEmails = db?.claimedTrialEmails || [];
+  return claimedEmails.some(e => {
+    const cleanE = (e || '').toLowerCase().trim();
+    return cleanE === rawEmail || (normEmail && normalizeEmailForTrial(cleanE) === normEmail);
+  });
+}
+
+function recordClaimedTrial(db, studio, email, studioId) {
+  db.claimedTrialEmails = db.claimedTrialEmails || [];
+  db.claimedTrialStudioIds = db.claimedTrialStudioIds || [];
+  const rawEmail = (email || studio?.email || '').toLowerCase().trim();
+  const normEmail = normalizeEmailForTrial(rawEmail);
+  if (rawEmail && !db.claimedTrialEmails.includes(rawEmail)) db.claimedTrialEmails.push(rawEmail);
+  if (normEmail && !db.claimedTrialEmails.includes(normEmail)) db.claimedTrialEmails.push(normEmail);
+  if (studioId && !db.claimedTrialStudioIds.includes(studioId)) db.claimedTrialStudioIds.push(studioId);
+  if (studio) studio.claimedTrial = true;
+}
+
+function findExactStudio(db, studioId, studioEmail) {
+  if (!db || !Array.isArray(db.studios)) return null;
+  const cleanId = (studioId && studioId !== 'undefined' && studioId !== 'null') ? String(studioId).trim() : '';
+  const cleanEmail = (studioEmail && studioEmail !== 'undefined' && studioEmail !== 'null') ? String(studioEmail).trim().toLowerCase() : '';
+  if (!cleanId && !cleanEmail) return null;
+  return db.studios.find(x =>
+    (cleanId && (x.id === cleanId || (x.email && x.email.toLowerCase() === cleanId.toLowerCase()))) ||
+    (cleanEmail && x.email && x.email.toLowerCase() === cleanEmail)
+  ) || null;
+}
+
+function buildSubscriptionPayload(db, studio, subObj, actualStudioId) {
+  const limits = getSubscriptionLimits(studio ? { ...studio, subscription: subObj } : { subscription: subObj });
+  const usedClientsCount = (db.clients || []).filter(c => c.studioId === actualStudioId).length;
+  const usedFlipbooksCount = (db.flipbooks || []).filter(f => f.studioId === actualStudioId).length;
+  const userEmail = (studio?.email || '').toLowerCase().trim();
+  const trialClaimed = hasClaimedTrial(db, studio, userEmail, actualStudioId);
+
+  return {
+    ...subObj,
+    isActive: true,
+    isLocked: false,
+    isExpired: false,
+    trialClaimed,
+    limits: {
+      ...limits,
+      usedClients: usedClientsCount,
+      usedFlipbooks: usedFlipbooksCount,
+      remainingClients: limits.unlimited ? 'Unlimited' : Math.max(0, limits.maxClients - usedClientsCount),
+      remainingFlipbooks: limits.unlimited ? 'Unlimited' : Math.max(0, limits.maxFlipbooks - usedFlipbooksCount),
+      unlimited: limits.unlimited
+    }
+  };
+}
+
 // Plan Limit Tiers Config: Developer Lifetime Free, Free Trial, Silver Edition (₹199), Gold (Pro) (₹999)
 function getSubscriptionLimits(studioOrSub) {
   if (isDeveloperAccount(studioOrSub)) {
@@ -159,7 +235,7 @@ function getSubscriptionLimits(studioOrSub) {
 function getStudioIdFromRequest(req) {
   if (!req || !req.headers) return null;
   const sId = req.headers['x-studio-id'];
-  if (sId && typeof sId === 'string' && sId.trim()) return sId.trim();
+  if (sId && typeof sId === 'string' && sId.trim() && sId.trim() !== 'undefined' && sId.trim() !== 'null') return sId.trim();
 
   const authHeader = req.headers['authorization'];
   if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
@@ -171,10 +247,12 @@ function getStudioIdFromRequest(req) {
       }
     }
   }
+  const sEmail = req.headers['x-studio-email'];
+  if (sEmail && typeof sEmail === 'string' && sEmail.trim()) return sEmail.trim().toLowerCase();
   return null;
 }
 
-function getTargetStudio(db, studioId) {
+function getTargetStudio(db, studioId, studioEmail) {
   if (!db) return null;
   db.studios = db.studios || [];
   if (db.studios.length === 0) {
@@ -207,8 +285,13 @@ function getTargetStudio(db, studioId) {
       claimedTrial: true
     });
   }
-  if (!studioId) return db.studios[0];
-  let s = db.studios.find(x => x.id === studioId || x.email === studioId);
+  const cleanId = (studioId && studioId !== 'undefined' && studioId !== 'null') ? String(studioId).trim() : '';
+  const cleanEmail = (studioEmail && studioEmail !== 'undefined' && studioEmail !== 'null') ? String(studioEmail).trim().toLowerCase() : '';
+  if (!cleanId && !cleanEmail) return db.studios[0];
+  let s = db.studios.find(x =>
+    (cleanId && (x.id === cleanId || (x.email && x.email.toLowerCase() === cleanId.toLowerCase()))) ||
+    (cleanEmail && x.email && x.email.toLowerCase() === cleanEmail)
+  );
   return s || db.studios[0];
 }
 
@@ -1109,7 +1192,8 @@ const server = http.createServer(async (req, res) => {
           }
 
           const db = loadDB();
-          const existing = db.studios.find(s => s.email.toLowerCase() === email.toLowerCase());
+          const cleanRegEmail = (email || '').toLowerCase().trim();
+          const existing = (db.studios || []).find(s => (s.email || '').toLowerCase().trim() === cleanRegEmail);
           if (existing) {
             sendJSON({ error: 'Email already registered. Please sign in.' }, 400);
             return;
@@ -1129,6 +1213,7 @@ const server = http.createServer(async (req, res) => {
 
           const studioId = 'studio_' + Math.random().toString(36).substring(2, 9);
           const regNow = new Date();
+          const emailAlreadyClaimedTrial = hasClaimedTrial(db, null, cleanRegEmail, studioId);
 
           const initialSub = {
             planName: 'No Plan Active',
@@ -1146,7 +1231,7 @@ const server = http.createServer(async (req, res) => {
           const newStudio = {
             id: studioId,
             studioName: studioName.trim(),
-            email: email.toLowerCase().trim(),
+            email: cleanRegEmail,
             password: password.trim(),
             phone: phone || '',
             logoUrl: logoUrl || '',
@@ -1154,7 +1239,7 @@ const server = http.createServer(async (req, res) => {
             driveFolderId: studioDriveFolderId,
             createdAt: regNow.toISOString(),
             subscription: initialSub,
-            claimedTrial: false
+            claimedTrial: emailAlreadyClaimedTrial
           };
 
           db.studios.push(newStudio);
@@ -1179,7 +1264,7 @@ const server = http.createServer(async (req, res) => {
               tagline: newStudio.tagline,
               driveFolderId: newStudio.driveFolderId,
               subscription: newStudio.subscription,
-              claimedTrial: false
+              claimedTrial: emailAlreadyClaimedTrial
             }
           });
         } catch (e) {
@@ -2064,8 +2149,16 @@ const server = http.createServer(async (req, res) => {
         saveDB(db);
       }
 
-      const studioId = req.headers['x-studio-id'] || '';
-      let studio = (studioId && db.studios.find(s => s.id === studioId)) || db.studios[0];
+      const studioId = getStudioIdFromRequest(req) || '';
+      const studioEmail = (req.headers['x-studio-email'] || '').toLowerCase().trim();
+      let studio = getTargetStudio(db, studioId, studioEmail);
+      if (studioId && studio && studio.id !== studioId && (!studioEmail || (studio.email || '').toLowerCase() !== studioEmail)) {
+        try {
+          const cloudDb = await restoreDatabaseFromDrive();
+          const cloudMatch = (cloudDb.studios || []).find(s => s.id === studioId || (studioEmail && s.email && s.email.toLowerCase() === studioEmail));
+          if (cloudMatch) studio = cloudMatch;
+        } catch (e) {}
+      }
       
       // Ensure registered studioName is preserved
       studio.studioName = studio.studioName || 'DM STUDIO';
@@ -2139,8 +2232,16 @@ const server = http.createServer(async (req, res) => {
     // 7c1. Get Website Configuration & Content (Public & Admin)
     if ((pathname === '/api/public/website-config' || pathname === '/api/admin/website-config') && req.method === 'GET') {
       const db = loadDB();
-      const studioId = req.headers['x-studio-id'] || '';
-      let studio = (studioId && db.studios.find(s => s.id === studioId)) || db.studios[0];
+      const studioId = getStudioIdFromRequest(req) || '';
+      const studioEmail = (req.headers['x-studio-email'] || '').toLowerCase().trim();
+      let studio = getTargetStudio(db, studioId, studioEmail);
+      if (studioId && studio && studio.id !== studioId && (!studioEmail || (studio.email || '').toLowerCase() !== studioEmail)) {
+        try {
+          const cloudDb = await restoreDatabaseFromDrive();
+          const cloudMatch = (cloudDb.studios || []).find(s => s.id === studioId || (studioEmail && s.email && s.email.toLowerCase() === studioEmail));
+          if (cloudMatch) studio = cloudMatch;
+        } catch (e) {}
+      }
       
       const defaultConfig = {
         studioName: studio?.studioName || 'DM FILMS & PHOTOGRAPHY',
@@ -2429,8 +2530,16 @@ async function clearAllFilesInsideDriveFolder(folderId, accessToken) {
       
       const db = loadDB();
       db.studios = db.studios || [];
-      const studioId = req.headers['x-studio-id'] || '';
-      let studio = (studioId && db.studios.find(s => s.id === studioId)) || db.studios[0];
+      const studioId = getStudioIdFromRequest(req) || '';
+      const studioEmail = (req.headers['x-studio-email'] || '').toLowerCase().trim();
+      let studio = getTargetStudio(db, studioId, studioEmail);
+      if (studioId && studio && studio.id !== studioId && (!studioEmail || (studio.email || '').toLowerCase() !== studioEmail)) {
+        try {
+          const cloudDb = await restoreDatabaseFromDrive();
+          const cloudMatch = (cloudDb.studios || []).find(s => s.id === studioId || (studioEmail && s.email && s.email.toLowerCase() === studioEmail));
+          if (cloudMatch) studio = cloudMatch;
+        } catch (e) {}
+      }
       if (!studio) {
         studio = { id: 'studio_master_dm', studioName: 'DM STUDIO' };
         db.studios.push(studio);
@@ -2528,8 +2637,16 @@ async function clearAllFilesInsideDriveFolder(folderId, accessToken) {
     if (pathname === '/api/admin/studio-profile/delete-logo' && req.method === 'POST') {
       const db = loadDB();
       db.studios = db.studios || [];
-      const studioId = req.headers['x-studio-id'] || '';
-      let studio = (studioId && db.studios.find(s => s.id === studioId)) || db.studios[0];
+      const studioId = getStudioIdFromRequest(req) || '';
+      const studioEmail = (req.headers['x-studio-email'] || '').toLowerCase().trim();
+      let studio = getTargetStudio(db, studioId, studioEmail);
+      if (studioId && studio && studio.id !== studioId && (!studioEmail || (studio.email || '').toLowerCase() !== studioEmail)) {
+        try {
+          const cloudDb = await restoreDatabaseFromDrive();
+          const cloudMatch = (cloudDb.studios || []).find(s => s.id === studioId || (studioEmail && s.email && s.email.toLowerCase() === studioEmail));
+          if (cloudMatch) studio = cloudMatch;
+        } catch (e) {}
+      }
       if (!studio) {
         sendJSON({ error: 'Studio not found' }, 404);
         return;
@@ -3943,6 +4060,77 @@ async function syncClientPhotosFromDrive(client, db) {
       return expectedSignature === signature;
     }
 
+    function fetchRazorpayPayment(paymentId) {
+      return new Promise((resolve, reject) => {
+        if (!paymentId) return reject(new Error('Missing paymentId'));
+        const auth = Buffer.from(`${RAZORPAY_CONFIG.keyId}:${RAZORPAY_CONFIG.keySecret}`).toString('base64');
+        const options = {
+          hostname: 'api.razorpay.com',
+          port: 443,
+          path: `/v1/payments/${encodeURIComponent(paymentId)}`,
+          method: 'GET',
+          headers: { 'Authorization': `Basic ${auth}` }
+        };
+        const rzpReq = https.request(options, (rzpRes) => {
+          let data = '';
+          rzpRes.on('data', chunk => { data += chunk; });
+          rzpRes.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              if (rzpRes.statusCode >= 200 && rzpRes.statusCode < 300) {
+                resolve(parsed);
+              } else {
+                reject(new Error(parsed.error?.description || `Razorpay fetch HTTP ${rzpRes.statusCode}`));
+              }
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+        rzpReq.on('error', reject);
+        rzpReq.end();
+      });
+    }
+
+    function resolvePaidPlan({ plan, planName, amount, amountPaise } = {}) {
+      const codeUpper = String(plan || '').toUpperCase().trim();
+      const nameUpper = String(planName || '').toUpperCase().trim();
+      const numAmount = amount !== undefined && amount !== null && !isNaN(Number(amount)) ? Number(amount) : null;
+      const numPaise = amountPaise !== undefined && amountPaise !== null && !isNaN(Number(amountPaise)) ? Number(amountPaise) : null;
+      const resolvedInr = numPaise !== null && numPaise > 0 ? Math.round(numPaise / 100) : numAmount;
+
+      if (
+        codeUpper === 'YEARLY' ||
+        nameUpper.includes('GOLD') ||
+        nameUpper.includes('PRO') ||
+        (resolvedInr !== null && resolvedInr >= 999)
+      ) {
+        return {
+          ...SUBSCRIPTION_PLANS.YEARLY,
+          amount: resolvedInr && resolvedInr !== 999 && resolvedInr > 0 ? resolvedInr : SUBSCRIPTION_PLANS.YEARLY.amount,
+          amountPaise: numPaise && numPaise > 0 ? numPaise : SUBSCRIPTION_PLANS.YEARLY.amountPaise
+        };
+      }
+
+      if (
+        codeUpper === 'MONTHLY' ||
+        nameUpper.includes('SILVER') ||
+        resolvedInr === 199 ||
+        !resolvedInr ||
+        resolvedInr <= 0
+      ) {
+        return { ...SUBSCRIPTION_PLANS.MONTHLY };
+      }
+
+      return {
+        code: 'MONTHLY',
+        name: planName || 'Silver Edition',
+        amount: resolvedInr,
+        amountPaise: resolvedInr * 100,
+        durationDays: 30
+      };
+    }
+
     // Razorpay: Create Order Endpoint
     if (pathname === '/api/payment/razorpay/create-order' && req.method === 'POST') {
       let body = '';
@@ -3950,16 +4138,32 @@ async function syncClientPhotosFromDrive(client, db) {
       req.on('end', async () => {
         try {
           const data = JSON.parse(body || '{}');
-          
-          let selectedPlan = SUBSCRIPTION_PLANS.MONTHLY;
-          const reqPlan = (data.plan || data.planName || '').toUpperCase();
-          if (reqPlan === 'YEARLY' || reqPlan.includes('GOLD') || Number(data.amount) === 999) {
-            selectedPlan = SUBSCRIPTION_PLANS.YEARLY;
-          }
+          const selectedPlan = resolvePaidPlan({
+            plan: data.plan,
+            planName: data.planName,
+            amount: data.amount
+          });
 
           const timestamp = Date.now();
           const internalOrderId = `DM_RZP_${timestamp}_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-          const studioId = data.studioId || getStudioIdFromRequest(req) || 'studio_master_dm';
+          const reqStudioId = data.studioId || getStudioIdFromRequest(req);
+          const reqEmail = (data.email || req.headers['x-studio-email'] || '').toLowerCase().trim();
+
+          let db = loadDB();
+          let targetStudio = findExactStudio(db, reqStudioId, reqEmail);
+          if (!targetStudio && (reqStudioId || reqEmail)) {
+            try {
+              const cloudDb = await restoreDatabaseFromDrive();
+              const cloudMatch = findExactStudio(cloudDb, reqStudioId, reqEmail);
+              if (cloudMatch) {
+                db = cloudDb;
+                targetStudio = cloudMatch;
+              }
+            } catch (e) {}
+          }
+
+          const studioId = targetStudio?.id || reqStudioId || 'studio_dmfilmsmaker';
+          const studioEmail = (targetStudio?.email || reqEmail || '').toLowerCase().trim();
 
           // Call official Razorpay Orders API
           const rzpOrder = await createRazorpayOrder({
@@ -3968,20 +4172,20 @@ async function syncClientPhotosFromDrive(client, db) {
             receipt: internalOrderId,
             notes: {
               studioId,
+              email: studioEmail,
               plan: selectedPlan.code,
               planName: selectedPlan.name,
               durationDays: String(selectedPlan.durationDays)
             }
           });
 
-          // Save pending order record in database
-          const db = loadDB();
           if (!db.paymentOrders) db.paymentOrders = [];
 
           const orderRecord = {
             orderId: internalOrderId,
             razorpayOrderId: rzpOrder.id,
             studioId,
+            email: studioEmail,
             plan: selectedPlan.code,
             planName: selectedPlan.name,
             amount: selectedPlan.amount,
@@ -4025,7 +4229,7 @@ async function syncClientPhotosFromDrive(client, db) {
     if (pathname === '/api/payment/razorpay/verify' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk; });
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
           const data = JSON.parse(body || '{}');
           const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId, studioId } = data;
@@ -4042,16 +4246,53 @@ async function syncClientPhotosFromDrive(client, db) {
             return;
           }
 
-          const db = loadDB();
-          const order = (db.paymentOrders || []).find(o => o.razorpayOrderId === razorpay_order_id || o.orderId === orderId);
+          let db = loadDB();
+          let order = (db.paymentOrders || []).find(o => o.razorpayOrderId === razorpay_order_id || (orderId && o.orderId === orderId))
+            || (global.activePaymentOrders && (global.activePaymentOrders[razorpay_order_id] || (orderId && global.activePaymentOrders[orderId])))
+            || null;
 
-          const targetStudioId = studioId || order?.studioId || getStudioIdFromRequest(req);
-          const targetStudio = getTargetStudio(db, targetStudioId);
+          let rzpPayment = null;
+          if (!order) {
+            try {
+              rzpPayment = await fetchRazorpayPayment(razorpay_payment_id);
+            } catch (fetchErr) {
+              console.warn('[Razorpay Verify] Live payment lookup fallback:', fetchErr.message);
+            }
+          }
 
-          const planCode = order?.plan || 'MONTHLY';
-          const planDuration = order?.durationDays || (planCode === 'YEARLY' ? 180 : 30);
-          const planName = order?.planName || (planCode === 'YEARLY' ? 'Gold (Pro)' : 'Silver Edition');
-          const amount = order?.amount || (planCode === 'YEARLY' ? 999 : 199);
+          const reqEmail = (data.email || req.headers['x-studio-email'] || order?.email || rzpPayment?.notes?.email || rzpPayment?.email || '').toLowerCase().trim();
+          const targetStudioId = (studioId && studioId !== 'undefined' && studioId !== 'null' ? studioId : null)
+            || order?.studioId
+            || rzpPayment?.notes?.studioId
+            || getStudioIdFromRequest(req);
+
+          let targetStudio = findExactStudio(db, targetStudioId, reqEmail);
+          if (!targetStudio && (targetStudioId || reqEmail)) {
+            try {
+              const cloudDb = await restoreDatabaseFromDrive();
+              const cloudMatch = findExactStudio(cloudDb, targetStudioId, reqEmail);
+              if (cloudMatch) {
+                db = cloudDb;
+                targetStudio = cloudMatch;
+                order = (db.paymentOrders || []).find(o => o.razorpayOrderId === razorpay_order_id || (orderId && o.orderId === orderId)) || order;
+              }
+            } catch (e) {}
+          }
+          if (!targetStudio && !targetStudioId && !reqEmail) {
+            targetStudio = getTargetStudio(db, null, null);
+          }
+
+          const resolvedPlan = resolvePaidPlan({
+            plan: order?.plan || rzpPayment?.notes?.plan || data.plan,
+            planName: order?.planName || rzpPayment?.notes?.planName || data.planName,
+            amount: order?.amount ?? data.amount,
+            amountPaise: rzpPayment?.amount ?? order?.amountPaise
+          });
+
+          const planCode = resolvedPlan.code;
+          const planDuration = order?.durationDays || resolvedPlan.durationDays;
+          const planName = resolvedPlan.name;
+          const amount = resolvedPlan.amount;
           const now = new Date();
           const expires = new Date(Date.now() + planDuration * 24 * 3600 * 1000);
 
@@ -4060,6 +4301,10 @@ async function syncClientPhotosFromDrive(client, db) {
             order.paidAt = now.toISOString();
             order.razorpayPaymentId = razorpay_payment_id;
             order.utr = razorpay_payment_id;
+            if (!db.paymentOrders) db.paymentOrders = [];
+            if (!db.paymentOrders.some(o => o.razorpayOrderId === razorpay_order_id || o.orderId === order.orderId)) {
+              db.paymentOrders.unshift(order);
+            }
           }
 
           const subObj = {
@@ -4078,13 +4323,37 @@ async function syncClientPhotosFromDrive(client, db) {
             isExpired: false
           };
 
+          const actualStudioId = targetStudio ? targetStudio.id : (targetStudioId || 'studio_dmfilmsmaker');
+
           if (targetStudio) {
             targetStudio.subscription = subObj;
             targetStudio.paymentHistory = targetStudio.paymentHistory || [];
-            targetStudio.paymentHistory.unshift({
+            if (!targetStudio.paymentHistory.some(p => p.razorpayPaymentId === razorpay_payment_id)) {
+              targetStudio.paymentHistory.unshift({
+                id: 'PAY_' + Date.now(),
+                orderId: order?.orderId || razorpay_order_id,
+                razorpayPaymentId: razorpay_payment_id,
+                planName: planName,
+                amount: amount,
+                utr: razorpay_payment_id,
+                paymentMethod: 'Razorpay Gateway',
+                status: 'SUCCESS',
+                timestamp: now.toISOString()
+              });
+            }
+          }
+
+          if (!targetStudioId || targetStudioId === 'studio_master_dm' || targetStudioId === 'studio_dmfilmsmaker') {
+            db.subscription = subObj;
+          }
+
+          if (!db.paymentHistory) db.paymentHistory = [];
+          if (!db.paymentHistory.some(p => p.razorpayPaymentId === razorpay_payment_id)) {
+            db.paymentHistory.unshift({
               id: 'PAY_' + Date.now(),
               orderId: order?.orderId || razorpay_order_id,
               razorpayPaymentId: razorpay_payment_id,
+              studioId: actualStudioId,
               planName: planName,
               amount: amount,
               utr: razorpay_payment_id,
@@ -4094,35 +4363,25 @@ async function syncClientPhotosFromDrive(client, db) {
             });
           }
 
-          if (!targetStudioId || targetStudioId === 'studio_master_dm') {
-            db.subscription = subObj;
-          }
-
-          if (!db.paymentHistory) db.paymentHistory = [];
-          db.paymentHistory.unshift({
-            id: 'PAY_' + Date.now(),
-            orderId: order?.orderId || razorpay_order_id,
-            razorpayPaymentId: razorpay_payment_id,
-            planName: planName,
-            amount: amount,
-            utr: razorpay_payment_id,
-            paymentMethod: 'Razorpay Gateway',
-            status: 'SUCCESS',
-            timestamp: now.toISOString()
-          });
-
           saveDB(db);
           if (global.activePaymentOrders && order) {
             global.activePaymentOrders[order.orderId] = order;
             global.activePaymentOrders[razorpay_order_id] = order;
           }
+          try {
+            await syncDatabaseToDriveImmediate(db);
+          } catch (syncErr) {
+            console.warn('[Razorpay Verify] Drive sync warning:', syncErr.message);
+          }
 
-          console.log(`🎉 [RAZORPAY PAYMENT ACTIVATED] Studio: ${targetStudio?.studioName || targetStudioId} | Plan: ${planName} for ${planDuration} Days! Txn: ${razorpay_payment_id}`);
+          const fullSub = buildSubscriptionPayload(db, targetStudio, subObj, actualStudioId);
+
+          console.log(`🎉 [RAZORPAY PAYMENT ACTIVATED] Studio: ${targetStudio?.studioName || actualStudioId} | Plan: ${planName} (₹${amount}) for ${planDuration} Days! Txn: ${razorpay_payment_id}`);
 
           sendJSON({
             success: true,
             message: 'Razorpay payment successfully verified and subscription activated!',
-            subscription: subObj,
+            subscription: fullSub,
             durationDays: planDuration
           });
         } catch (e) {
@@ -4137,7 +4396,7 @@ async function syncClientPhotosFromDrive(client, db) {
     if (pathname === '/api/payment/razorpay/webhook' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk; });
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
           const rzpSignature = req.headers['x-razorpay-signature'];
           if (rzpSignature) {
@@ -4158,37 +4417,79 @@ async function syncClientPhotosFromDrive(client, db) {
             const paymentId = payment?.id;
 
             if (orderId) {
-              const db = loadDB();
-              const order = (db.paymentOrders || []).find(o => o.razorpayOrderId === orderId || o.orderId === orderId);
-              if (order && order.status !== 'SUCCESS') {
+              let db = loadDB();
+              let order = (db.paymentOrders || []).find(o => o.razorpayOrderId === orderId || o.orderId === orderId);
+              const noteStudioId = order?.studioId || payment?.notes?.studioId;
+              const noteEmail = (order?.email || payment?.notes?.email || payment?.email || '').toLowerCase().trim();
+              let targetStudio = findExactStudio(db, noteStudioId, noteEmail);
+              if (!targetStudio && (noteStudioId || noteEmail)) {
+                try {
+                  const cloudDb = await restoreDatabaseFromDrive();
+                  const cloudMatch = findExactStudio(cloudDb, noteStudioId, noteEmail);
+                  if (cloudMatch) {
+                    db = cloudDb;
+                    targetStudio = cloudMatch;
+                    order = (db.paymentOrders || []).find(o => o.razorpayOrderId === orderId || o.orderId === orderId) || order;
+                  }
+                } catch (e) {}
+              }
+
+              if (!order || order.status !== 'SUCCESS') {
+                const resolvedPlan = resolvePaidPlan({
+                  plan: order?.plan || payment?.notes?.plan,
+                  planName: order?.planName || payment?.notes?.planName,
+                  amount: order?.amount,
+                  amountPaise: payment?.amount ?? order?.amountPaise
+                });
                 const now = new Date();
-                const planDuration = order.durationDays || (order.plan === 'YEARLY' ? 180 : 30);
+                const planDuration = order?.durationDays || resolvedPlan.durationDays;
                 const expires = new Date(Date.now() + planDuration * 24 * 3600 * 1000);
 
-                order.status = 'SUCCESS';
-                order.paidAt = now.toISOString();
-                order.razorpayPaymentId = paymentId;
-                order.utr = paymentId;
+                if (order) {
+                  order.status = 'SUCCESS';
+                  order.paidAt = now.toISOString();
+                  order.razorpayPaymentId = paymentId;
+                  order.utr = paymentId;
+                }
 
-                const targetStudio = (db.studios || []).find(s => s.id === order.studioId);
                 const subObj = {
-                  planName: order.planName,
-                  planCode: order.plan,
-                  amount: order.amount,
+                  planName: resolvedPlan.name,
+                  planCode: resolvedPlan.code,
+                  amount: resolvedPlan.amount,
                   utr: paymentId,
                   paymentMethod: 'Razorpay Webhook',
                   status: 'ACTIVE',
                   upiId: '9668584247@ybl',
                   activatedAt: now.toISOString(),
                   expiresAt: expires.toISOString(),
-                  durationDays: planDuration
+                  durationDays: planDuration,
+                  daysLeft: planDuration,
+                  isLocked: false,
+                  isExpired: false
                 };
 
                 if (targetStudio) {
                   targetStudio.subscription = subObj;
+                  targetStudio.paymentHistory = targetStudio.paymentHistory || [];
+                  if (!targetStudio.paymentHistory.some(p => p.razorpayPaymentId === paymentId)) {
+                    targetStudio.paymentHistory.unshift({
+                      id: 'PAY_' + Date.now(),
+                      orderId: order?.orderId || orderId,
+                      razorpayPaymentId: paymentId,
+                      planName: resolvedPlan.name,
+                      amount: resolvedPlan.amount,
+                      utr: paymentId,
+                      paymentMethod: 'Razorpay Webhook',
+                      status: 'SUCCESS',
+                      timestamp: now.toISOString()
+                    });
+                  }
                 }
                 saveDB(db);
-                console.log(`🎉 [RAZORPAY WEBHOOK ACTIVATED] Order: ${orderId} activated!`);
+                try {
+                  await syncDatabaseToDriveImmediate(db);
+                } catch (e) {}
+                console.log(`🎉 [RAZORPAY WEBHOOK ACTIVATED] Order: ${orderId} (${resolvedPlan.name}) activated!`);
               }
             }
           }
@@ -4450,13 +4751,28 @@ async function syncClientPhotosFromDrive(client, db) {
 
     // 4. Current Active Subscription API (Strict Multi-tenant Per-Studio)
     if (pathname === '/api/subscription/current' && req.method === 'GET') {
-      const db = loadDB();
+      let db = loadDB();
       const studioId = getStudioIdFromRequest(req);
-      const studio = getTargetStudio(db, studioId);
-      const actualStudioId = studio ? studio.id : (studioId || 'studio_jsm736s');
+      const headerEmail = (req.headers['x-studio-email'] || '').toLowerCase().trim();
+      let studio = findExactStudio(db, studioId, headerEmail);
+      if (!studio && (studioId || headerEmail)) {
+        try {
+          const cloudDb = await restoreDatabaseFromDrive();
+          const cloudMatch = findExactStudio(cloudDb, studioId, headerEmail);
+          if (cloudMatch) {
+            db = cloudDb;
+            studio = cloudMatch;
+          }
+        } catch (e) {}
+      }
+      if (!studio && !studioId && !headerEmail) {
+        studio = getTargetStudio(db, null, null);
+      }
+      const actualStudioId = studio ? studio.id : (studioId || '');
+      const effectiveEmail = (studio?.email || headerEmail || '').toLowerCase().trim();
       
       // Developer Lifetime VIP Bypass (Permanent Lifetime Free, Unlimited, NEVER expires, NEVER locks)
-      if (isDeveloperAccount(studio)) {
+      if (studio && isDeveloperAccount(studio)) {
         const usedClientsCount = (db.clients || []).filter(c => c.studioId === actualStudioId).length;
         const usedFlipbooksCount = (db.flipbooks || []).filter(f => f.studioId === actualStudioId).length;
         sendJSON({
@@ -4492,14 +4808,11 @@ async function syncClientPhotosFromDrive(client, db) {
       }
       
       if (!studio || !studio.subscription) {
-        const userEmail = (studio?.email || '').toLowerCase().trim();
-        const trialClaimed = Boolean(studio?.claimedTrial) || 
-                             (userEmail && (db.claimedTrialEmails || []).includes(userEmail)) || 
-                             (db.claimedTrialStudioIds || []).includes(actualStudioId);
+        const trialClaimed = hasClaimedTrial(db, studio, effectiveEmail, actualStudioId);
         sendJSON({
           status: 'NO_PLAN',
           planName: 'No Plan',
-          isExpired: true,
+          isExpired: false,
           isActive: false,
           isLocked: true,
           daysLeft: 0,
@@ -4521,10 +4834,7 @@ async function syncClientPhotosFromDrive(client, db) {
 
       const sub = studio.subscription;
       if (!sub || sub.status === 'NO_PLAN') {
-        const userEmail = (studio?.email || '').toLowerCase().trim();
-        const trialClaimed = Boolean(studio?.claimedTrial) || 
-                             (userEmail && (db.claimedTrialEmails || []).includes(userEmail)) || 
-                             (db.claimedTrialStudioIds || []).includes(actualStudioId);
+        const trialClaimed = hasClaimedTrial(db, studio, effectiveEmail, actualStudioId);
         sendJSON({
           status: 'NO_PLAN',
           planName: 'No Plan Active',
@@ -4551,16 +4861,13 @@ async function syncClientPhotosFromDrive(client, db) {
 
       const now = Date.now();
       const expTime = new Date(sub.expiresAt).getTime();
-      const isExpired = now >= expTime;
+      const isExpired = !expTime || isNaN(expTime) || now >= expTime;
       const daysLeft = isExpired ? 0 : Math.ceil((expTime - now) / (1000 * 60 * 60 * 24));
       const status = isExpired ? 'EXPIRED' : (sub.status || 'ACTIVE');
       const isLocked = isExpired || status !== 'ACTIVE';
       const limits = getSubscriptionLimits(studio);
 
-      const userEmail = (studio?.email || '').toLowerCase().trim();
-      const trialClaimed = Boolean(studio?.claimedTrial) || 
-                           (userEmail && (db.claimedTrialEmails || []).includes(userEmail)) || 
-                           (db.claimedTrialStudioIds || []).includes(actualStudioId);
+      const trialClaimed = hasClaimedTrial(db, studio, effectiveEmail, actualStudioId);
 
       const usedClientsCount = (db.clients || []).filter(c => c.studioId === actualStudioId).length;
       const usedFlipbooksCount = (db.flipbooks || []).filter(f => f.studioId === actualStudioId).length;
@@ -4598,39 +4905,75 @@ async function syncClientPhotosFromDrive(client, db) {
     if (pathname === '/api/subscription/activate' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk; });
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
           const data = JSON.parse(body || '{}');
-          const planName = data.planName || 'Silver Edition';
-          const amount = (data.amount !== undefined && !isNaN(Number(data.amount))) ? Number(data.amount) : 0;
-          const utr = data.utr || data.transactionId || ('UPI' + Date.now().toString().slice(-8));
-          const paymentMethod = data.paymentMethod || 'PhonePe / UPI QR';
+          const rawPlanName = data.planName || 'Silver Edition';
+          const rawAmount = (data.amount !== undefined && !isNaN(Number(data.amount))) ? Number(data.amount) : 0;
+          const utr = data.utr || data.transactionId || ('RZP' + Date.now().toString().slice(-8));
+          const paymentMethod = data.paymentMethod || (rawAmount === 0 ? 'Free Trial Activation' : 'Razorpay Gateway');
 
-          const db = loadDB();
+          let db = loadDB();
           const studioId = data.studioId || getStudioIdFromRequest(req);
-          const studio = getTargetStudio(db, studioId);
-          const actualStudioId = studio ? studio.id : (studioId || 'studio_jsm736s');
-          const userEmail = (data.email || studio?.email || '').toLowerCase().trim();
+          const reqEmail = (data.email || req.headers['x-studio-email'] || '').toLowerCase().trim();
+          let studio = findExactStudio(db, studioId, reqEmail);
+          if (!studio && (studioId || reqEmail)) {
+            try {
+              const cloudDb = await restoreDatabaseFromDrive();
+              const cloudMatch = findExactStudio(cloudDb, studioId, reqEmail);
+              if (cloudMatch) {
+                db = cloudDb;
+                studio = cloudMatch;
+              }
+            } catch (e) {}
+          }
+          if (!studio && !studioId && !reqEmail) {
+            studio = getTargetStudio(db, null, null);
+          }
+
+          const actualStudioId = studio ? studio.id : (studioId || '');
+          const userEmail = (studio?.email || reqEmail || data.email || '').toLowerCase().trim();
 
           db.claimedTrialEmails = db.claimedTrialEmails || [];
           db.claimedTrialStudioIds = db.claimedTrialStudioIds || [];
 
-          let durationDays = 30;
-          if (planName.includes('Gold') || amount === 999) {
-            durationDays = 180;
-          } else if (planName.toLowerCase().includes('free') || planName.toLowerCase().includes('trial') || amount === 0) {
+          const isTrialRequest = (rawPlanName.toLowerCase().includes('free') || rawPlanName.toLowerCase().includes('trial') || rawAmount === 0);
+          if (isTrialRequest && hasClaimedTrial(db, studio, userEmail, actualStudioId)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: '7-Day Free Trial has already been claimed on this email/account.' }));
+            return;
+          }
+
+          let finalPlanName = rawPlanName;
+          let finalAmount = rawAmount;
+          let finalPlanCode = 'TRIAL';
+          let durationDays = 7;
+
+          if (isTrialRequest) {
+            finalPlanName = 'Free Trial';
+            finalAmount = 0;
+            finalPlanCode = 'TRIAL';
             durationDays = 7;
-            if (userEmail && !db.claimedTrialEmails.includes(userEmail)) db.claimedTrialEmails.push(userEmail);
-            if (actualStudioId && !db.claimedTrialStudioIds.includes(actualStudioId)) db.claimedTrialStudioIds.push(actualStudioId);
-            if (studio) studio.claimedTrial = true;
+            recordClaimedTrial(db, studio, userEmail, actualStudioId);
+          } else {
+            const paidPlan = resolvePaidPlan({
+              plan: data.plan,
+              planName: rawPlanName,
+              amount: rawAmount
+            });
+            finalPlanName = paidPlan.name;
+            finalAmount = paidPlan.amount;
+            finalPlanCode = paidPlan.code;
+            durationDays = paidPlan.durationDays;
           }
 
           const now = new Date();
           const expires = new Date(Date.now() + durationDays * 24 * 3600 * 1000);
 
           const subObj = {
-            planName: (amount === 0 || planName.toLowerCase().includes('trial') || planName.toLowerCase().includes('free')) ? 'Free Trial' : planName,
-            amount,
+            planName: finalPlanName,
+            planCode: finalPlanCode,
+            amount: finalAmount,
             utr,
             paymentMethod,
             status: 'ACTIVE',
@@ -4649,7 +4992,7 @@ async function syncClientPhotosFromDrive(client, db) {
             studio.paymentHistory.unshift({
               id: 'PAY_' + Date.now(),
               planName: subObj.planName,
-              amount,
+              amount: finalAmount,
               utr,
               paymentMethod,
               status: 'SUCCESS',
@@ -4660,8 +5003,9 @@ async function syncClientPhotosFromDrive(client, db) {
           if (!db.paymentHistory) db.paymentHistory = [];
           db.paymentHistory.unshift({
             id: 'PAY_' + Date.now(),
+            studioId: actualStudioId,
             planName: subObj.planName,
-            amount,
+            amount: finalAmount,
             utr,
             paymentMethod,
             status: 'SUCCESS',
@@ -4669,13 +5013,18 @@ async function syncClientPhotosFromDrive(client, db) {
           });
 
           saveDB(db);
+          try {
+            await syncDatabaseToDriveImmediate(db);
+          } catch (syncErr) {}
 
-          console.log(`🎉 [SUBSCRIPTION ACTIVATED] Studio: ${studio?.studioName || actualStudioId} | Plan: ${subObj.planName} | Amount: ₹${amount} | UTR: ${utr} | Expires: ${expires.toLocaleDateString()}`);
+          const fullSubResponse = buildSubscriptionPayload(db, studio, subObj, actualStudioId);
+
+          console.log(`🎉 [SUBSCRIPTION ACTIVATED] Studio: ${studio?.studioName || actualStudioId} | Plan: ${subObj.planName} | Amount: ₹${finalAmount} | UTR: ${utr} | Expires: ${expires.toLocaleDateString()}`);
 
           sendJSON({
             success: true,
             message: `🎉 ${subObj.planName} is successfully activated for ${durationDays} days!`,
-            subscription: subObj
+            subscription: fullSubResponse
           });
         } catch (e) {
           sendJSON({ error: 'Failed to activate subscription: ' + e.message }, 400);
