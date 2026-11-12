@@ -6051,18 +6051,26 @@ function renderWeddingWebsitesGrid(filterText = '') {
   }
 
   const themeLabels = {
-    royal: '👑 Royal Heritage',
+    starry: '🌌 Royal Starry',
+    royal: '👑 Royal Maroon',
     gold: '✨ Golden Luxury',
     floral: '🌸 Pastel Floral',
     minimal: '🤍 Modern Minimal'
   };
+  const themeBackdrops = {
+    starry: '/images/wedding-themes/royal-starry.jpg',
+    royal: '/images/wedding-themes/royal-maroon.jpg',
+    gold: '/images/wedding-themes/golden-luxury.jpg',
+    floral: '/images/wedding-themes/pastel-floral.jpg',
+    minimal: '/images/wedding-themes/pastel-floral.jpg'
+  };
 
   container.innerHTML = list.map(site => {
-    const cover = site.coverPhoto || (site.galleryPhotos && site.galleryPhotos[0]) || '';
+    const cover = site.coverPhoto || (site.galleryPhotos && site.galleryPhotos[0]) || themeBackdrops[site.theme] || themeBackdrops.starry;
     const dateLabel = site.weddingDate ? new Date(site.weddingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date TBD';
     const yesGuests = (site.rsvps || []).filter(r => r.attending === 'Yes').reduce((s, r) => s + (Number(r.guestsCount) || 1), 0);
     const totalRsvpRows = (site.rsvps || []).length;
-    const themeLabel = themeLabels[site.theme] || '👑 Royal Heritage';
+    const themeLabel = themeLabels[site.theme] || '🌌 Royal Starry';
     const safeId = encodeURIComponent(site.id);
     const publicUrl = `${window.location.origin}/w/${encodeURIComponent(site.slug)}`;
 
@@ -6089,12 +6097,13 @@ function renderWeddingWebsitesGrid(filterText = '') {
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.45rem;">
-            <button type="button" class="btn" style="height:35px;background:linear-gradient(135deg,#fde047,#d4af37);color:#000;font-weight:800;font-size:0.78rem;border:none;border-radius:8px;cursor:pointer;" onclick="window.open('${publicUrl}', '_blank')">👁️ OPEN SITE</button>
-            <button type="button" class="btn" style="height:35px;background:#25D366;color:#fff;font-weight:700;font-size:0.78rem;border:none;border-radius:8px;cursor:pointer;" onclick="openWeddingShareModal('${safeId}')">💬 SHARE &amp; QR</button>
-            <button type="button" class="btn" style="height:35px;background:rgba(168,85,247,0.16);border:1px solid rgba(168,85,247,0.45);color:#e9d5ff;font-weight:700;font-size:0.78rem;border-radius:8px;cursor:pointer;" onclick="openWeddingRsvpModal('${safeId}')">📋 RSVPs (${totalRsvpRows})</button>
-            <button type="button" class="btn" style="height:35px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,175,55,0.4);color:#fde047;font-weight:700;font-size:0.78rem;border-radius:8px;cursor:pointer;" onclick="openWeddingWebsiteBuilder('${safeId}')">✏️ EDIT</button>
+            <button type="button" class="btn" style="height:35px;background:linear-gradient(135deg,#fde047,#d4af37);color:#000;font-weight:800;font-size:0.76rem;border:none;border-radius:8px;cursor:pointer;" onclick="openWeddingLiveEditor('${safeId}')">✏️ CLICK-TO-EDIT</button>
+            <button type="button" class="btn" style="height:35px;background:#25D366;color:#fff;font-weight:700;font-size:0.76rem;border:none;border-radius:8px;cursor:pointer;" onclick="openWeddingShareModal('${safeId}')">💬 SHARE &amp; QR</button>
+            <button type="button" class="btn" style="height:35px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,175,55,0.4);color:#fde047;font-weight:700;font-size:0.76rem;border-radius:8px;cursor:pointer;" onclick="window.open('${publicUrl}', '_blank')">👁️ OPEN LIVE</button>
+            <button type="button" class="btn" style="height:35px;background:rgba(168,85,247,0.16);border:1px solid rgba(168,85,247,0.45);color:#e9d5ff;font-weight:700;font-size:0.76rem;border-radius:8px;cursor:pointer;" onclick="openWeddingRsvpModal('${safeId}')">📋 RSVPs (${totalRsvpRows})</button>
+            <button type="button" class="btn" style="height:33px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;font-weight:700;font-size:0.74rem;border-radius:8px;cursor:pointer;" onclick="openWeddingWebsiteBuilder('${safeId}')">📝 FORM EDIT</button>
+            <button type="button" class="btn" style="height:33px;background:rgba(220,38,38,0.14);border:1px solid rgba(220,38,38,0.35);color:#f87171;font-weight:700;font-size:0.74rem;border-radius:8px;cursor:pointer;" onclick="deleteWeddingWebsitePrompt('${safeId}')">🗑️ DELETE</button>
           </div>
-          <button type="button" class="btn" style="margin-top:0.45rem;height:32px;background:rgba(220,38,38,0.14);border:1px solid rgba(220,38,38,0.35);color:#f87171;font-weight:700;font-size:0.75rem;border-radius:8px;cursor:pointer;width:100%;" onclick="deleteWeddingWebsitePrompt('${safeId}')">🗑️ DELETE WEBSITE</button>
         </div>
       </div>
     `;
@@ -6426,6 +6435,177 @@ function shareWeddingOnWhatsApp() {
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
+// =========================================================================
+// CRAFTY-STYLE DEMO PREVIEW & DIRECT CLICK-TO-EDIT STUDIO
+// =========================================================================
+let activeDemoTheme = 'starry';
+let liveEditorDraft = null;
+
+function openWeddingDemoModal(theme = 'starry', title = 'Royal Wedding Demo') {
+  activeDemoTheme = theme;
+  const titleEl = document.getElementById('wed-demo-title');
+  const iframe = document.getElementById('wed-demo-iframe');
+  if (titleEl) titleEl.textContent = `👁️ ${title} — Live Interactive Preview`;
+  if (iframe) iframe.src = `wedding.html?demo=${encodeURIComponent(theme)}`;
+  toggleDemoFrameDevice('mobile');
+  openModal('wedding-demo-modal');
+}
+
+function toggleDemoFrameDevice(mode) {
+  const chassis = document.getElementById('wed-demo-chassis');
+  if (!chassis) return;
+  if (mode === 'desktop') {
+    chassis.style.width = '100%';
+    chassis.style.borderRadius = '12px';
+    chassis.style.borderWidth = '2px';
+  } else {
+    chassis.style.width = '390px';
+    chassis.style.borderRadius = '30px';
+    chassis.style.borderWidth = '8px';
+  }
+}
+
+function launchEditorFromDemo() {
+  closeModal('wedding-demo-modal');
+  openWeddingLiveEditor('', activeDemoTheme);
+}
+
+function openWeddingLiveEditor(encodedId = '', defaultTheme = 'starry') {
+  const id = encodedId ? decodeURIComponent(encodedId) : '';
+  const site = id ? allWeddingWebsites.find(w => w.id === id) : null;
+  liveEditorDraft = site ? JSON.parse(JSON.stringify(site)) : null;
+
+  const themeSelect = document.getElementById('wed-live-theme-select');
+  const dateInput = document.getElementById('wed-live-date-input');
+  const musicSelect = document.getElementById('wed-live-music-select');
+
+  const chosenTheme = site?.theme || defaultTheme || 'starry';
+  if (themeSelect) themeSelect.value = chosenTheme;
+  if (dateInput) dateInput.value = site?.weddingDate || new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10);
+  if (musicSelect) musicSelect.value = site?.bgMusic || 'romantic';
+
+  const iframe = document.getElementById('wed-live-iframe');
+  if (iframe) {
+    iframe.src = site
+      ? `wedding.html?slug=${encodeURIComponent(site.slug)}&edit=1`
+      : `wedding.html?demo=${encodeURIComponent(chosenTheme)}&edit=1`;
+  }
+  toggleLiveEditorChassis('mobile');
+  openModal('wedding-live-editor-modal');
+}
+
+function changeLiveEditorTheme(theme) {
+  if (liveEditorDraft) liveEditorDraft.theme = theme;
+  const iframe = document.getElementById('wed-live-iframe');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({ type: 'WED_SET_THEME', theme }, '*');
+  }
+}
+
+function updateLiveEditorField(field, val) {
+  if (!liveEditorDraft) liveEditorDraft = {};
+  liveEditorDraft[field] = val;
+  const iframe = document.getElementById('wed-live-iframe');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({ type: 'WED_SET_DATA', data: liveEditorDraft }, '*');
+  }
+}
+
+function toggleLiveEditorChassis(mode) {
+  const chassis = document.getElementById('wed-live-chassis');
+  if (!chassis) return;
+  if (mode === 'desktop') {
+    chassis.style.width = '100%';
+    chassis.style.borderRadius = '12px';
+    chassis.style.borderWidth = '2px';
+  } else {
+    chassis.style.width = '410px';
+    chassis.style.borderRadius = '28px';
+    chassis.style.borderWidth = '8px';
+  }
+}
+
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'WED_DRAFT_UPDATE' && event.data.data) {
+    liveEditorDraft = { ...(liveEditorDraft || {}), ...event.data.data };
+  }
+});
+
+async function saveLiveEditedWedding(openWhatsAppShareAfter = false) {
+  const saveBtn = document.getElementById('wed-live-save-btn');
+  const sendBtn = document.getElementById('wed-live-send-btn');
+  if (saveBtn) saveBtn.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
+
+  try {
+    const iframe = document.getElementById('wed-live-iframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'WED_REQUEST_DATA' }, '*');
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    const draft = liveEditorDraft || {};
+    const theme = document.getElementById('wed-live-theme-select')?.value || draft.theme || 'starry';
+    const weddingDate = document.getElementById('wed-live-date-input')?.value || draft.weddingDate || '';
+    const bgMusic = document.getElementById('wed-live-music-select')?.value || draft.bgMusic || 'romantic';
+
+    const groomName = (draft.groomName || 'Abhishek').trim();
+    const brideName = (draft.brideName || 'Kanika').trim();
+
+    const res = await fetch(`${API_BASE}/api/wedding-websites`, {
+      method: 'POST',
+      headers: getAdminStudioHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        id: draft.id || undefined,
+        slug: draft.slug || undefined,
+        theme,
+        groomName,
+        brideName,
+        groomParents: draft.groomParents || '',
+        brideParents: draft.brideParents || '',
+        groomBio: draft.groomBio || '',
+        brideBio: draft.brideBio || '',
+        weddingDate,
+        weddingTime: draft.weddingTime || '7:30 PM Onwards',
+        hashtag: draft.hashtag || `#${groomName.replace(/\s+/g, '')}Weds${brideName.replace(/\s+/g, '')}`,
+        welcomeNote: draft.welcomeNote || '',
+        ourStory: draft.ourStory || '',
+        coverPhoto: draft.coverPhoto || '',
+        groomPhoto: draft.groomPhoto || '',
+        bridePhoto: draft.bridePhoto || '',
+        galleryPhotos: draft.galleryPhotos || [],
+        events: draft.events || [],
+        venueName: draft.venueName || '',
+        venueAddress: draft.venueAddress || '',
+        mapUrl: draft.mapUrl || '',
+        bgMusic,
+        rsvpEnabled: draft.rsvpEnabled !== false
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      if (data.requiresUpgrade) openUpgradeModal();
+      if (window.api?.showToast) window.api.showToast(data.error || 'Could not save wedding website', 'error');
+      return;
+    }
+
+    liveEditorDraft = data.website;
+    closeModal('wedding-live-editor-modal');
+    await loadWeddingWebsitesView();
+
+    if (window.api?.showToast) window.api.showToast('🎉 Wedding Website Saved & Published!', 'success');
+    if (openWhatsAppShareAfter && data.website?.id) {
+      openWeddingShareModal(encodeURIComponent(data.website.id));
+    }
+  } catch (err) {
+    if (window.api?.showToast) window.api.showToast('Failed to save: ' + err.message, 'error');
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
 window.loadWeddingWebsitesView = loadWeddingWebsitesView;
 window.filterWeddingWebsites = filterWeddingWebsites;
 window.openWeddingWebsiteBuilder = openWeddingWebsiteBuilder;
@@ -6442,6 +6622,14 @@ window.exportWeddingRsvpCsv = exportWeddingRsvpCsv;
 window.openWeddingShareModal = openWeddingShareModal;
 window.copyWeddingLink = copyWeddingLink;
 window.shareWeddingOnWhatsApp = shareWeddingOnWhatsApp;
+window.openWeddingDemoModal = openWeddingDemoModal;
+window.toggleDemoFrameDevice = toggleDemoFrameDevice;
+window.launchEditorFromDemo = launchEditorFromDemo;
+window.openWeddingLiveEditor = openWeddingLiveEditor;
+window.changeLiveEditorTheme = changeLiveEditorTheme;
+window.updateLiveEditorField = updateLiveEditorField;
+window.toggleLiveEditorChassis = toggleLiveEditorChassis;
+window.saveLiveEditedWedding = saveLiveEditedWedding;
 
 
 

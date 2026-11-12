@@ -6,48 +6,62 @@
   <title>Wedding Invitation | Powered by DM Films Maker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Great+Vibes&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Great+Vibes&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg-main: #2b0710;
-      --bg-alt: #3c0a17;
-      --card-bg: rgba(58, 12, 24, 0.85);
-      --card-border: rgba(212, 175, 55, 0.35);
-      --accent: #facc15;
+    :root,
+    body[data-theme="starry"] {
+      --bg-main: #1b1838;
+      --bg-alt: #25204a;
+      --card-bg: rgba(31, 26, 62, 0.88);
+      --card-border: rgba(236, 206, 145, 0.38);
+      --accent: #f3d78a;
       --accent-2: #d4af37;
-      --text-main: #fff7e6;
-      --text-muted: #f3d6b0;
-      --btn-text: #1f050b;
-      --hero-overlay: linear-gradient(180deg, rgba(25, 3, 9, 0.55) 0%, rgba(43, 7, 16, 0.88) 85%, #2b0710 100%);
+      --text-main: #fdf8ee;
+      --text-muted: #d6cceb;
+      --btn-text: #1b1838;
+      --hero-overlay: linear-gradient(180deg, rgba(19, 15, 42, 0.25) 0%, rgba(27, 24, 56, 0.45) 55%, #1b1838 100%);
       --font-display: 'Cinzel', serif;
       --font-script: 'Great Vibes', cursive;
       --font-body: 'Plus Jakarta Sans', sans-serif;
     }
 
+    body[data-theme="royal"] {
+      --bg-main: #2b0710;
+      --bg-alt: #3c0a17;
+      --card-bg: rgba(58, 12, 24, 0.88);
+      --card-border: rgba(212, 175, 55, 0.4);
+      --accent: #facc15;
+      --accent-2: #d4af37;
+      --text-main: #fff7e6;
+      --text-muted: #f3d6b0;
+      --btn-text: #1f050b;
+      --hero-overlay: linear-gradient(180deg, rgba(25, 3, 9, 0.25) 0%, rgba(43, 7, 16, 0.55) 60%, #2b0710 100%);
+    }
+
     body[data-theme="gold"] {
       --bg-main: #07090f;
       --bg-alt: #0d111c;
-      --card-bg: rgba(15, 20, 32, 0.88);
-      --card-border: rgba(212, 175, 55, 0.38);
+      --card-bg: rgba(15, 20, 32, 0.9);
+      --card-border: rgba(212, 175, 55, 0.42);
       --accent: #fde047;
       --accent-2: #d4af37;
       --text-main: #f8fafc;
       --text-muted: #cbd5e1;
       --btn-text: #07090f;
-      --hero-overlay: linear-gradient(180deg, rgba(5, 7, 12, 0.55) 0%, rgba(7, 9, 15, 0.9) 85%, #07090f 100%);
+      --hero-overlay: linear-gradient(180deg, rgba(5, 7, 12, 0.25) 0%, rgba(7, 9, 15, 0.6) 60%, #07090f 100%);
     }
 
     body[data-theme="floral"] {
       --bg-main: #fdf7f4;
-      --bg-alt: #f9ece6;
-      --card-bg: rgba(255, 255, 255, 0.92);
-      --card-border: rgba(190, 24, 93, 0.22);
+      --bg-alt: #f7eae4;
+      --card-bg: rgba(255, 255, 255, 0.94);
+      --card-border: rgba(190, 24, 93, 0.24);
       --accent: #be185d;
       --accent-2: #9d174d;
       --text-main: #3b1929;
       --text-muted: #6e4557;
       --btn-text: #ffffff;
-      --hero-overlay: linear-gradient(180deg, rgba(45, 16, 28, 0.45) 0%, rgba(253, 247, 244, 0.88) 88%, #fdf7f4 100%);
+      --hero-overlay: linear-gradient(180deg, rgba(45, 16, 28, 0.22) 0%, rgba(253, 247, 244, 0.6) 68%, #fdf7f4 100%);
     }
 
     body[data-theme="minimal"] {
@@ -60,7 +74,7 @@
       --text-main: #1c1917;
       --text-muted: #57534e;
       --btn-text: #ffffff;
-      --hero-overlay: linear-gradient(180deg, rgba(28, 25, 23, 0.45) 0%, rgba(247, 244, 239, 0.9) 88%, #f7f4ef 100%);
+      --hero-overlay: linear-gradient(180deg, rgba(28, 25, 23, 0.22) 0%, rgba(247, 244, 239, 0.65) 68%, #f7f4ef 100%);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -73,13 +87,11 @@
       overflow-x: hidden;
     }
 
-    /* Decorative subtle mandala glow */
     .bg-pattern {
       background-image: radial-gradient(circle at 20% 20%, rgba(212,175,55,0.08) 0%, transparent 45%),
                         radial-gradient(circle at 80% 70%, rgba(212,175,55,0.06) 0%, transparent 50%);
     }
 
-    /* Loading & Error states */
     #wedding-loader {
       min-height: 100vh;
       display: flex;
@@ -90,8 +102,8 @@
       padding: 2rem;
     }
     .spinner-ring {
-      width: 54px;
-      height: 54px;
+      width: 52px;
+      height: 52px;
       border-radius: 50%;
       border: 3px solid var(--card-border);
       border-top-color: var(--accent);
@@ -107,28 +119,28 @@
       left: 0;
       right: 0;
       z-index: 50;
-      padding: 0.75rem 1.25rem;
+      padding: 0.7rem 1.15rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(0, 0, 0, 0.28);
+      background: rgba(0, 0, 0, 0.34);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--card-border);
     }
     body[data-theme="floral"] .top-nav,
     body[data-theme="minimal"] .top-nav {
-      background: rgba(255, 255, 255, 0.78);
+      background: rgba(255, 255, 255, 0.82);
     }
     .nav-couple {
       font-family: var(--font-display);
       font-weight: 800;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       letter-spacing: 0.08em;
       color: var(--accent);
     }
     .nav-links {
       display: flex;
-      gap: 1.1rem;
+      gap: 1rem;
       align-items: center;
     }
     .nav-links a {
@@ -137,7 +149,6 @@
       font-size: 0.82rem;
       font-weight: 600;
       opacity: 0.9;
-      transition: color 0.2s;
     }
     .nav-links a:hover { color: var(--accent); }
     @media (max-width: 720px) {
@@ -153,22 +164,22 @@
       color: var(--accent);
       padding: 6px 12px;
       border-radius: 999px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 700;
       cursor: pointer;
     }
 
-    /* Hero Section */
+    /* Hero Section (CraftyArt Illustrated Composition) */
     .hero {
       position: relative;
-      min-height: 94vh;
+      min-height: 96vh;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 6rem 1.25rem 3.5rem;
+      padding: 5.5rem 1.25rem 3.5rem;
       background-size: cover;
-      background-position: center;
+      background-position: center top;
       overflow: hidden;
     }
     .hero-overlay {
@@ -183,71 +194,87 @@
       max-width: 780px;
       width: 100%;
     }
-    .crest-pill {
-      display: inline-block;
-      padding: 5px 18px;
-      border-radius: 999px;
-      border: 1px solid var(--card-border);
-      background: var(--card-bg);
-      color: var(--accent);
+    .blessing-line {
       font-family: var(--font-display);
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.16em;
+      font-size: 0.82rem;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
-      margin-bottom: 1rem;
-    }
-    .hero-names {
-      font-family: var(--font-script);
-      font-size: clamp(3rem, 9vw, 5.6rem);
-      line-height: 1.12;
       color: var(--accent);
-      text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
-      margin-bottom: 0.4rem;
+      font-weight: 700;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.45);
+      margin-bottom: 0.65rem;
     }
-    body[data-theme="floral"] .hero-names,
-    body[data-theme="minimal"] .hero-names {
-      text-shadow: 0 2px 14px rgba(255, 255, 255, 0.75);
+    .hero-names-stack {
+      margin: 0.35rem 0 0.8rem 0;
+    }
+    .hero-person {
+      font-family: var(--font-display);
+      font-size: clamp(2.35rem, 8vw, 4.6rem);
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      line-height: 1.05;
+      color: var(--accent);
+      text-transform: uppercase;
+      text-shadow: 0 6px 26px rgba(0, 0, 0, 0.55);
+    }
+    .hero-weds-divider {
+      font-family: var(--font-display);
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      letter-spacing: 0.42em;
+      color: var(--text-main);
+      margin: 0.35rem 0;
+      font-weight: 700;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    body[data-theme="floral"] .hero-person,
+    body[data-theme="minimal"] .hero-person {
+      text-shadow: 0 2px 16px rgba(255, 255, 255, 0.9);
+    }
+    body[data-theme="floral"] .hero-weds-divider,
+    body[data-theme="minimal"] .hero-weds-divider {
+      color: var(--text-main);
+      text-shadow: 0 1px 10px rgba(255, 255, 255, 0.9);
     }
     .hero-sub {
       font-family: var(--font-display);
-      font-size: clamp(0.95rem, 2.5vw, 1.25rem);
-      letter-spacing: 0.12em;
+      font-size: clamp(0.9rem, 2.4vw, 1.15rem);
+      letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--text-main);
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.4rem;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.5);
     }
     .hero-hashtag {
       font-size: 0.92rem;
-      color: var(--text-muted);
-      font-weight: 600;
-      margin-bottom: 1.75rem;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 1.55rem;
     }
 
     /* Countdown */
     .countdown-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(64px, 110px));
+      grid-template-columns: repeat(4, minmax(64px, 108px));
       justify-content: center;
-      gap: 0.75rem;
-      margin: 0 auto 2rem;
+      gap: 0.7rem;
+      margin: 0 auto 1.85rem;
     }
     .cd-box {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 14px;
-      padding: 0.85rem 0.4rem;
-      backdrop-filter: blur(8px);
+      padding: 0.8rem 0.35rem;
+      backdrop-filter: blur(10px);
     }
     .cd-num {
       font-family: var(--font-display);
-      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      font-size: clamp(1.45rem, 4vw, 2.15rem);
       font-weight: 800;
       color: var(--accent);
       line-height: 1.1;
     }
     .cd-label {
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       color: var(--text-muted);
@@ -256,7 +283,7 @@
 
     .cta-row {
       display: flex;
-      gap: 0.85rem;
+      gap: 0.8rem;
       justify-content: center;
       flex-wrap: wrap;
     }
@@ -266,14 +293,14 @@
       gap: 0.45rem;
       background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
       color: var(--btn-text);
-      padding: 0.85rem 1.7rem;
+      padding: 0.82rem 1.65rem;
       border-radius: 999px;
       font-weight: 800;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       border: none;
       cursor: pointer;
       text-decoration: none;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.28);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.32);
       transition: transform 0.2s;
     }
     .btn-primary-wed:hover { transform: translateY(-2px); }
@@ -284,10 +311,10 @@
       background: var(--card-bg);
       color: var(--text-main);
       border: 1.5px solid var(--card-border);
-      padding: 0.85rem 1.5rem;
+      padding: 0.82rem 1.45rem;
       border-radius: 999px;
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       cursor: pointer;
       text-decoration: none;
       backdrop-filter: blur(8px);
@@ -295,25 +322,25 @@
 
     /* Sections */
     section.wed-section {
-      padding: 4.5rem 1.25rem;
+      padding: 4.2rem 1.25rem;
       max-width: 1080px;
       margin: 0 auto;
     }
     .section-header {
       text-align: center;
-      margin-bottom: 2.5rem;
+      margin-bottom: 2.3rem;
     }
     .section-kicker {
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       font-weight: 800;
       letter-spacing: 0.18em;
       text-transform: uppercase;
       color: var(--accent);
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.35rem;
     }
     .section-title {
       font-family: var(--font-display);
-      font-size: clamp(1.65rem, 4vw, 2.4rem);
+      font-size: clamp(1.6rem, 4vw, 2.35rem);
       font-weight: 800;
       color: var(--text-main);
     }
@@ -321,28 +348,29 @@
       width: 72px;
       height: 2px;
       background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      margin: 0.8rem auto 0;
+      margin: 0.75rem auto 0;
     }
 
     /* Couple Cards */
     .couple-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
+      gap: 1.4rem;
     }
     .lux-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 20px;
-      padding: 2rem 1.5rem;
+      padding: 1.85rem 1.4rem;
       text-align: center;
-      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.16);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.18);
     }
     .portrait-ring {
-      width: 148px;
-      height: 148px;
+      position: relative;
+      width: 146px;
+      height: 146px;
       border-radius: 50%;
-      margin: 0 auto 1.1rem;
+      margin: 0 auto 1rem;
       border: 3px solid var(--accent);
       padding: 4px;
       overflow: hidden;
@@ -364,7 +392,7 @@
     }
     .couple-person-name {
       font-family: var(--font-script);
-      font-size: 2.35rem;
+      font-size: 2.3rem;
       color: var(--text-main);
       margin-bottom: 0.35rem;
     }
@@ -372,10 +400,10 @@
       font-size: 0.83rem;
       color: var(--accent);
       font-weight: 600;
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.55rem;
     }
     .couple-bio {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: var(--text-muted);
     }
 
@@ -384,10 +412,10 @@
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 22px;
-      padding: 2.2rem 1.75rem;
+      padding: 2rem 1.65rem;
       text-align: center;
       max-width: 820px;
-      margin: 2rem auto 0;
+      margin: 1.85rem auto 0;
     }
     .story-card p {
       font-family: 'Cormorant Garamond', serif;
@@ -399,14 +427,14 @@
     /* Events Grid */
     .events-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.25rem;
+      grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+      gap: 1.2rem;
     }
     .event-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 18px;
-      padding: 1.5rem;
+      padding: 1.45rem;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -415,10 +443,10 @@
     .event-card:hover { transform: translateY(-4px); }
     .event-title {
       font-family: var(--font-display);
-      font-size: 1.25rem;
+      font-size: 1.22rem;
       font-weight: 800;
       color: var(--accent);
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.55rem;
     }
     .event-meta {
       display: flex;
@@ -426,7 +454,7 @@
       gap: 0.4rem;
       font-size: 0.88rem;
       color: var(--text-muted);
-      margin-bottom: 1rem;
+      margin-bottom: 0.95rem;
     }
     .event-dress {
       display: inline-block;
@@ -438,16 +466,17 @@
       padding: 3px 10px;
       border-radius: 999px;
       align-self: flex-start;
-      margin-bottom: 0.85rem;
+      margin-bottom: 0.8rem;
     }
 
     /* Gallery Grid */
     .gallery-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
       gap: 0.85rem;
     }
     .gallery-item {
+      position: relative;
       border-radius: 14px;
       overflow: hidden;
       border: 1px solid var(--card-border);
@@ -467,37 +496,37 @@
     .rsvp-layout {
       display: grid;
       grid-template-columns: 1.1fr 0.9fr;
-      gap: 1.5rem;
+      gap: 1.4rem;
       align-items: start;
     }
     @media (max-width: 820px) {
       .rsvp-layout { grid-template-columns: 1fr; }
     }
-    .form-group { margin-bottom: 1rem; text-align: left; }
+    .form-group { margin-bottom: 0.95rem; text-align: left; }
     .form-group label {
       display: block;
       font-size: 0.8rem;
       font-weight: 700;
       color: var(--accent);
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.3rem;
     }
     .wed-input {
       width: 100%;
-      padding: 0.75rem 0.95rem;
+      padding: 0.72rem 0.92rem;
       border-radius: 10px;
       border: 1px solid var(--card-border);
       background: var(--bg-alt);
       color: var(--text-main);
       font-family: inherit;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
     }
     .wed-input:focus { outline: 2px solid var(--accent); }
     .wish-item {
       background: var(--bg-alt);
       border: 1px solid var(--card-border);
       border-radius: 12px;
-      padding: 0.9rem 1rem;
-      margin-bottom: 0.75rem;
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.7rem;
       text-align: left;
     }
 
@@ -523,7 +552,7 @@
     footer.wed-footer {
       border-top: 1px solid var(--card-border);
       background: var(--bg-alt);
-      padding: 2.5rem 1.25rem;
+      padding: 2.3rem 1.25rem;
       text-align: center;
     }
     .studio-credit {
@@ -534,7 +563,7 @@
       border: 1px solid var(--card-border);
       padding: 0.7rem 1.2rem;
       border-radius: 14px;
-      margin-top: 0.85rem;
+      margin-top: 0.8rem;
     }
     .studio-credit img {
       width: 34px;
@@ -542,9 +571,57 @@
       border-radius: 8px;
       object-fit: cover;
     }
+
+    /* DIRECT CLICK-TO-EDIT MODE STYLES (?edit=1) */
+    body.edit-mode .editable-text {
+      outline: 1.5px dashed rgba(250, 204, 21, 0.55);
+      outline-offset: 4px;
+      border-radius: 6px;
+      cursor: text;
+      transition: background 0.15s, outline-color 0.15s;
+    }
+    body.edit-mode .editable-text:hover,
+    body.edit-mode .editable-text:focus {
+      background: rgba(250, 204, 21, 0.12);
+      outline: 2px solid #facc15;
+    }
+    .edit-photo-btn {
+      display: none;
+      position: absolute;
+      z-index: 15;
+      background: rgba(10, 14, 24, 0.88);
+      border: 1.5px solid #facc15;
+      color: #fde047;
+      font-size: 0.74rem;
+      font-weight: 800;
+      padding: 5px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    }
+    body.edit-mode .edit-photo-btn { display: inline-flex; align-items: center; gap: 4px; }
+    .edit-banner-bar {
+      display: none;
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 150;
+      background: rgba(9, 13, 24, 0.94);
+      border: 1.5px solid #facc15;
+      color: #fde047;
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+      white-space: nowrap;
+      backdrop-filter: blur(10px);
+    }
+    body.edit-mode .edit-banner-bar { display: block; }
   </style>
 </head>
-<body class="bg-pattern" data-theme="royal">
+<body class="bg-pattern" data-theme="starry">
   <div id="wedding-loader">
     <div class="spinner-ring"></div>
     <div style="font-family:var(--font-display);color:var(--accent);font-weight:700;letter-spacing:0.08em;">
@@ -575,11 +652,18 @@
 
     <header class="hero" id="hero-section">
       <div class="hero-overlay"></div>
+      <button type="button" class="edit-photo-btn" style="top:72px;right:14px;" onclick="triggerPhotoUpload('cover')">📷 Change Cover Photo</button>
       <div class="hero-content">
-        <div class="crest-pill">✨ Shubh Vivah • Save The Date ✨</div>
-        <h1 class="hero-names" id="hero-couple-names">Groom &amp; Bride</h1>
-        <div class="hero-sub" id="hero-date-line">Wedding Date</div>
-        <div class="hero-hashtag" id="hero-hashtag">#ForeverTogether</div>
+        <div class="blessing-line editable-text" data-field="blessing" id="hero-blessing">✨ ॐ श्री गणेशाय नमः • Shubh Vivah ✨</div>
+
+        <div class="hero-names-stack">
+          <div class="hero-person editable-text" data-field="groomName" id="hero-groom-name">ABHISHEK</div>
+          <div class="hero-weds-divider">W E D S</div>
+          <div class="hero-person editable-text" data-field="brideName" id="hero-bride-name">KANIKA</div>
+        </div>
+
+        <div class="hero-sub editable-text" data-field="dateLine" id="hero-date-line">Wedding Celebration</div>
+        <div class="hero-hashtag editable-text" data-field="hashtag" id="hero-hashtag">#ForeverTogether</div>
 
         <div class="countdown-grid" id="countdown-grid">
           <div class="cd-box"><div class="cd-num" id="cd-days">00</div><div class="cd-label">Days</div></div>
@@ -605,28 +689,30 @@
       <div class="couple-grid">
         <div class="lux-card">
           <div class="portrait-ring" id="groom-portrait-box">
-            <div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;">🤵</div>
+            <div id="groom-portrait-inner" style="height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;">🤵</div>
+            <button type="button" class="edit-photo-btn" style="bottom:6px;left:50%;transform:translateX(-50%);font-size:0.68rem;padding:3px 9px;" onclick="triggerPhotoUpload('groom')">📷 Edit</button>
           </div>
           <div class="couple-role">The Groom</div>
-          <div class="couple-person-name" id="groom-name-card">Groom</div>
-          <div class="couple-parents" id="groom-parents-card"></div>
-          <div class="couple-bio" id="groom-bio-card"></div>
+          <div class="couple-person-name editable-text" data-field="groomName" id="groom-name-card">Abhishek</div>
+          <div class="couple-parents editable-text" data-field="groomParents" id="groom-parents-card">S/o Mr. &amp; Mrs. Sharma</div>
+          <div class="couple-bio editable-text" data-field="groomBio" id="groom-bio-card">Warm, joyful &amp; ready for our forever adventure.</div>
         </div>
 
         <div class="lux-card">
           <div class="portrait-ring" id="bride-portrait-box">
-            <div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;">👰</div>
+            <div id="bride-portrait-inner" style="height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;">👰</div>
+            <button type="button" class="edit-photo-btn" style="bottom:6px;left:50%;transform:translateX(-50%);font-size:0.68rem;padding:3px 9px;" onclick="triggerPhotoUpload('bride')">📷 Edit</button>
           </div>
           <div class="couple-role">The Bride</div>
-          <div class="couple-person-name" id="bride-name-card">Bride</div>
-          <div class="couple-parents" id="bride-parents-card"></div>
-          <div class="couple-bio" id="bride-bio-card"></div>
+          <div class="couple-person-name editable-text" data-field="brideName" id="bride-name-card">Kanika</div>
+          <div class="couple-parents editable-text" data-field="brideParents" id="bride-parents-card">D/o Mr. &amp; Mrs. Verma</div>
+          <div class="couple-bio editable-text" data-field="brideBio" id="bride-bio-card">Graceful, radiant &amp; excited to celebrate with you.</div>
         </div>
       </div>
 
       <div class="story-card" id="our-story-card">
         <div class="section-kicker" style="margin-bottom:0.65rem;">Welcome &amp; Our Story</div>
-        <p id="welcome-story-text"></p>
+        <p class="editable-text" data-field="welcomeNote" id="welcome-story-text"></p>
       </div>
     </section>
 
@@ -639,20 +725,23 @@
         </div>
         <div class="events-grid" id="events-grid"></div>
 
-        <div class="lux-card" id="main-venue-box" style="margin-top:2rem;display:none;">
+        <div class="lux-card" id="main-venue-box" style="margin-top:2rem;">
           <div class="couple-role">Main Wedding Venue</div>
-          <h3 style="font-family:var(--font-display);font-size:1.35rem;margin-bottom:0.35rem;" id="main-venue-name"></h3>
-          <p style="color:var(--text-muted);font-size:0.92rem;margin-bottom:1rem;" id="main-venue-address"></p>
-          <a id="main-venue-map-btn" href="#" target="_blank" rel="noopener" class="btn-primary-wed">📍 Open Venue on Google Maps</a>
+          <h3 class="editable-text" data-field="venueName" style="font-family:var(--font-display);font-size:1.35rem;margin-bottom:0.35rem;" id="main-venue-name">Royal Heritage Palace Lawn</h3>
+          <p class="editable-text" data-field="venueAddress" style="color:var(--text-muted);font-size:0.92rem;margin-bottom:1rem;" id="main-venue-address">Click to add city &amp; venue address</p>
+          <a id="main-venue-map-btn" href="#" target="_blank" rel="noopener" class="btn-primary-wed">📍 Open Venue Directions in Google Maps</a>
         </div>
       </div>
     </section>
 
-    <section class="wed-section" id="gallery" style="display:none;">
+    <section class="wed-section" id="gallery">
       <div class="section-header">
         <div class="section-kicker">Captured Moments</div>
         <h2 class="section-title">Pre-Wedding Gallery</h2>
         <div class="section-divider"></div>
+        <div id="edit-gallery-actions" style="display:none;margin-top:1rem;">
+          <button type="button" class="btn-primary-wed" style="padding:0.55rem 1.25rem;font-size:0.82rem;" onclick="triggerPhotoUpload('gallery')">+ Upload Pre-Wedding Photos</button>
+        </div>
       </div>
       <div class="gallery-grid" id="gallery-grid"></div>
     </section>
@@ -728,6 +817,10 @@
     </footer>
   </div>
 
+  <div class="edit-banner-bar">✏️ Click any Text or Photo to Edit Live</div>
+
+  <input type="file" id="wed-inline-file-input" accept="image/*" style="display:none;" onchange="handleInlinePhotoSelected(this.files)">
+
   <div id="wed-lightbox" onclick="this.style.display='none'">
     <img id="wed-lightbox-img" src="" alt="Pre-wedding photo preview" />
   </div>
@@ -735,17 +828,59 @@
   <audio id="wed-bg-audio" loop></audio>
 
   <script>
+    const THEME_BACKDROPS = {
+      starry: '/images/wedding-themes/royal-starry.jpg',
+      royal: '/images/wedding-themes/royal-maroon.jpg',
+      gold: '/images/wedding-themes/golden-luxury.jpg',
+      floral: '/images/wedding-themes/pastel-floral.jpg',
+      minimal: '/images/wedding-themes/pastel-floral.jpg'
+    };
+
+    const DEMO_DEFAULTS = {
+      theme: 'starry',
+      groomName: 'Abhishek',
+      brideName: 'Kanika',
+      groomParents: 'S/o Smt. Sunita & Shri Rajendra Sharma',
+      brideParents: 'D/o Smt. Meera & Shri Ashok Verma',
+      groomBio: 'Adventurous at heart, endlessly grateful to begin forever together.',
+      brideBio: 'Dreamer, artist, and bringing joy to every celebration.',
+      weddingDate: new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10),
+      weddingTime: '7:30 PM Onwards',
+      hashtag: '#AbhishekWedsKanika',
+      welcomeNote: 'Together with our families, we joyfully invite you to bless us and celebrate the beginning of our forever.',
+      venueName: 'The Royal Heritage Palace & Lawns',
+      venueAddress: 'Ring Road, Udaipur / Bhubaneswar',
+      events: [
+        { title: '🌼 Haldi Ceremony', date: 'Day 1', time: '10:30 AM', venue: 'Palace Poolside', dressCode: 'Yellow Festive' },
+        { title: '🌿 Mehndi & Sangeet', date: 'Day 1', time: '6:30 PM', venue: 'Grand Ballroom', dressCode: 'Emerald & Gold' },
+        { title: '👑 Shubh Vivah & Baraat', date: 'Day 2', time: '7:30 PM', venue: 'Royal Heritage Lawn', dressCode: 'Royal Traditional' },
+        { title: '🥂 Grand Reception', date: 'Day 3', time: '8:00 PM', venue: 'Crystal Banquet', dressCode: 'Evening Glamour' }
+      ],
+      galleryPhotos: [],
+      rsvpEnabled: true,
+      recentWishes: [
+        { guestName: 'Rohan & Neha', attending: 'Yes', message: 'Cannot wait to dance at your Sangeet! Wishing you both eternal happiness.' }
+      ],
+      rsvpCount: 42
+    };
+
     let activeSlug = '';
     let activeWebsiteData = null;
     let countdownInterval = null;
     let musicPlaying = false;
+    let isEditMode = false;
+    let pendingUploadTarget = '';
 
-    function resolveWeddingSlug() {
+    function resolveParams() {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('slug')) return params.get('slug').trim();
-      const parts = window.location.pathname.split('/w/');
-      if (parts.length > 1 && parts[1]) return decodeURIComponent(parts[1].replace(/\/+$/, ''));
-      return '';
+      const demo = (params.get('demo') || '').trim().toLowerCase();
+      const edit = params.get('edit') === '1';
+      let slug = (params.get('slug') || '').trim();
+      if (!slug) {
+        const parts = window.location.pathname.split('/w/');
+        if (parts.length > 1 && parts[1]) slug = decodeURIComponent(parts[1].replace(/\/+$/, ''));
+      }
+      return { slug, demo, edit };
     }
 
     function escapeWedHtml(str) {
@@ -815,131 +950,283 @@
       `).join('');
     }
 
+    function renderEvents(events, formattedDate) {
+      const evGrid = document.getElementById('events-grid');
+      const list = Array.isArray(events) ? events : [];
+      if (list.length === 0) {
+        evGrid.innerHTML = `<div class="event-card" style="grid-column:1/-1;text-align:center;"><div class="event-title">Wedding Ceremony</div><div class="event-meta"><span>📅 ${escapeWedHtml(formattedDate)}</span><span>⏰ ${escapeWedHtml(activeWebsiteData?.weddingTime || '7:00 PM')}</span><span>📍 ${escapeWedHtml(activeWebsiteData?.venueName || 'Venue Details Soon')}</span></div></div>`;
+        return;
+      }
+      evGrid.innerHTML = list.map((ev, idx) => `
+        <div class="event-card">
+          <div>
+            <div class="event-title ${isEditMode ? 'editable-text' : ''}" data-event-idx="${idx}" data-event-field="title">${escapeWedHtml(ev.title || 'Ceremony')}</div>
+            ${ev.dressCode ? `<div class="event-dress ${isEditMode ? 'editable-text' : ''}" data-event-idx="${idx}" data-event-field="dressCode">👗 ${escapeWedHtml(ev.dressCode)}</div>` : ''}
+            <div class="event-meta">
+              ${ev.date || isEditMode ? `<span>📅 <span class="${isEditMode ? 'editable-text' : ''}" data-event-idx="${idx}" data-event-field="date">${escapeWedHtml(ev.date || 'Date')}</span></span>` : ''}
+              ${ev.time || isEditMode ? `<span>⏰ <span class="${isEditMode ? 'editable-text' : ''}" data-event-idx="${idx}" data-event-field="time">${escapeWedHtml(ev.time || 'Time')}</span></span>` : ''}
+              ${ev.venue || isEditMode ? `<span>📍 <span class="${isEditMode ? 'editable-text' : ''}" data-event-idx="${idx}" data-event-field="venue">${escapeWedHtml(ev.venue || 'Venue')}</span></span>` : ''}
+            </div>
+          </div>
+          ${ev.mapLink ? `<a href="${escapeWedHtml(ev.mapLink)}" target="_blank" rel="noopener" class="btn-outline-wed" style="padding:0.5rem 1rem;font-size:0.8rem;align-self:flex-start;">🗺️ See Route</a>` : ''}
+        </div>
+      `).join('');
+      if (isEditMode) bindInlineEditors();
+    }
+
+    function renderGallery(photos) {
+      const sec = document.getElementById('gallery');
+      const grid = document.getElementById('gallery-grid');
+      const list = Array.isArray(photos) ? photos.filter(Boolean) : [];
+      if (list.length === 0 && !isEditMode) {
+        sec.style.display = 'none';
+        return;
+      }
+      sec.style.display = 'block';
+      document.getElementById('edit-gallery-actions').style.display = isEditMode ? 'block' : 'none';
+      if (list.length === 0 && isEditMode) {
+        grid.innerHTML = `<div style="grid-column:1/-1;padding:2rem;text-align:center;border:1.5px dashed var(--card-border);border-radius:14px;color:var(--text-muted);">Click "+ Upload Pre-Wedding Photos" above to add couple gallery photos.</div>`;
+        return;
+      }
+      grid.innerHTML = list.map((url, idx) => `
+        <div class="gallery-item" onclick="${isEditMode ? '' : `openLightbox('${escapeWedHtml(url)}')`}">
+          <img src="${escapeWedHtml(url)}" loading="lazy" alt="Couple Photo" />
+          ${isEditMode ? `<button type="button" onclick="event.stopPropagation();removeGalleryPhotoAt(${idx})" style="position:absolute;top:8px;right:8px;background:rgba(220,38,38,0.9);color:#fff;border:none;border-radius:999px;padding:3px 9px;font-size:0.72rem;font-weight:800;cursor:pointer;">✕ Remove</button>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function applySiteToDom(site) {
+      activeWebsiteData = site;
+      const themeKey = site.theme || 'starry';
+      document.body.setAttribute('data-theme', themeKey);
+      document.title = `${site.groomName} & ${site.brideName} | Wedding Invitation`;
+
+      document.getElementById('nav-couple-title').textContent = `${site.groomName} ♥ ${site.brideName}`;
+      document.getElementById('hero-groom-name').textContent = site.groomName;
+      document.getElementById('hero-bride-name').textContent = site.brideName;
+
+      const formattedDate = site.weddingDate
+        ? new Date(site.weddingDate).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+        : 'Wedding Celebration';
+      document.getElementById('hero-date-line').textContent = site.dateLine || `${formattedDate}${site.weddingTime ? ' • ' + site.weddingTime : ''}`;
+      document.getElementById('hero-hashtag').textContent = site.hashtag || `#${site.groomName}Weds${site.brideName}`;
+
+      const hero = document.getElementById('hero-section');
+      const heroBg = site.coverPhoto || THEME_BACKDROPS[themeKey] || THEME_BACKDROPS.starry;
+      hero.style.backgroundImage = `url('${heroBg}')`;
+
+      updateCountdown(site.weddingDate, site.weddingTime);
+
+      document.getElementById('groom-name-card').textContent = site.groomName;
+      document.getElementById('bride-name-card').textContent = site.brideName;
+      document.getElementById('groom-parents-card').textContent = site.groomParents || '';
+      document.getElementById('bride-parents-card').textContent = site.brideParents || '';
+      document.getElementById('groom-bio-card').textContent = site.groomBio || '';
+      document.getElementById('bride-bio-card').textContent = site.brideBio || '';
+
+      if (site.groomPhoto) {
+        document.getElementById('groom-portrait-inner').innerHTML = `<img src="${escapeWedHtml(site.groomPhoto)}" alt="${escapeWedHtml(site.groomName)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+      }
+      if (site.bridePhoto) {
+        document.getElementById('bride-portrait-inner').innerHTML = `<img src="${escapeWedHtml(site.bridePhoto)}" alt="${escapeWedHtml(site.brideName)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+      }
+
+      const storyContent = [site.welcomeNote, site.ourStory].filter(Boolean).join(' — ');
+      document.getElementById('welcome-story-text').textContent = storyContent || 'With the blessings of our elders, we invite you to share in our joy as we begin our forever together.';
+
+      renderEvents(site.events, formattedDate);
+
+      document.getElementById('main-venue-name').textContent = site.venueName || 'Royal Heritage Palace Lawn';
+      document.getElementById('main-venue-address').textContent = site.venueAddress || '';
+      const mapBtn = document.getElementById('main-venue-map-btn');
+      if (site.mapUrl) {
+        mapBtn.href = site.mapUrl;
+      } else {
+        mapBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((site.venueName || '') + ' ' + (site.venueAddress || ''))}`;
+      }
+
+      renderGallery(site.galleryPhotos || []);
+
+      if (!site.rsvpEnabled && !isEditMode) {
+        document.getElementById('rsvp').style.display = 'none';
+      } else {
+        document.getElementById('rsvp').style.display = 'block';
+        renderWishes(site.recentWishes, site.rsvpCount);
+      }
+
+      if (site.bgMusic && site.bgMusic !== 'none') {
+        const audioEl = document.getElementById('wed-bg-audio');
+        audioEl.src = (site.bgMusic.startsWith('/') || site.bgMusic.startsWith('http'))
+          ? site.bgMusic
+          : `/audio/${encodeURIComponent(site.bgMusic)}.mp3`;
+      }
+
+      if (site.studio) {
+        document.getElementById('footer-studio-name').textContent = site.studio.studioName || 'DM FILMS MAKER';
+        document.getElementById('footer-studio-tagline').textContent = site.studio.tagline || 'Luxury Wedding & Cinematic Photography';
+        if (site.studio.logoUrl) {
+          document.getElementById('footer-studio-logo').innerHTML = `<img src="${escapeWedHtml(site.studio.logoUrl)}" alt="Studio Logo" />`;
+        }
+      }
+    }
+
+    function notifyParentDraft() {
+      if (window.parent && window.parent !== window && activeWebsiteData) {
+        window.parent.postMessage({ type: 'WED_DRAFT_UPDATE', data: activeWebsiteData }, '*');
+      }
+    }
+
+    function bindInlineEditors() {
+      document.querySelectorAll('.editable-text').forEach(el => {
+        el.setAttribute('contenteditable', 'true');
+        el.setAttribute('spellcheck', 'false');
+        if (el.dataset.boundEdit) return;
+        el.dataset.boundEdit = '1';
+        el.addEventListener('input', () => {
+          if (!activeWebsiteData) return;
+          const field = el.getAttribute('data-field');
+          const evIdx = el.getAttribute('data-event-idx');
+          const evField = el.getAttribute('data-event-field');
+          const val = el.textContent.trim();
+
+          if (evIdx !== null && evField && Array.isArray(activeWebsiteData.events) && activeWebsiteData.events[Number(evIdx)]) {
+            activeWebsiteData.events[Number(evIdx)][evField] = val.replace(/^👗\s*/, '');
+          } else if (field) {
+            activeWebsiteData[field] = val;
+            if (field === 'groomName') {
+              document.getElementById('hero-groom-name').textContent = val;
+              document.getElementById('groom-name-card').textContent = val;
+              document.getElementById('nav-couple-title').textContent = `${val} ♥ ${activeWebsiteData.brideName}`;
+            } else if (field === 'brideName') {
+              document.getElementById('hero-bride-name').textContent = val;
+              document.getElementById('bride-name-card').textContent = val;
+              document.getElementById('nav-couple-title').textContent = `${activeWebsiteData.groomName} ♥ ${val}`;
+            }
+          }
+          notifyParentDraft();
+        });
+      });
+    }
+
+    function triggerPhotoUpload(target) {
+      pendingUploadTarget = target;
+      const input = document.getElementById('wed-inline-file-input');
+      input.multiple = (target === 'gallery');
+      input.value = '';
+      input.click();
+    }
+
+    async function handleInlinePhotoSelected(files) {
+      if (!files || !files.length || !activeWebsiteData) return;
+      let studio = {};
+      try { studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}'); } catch (e) {}
+      const token = localStorage.getItem('dm_admin_token');
+
+      for (const file of Array.from(files)) {
+        const headers = {
+          'X-Filename': encodeURIComponent(file.name),
+          'X-Wedding-Slug': encodeURIComponent(activeWebsiteData.slug || 'wedding')
+        };
+        if (studio?.id) headers['X-Studio-Id'] = studio.id;
+        if (studio?.email) headers['X-Studio-Email'] = studio.email;
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        try {
+          const res = await fetch('/api/wedding-websites/upload-photo', { method: 'POST', headers, body: file });
+          const data = await res.json();
+          if (data.success && data.url) {
+            if (pendingUploadTarget === 'cover') {
+              activeWebsiteData.coverPhoto = data.url;
+              document.getElementById('hero-section').style.backgroundImage = `url('${data.url}')`;
+            } else if (pendingUploadTarget === 'groom') {
+              activeWebsiteData.groomPhoto = data.url;
+              document.getElementById('groom-portrait-inner').innerHTML = `<img src="${escapeWedHtml(data.url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+            } else if (pendingUploadTarget === 'bride') {
+              activeWebsiteData.bridePhoto = data.url;
+              document.getElementById('bride-portrait-inner').innerHTML = `<img src="${escapeWedHtml(data.url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+            } else if (pendingUploadTarget === 'gallery') {
+              activeWebsiteData.galleryPhotos = activeWebsiteData.galleryPhotos || [];
+              activeWebsiteData.galleryPhotos.push(data.url);
+              renderGallery(activeWebsiteData.galleryPhotos);
+            }
+            notifyParentDraft();
+          }
+        } catch (e) {}
+      }
+    }
+
+    function removeGalleryPhotoAt(idx) {
+      if (!activeWebsiteData || !Array.isArray(activeWebsiteData.galleryPhotos)) return;
+      activeWebsiteData.galleryPhotos.splice(idx, 1);
+      renderGallery(activeWebsiteData.galleryPhotos);
+      notifyParentDraft();
+    }
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (!msg || !msg.type) return;
+      if (msg.type === 'WED_SET_DATA' && msg.data) {
+        applySiteToDom(msg.data);
+        if (isEditMode) bindInlineEditors();
+      } else if (msg.type === 'WED_SET_THEME' && activeWebsiteData) {
+        activeWebsiteData.theme = msg.theme;
+        applySiteToDom(activeWebsiteData);
+        if (isEditMode) bindInlineEditors();
+      } else if (msg.type === 'WED_REQUEST_DATA') {
+        notifyParentDraft();
+      }
+    });
+
     async function loadWeddingWebsite() {
-      activeSlug = resolveWeddingSlug();
-      if (!activeSlug) {
+      const { slug, demo, edit } = resolveParams();
+      activeSlug = slug;
+      isEditMode = edit;
+      if (isEditMode) document.body.classList.add('edit-mode');
+
+      if (demo && !slug) {
+        const demoData = JSON.parse(JSON.stringify(DEMO_DEFAULTS));
+        demoData.theme = demo;
+        try {
+          const studio = JSON.parse(localStorage.getItem('dm_current_studio') || '{}');
+          if (studio?.studioName) demoData.studio = { studioName: studio.studioName, logoUrl: studio.logoUrl, tagline: studio.tagline };
+        } catch (e) {}
+        applySiteToDom(demoData);
+        document.getElementById('wedding-loader').style.display = 'none';
+        document.getElementById('wedding-app').style.display = 'block';
+        if (isEditMode) {
+          bindInlineEditors();
+          notifyParentDraft();
+        }
+        return;
+      }
+
+      if (!slug) {
+        if (isEditMode) {
+          const freshDraft = JSON.parse(JSON.stringify(DEMO_DEFAULTS));
+          applySiteToDom(freshDraft);
+          document.getElementById('wedding-loader').style.display = 'none';
+          document.getElementById('wedding-app').style.display = 'block';
+          bindInlineEditors();
+          notifyParentDraft();
+          return;
+        }
         document.getElementById('wedding-loader').style.display = 'none';
         document.getElementById('wedding-not-found').style.display = 'flex';
         return;
       }
 
       try {
-        const res = await fetch(`/api/public/wedding/${encodeURIComponent(activeSlug)}`);
+        const res = await fetch(`/api/public/wedding/${encodeURIComponent(slug)}`);
         if (!res.ok) throw new Error('Not found');
         const site = await res.json();
-        activeWebsiteData = site;
-
-        document.body.setAttribute('data-theme', site.theme || 'royal');
-        document.title = `${site.groomName} & ${site.brideName} | Wedding Invitation`;
-
-        document.getElementById('nav-couple-title').textContent = `${site.groomName} ♥ ${site.brideName}`;
-        document.getElementById('hero-couple-names').textContent = `${site.groomName} & ${site.brideName}`;
-
-        const formattedDate = site.weddingDate
-          ? new Date(site.weddingDate).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-          : 'Wedding Celebration';
-        document.getElementById('hero-date-line').textContent = `${formattedDate}${site.weddingTime ? ' • ' + site.weddingTime : ''}`;
-        document.getElementById('hero-hashtag').textContent = site.hashtag || '';
-
-        const hero = document.getElementById('hero-section');
-        if (site.coverPhoto) {
-          hero.style.backgroundImage = `url('${site.coverPhoto}')`;
-        } else if (site.galleryPhotos && site.galleryPhotos[0]) {
-          hero.style.backgroundImage = `url('${site.galleryPhotos[0]}')`;
-        }
-
-        updateCountdown(site.weddingDate, site.weddingTime);
-
-        document.getElementById('groom-name-card').textContent = site.groomName;
-        document.getElementById('bride-name-card').textContent = site.brideName;
-        document.getElementById('groom-parents-card').textContent = site.groomParents || '';
-        document.getElementById('bride-parents-card').textContent = site.brideParents || '';
-        document.getElementById('groom-bio-card').textContent = site.groomBio || '';
-        document.getElementById('bride-bio-card').textContent = site.brideBio || '';
-
-        if (site.groomPhoto) {
-          document.getElementById('groom-portrait-box').innerHTML = `<img src="${escapeWedHtml(site.groomPhoto)}" alt="${escapeWedHtml(site.groomName)}" />`;
-        }
-        if (site.bridePhoto) {
-          document.getElementById('bride-portrait-box').innerHTML = `<img src="${escapeWedHtml(site.bridePhoto)}" alt="${escapeWedHtml(site.brideName)}" />`;
-        }
-
-        const storyContent = [site.welcomeNote, site.ourStory].filter(Boolean).join(' — ');
-        document.getElementById('welcome-story-text').textContent = storyContent || 'With the blessings of our elders, we invite you to share in our joy as we begin our forever together.';
-
-        // Events
-        const evGrid = document.getElementById('events-grid');
-        const events = Array.isArray(site.events) ? site.events : [];
-        if (events.length === 0) {
-          evGrid.innerHTML = `<div class="event-card" style="grid-column:1/-1;text-align:center;"><div class="event-title">Wedding Ceremony</div><div class="event-meta"><span>📅 ${escapeWedHtml(formattedDate)}</span><span>⏰ ${escapeWedHtml(site.weddingTime || '7:00 PM')}</span><span>📍 ${escapeWedHtml(site.venueName || 'Venue Details Soon')}</span></div></div>`;
-        } else {
-          evGrid.innerHTML = events.map(ev => `
-            <div class="event-card">
-              <div>
-                <div class="event-title">${escapeWedHtml(ev.title || 'Ceremony')}</div>
-                ${ev.dressCode ? `<div class="event-dress">👗 Dress Code: ${escapeWedHtml(ev.dressCode)}</div>` : ''}
-                <div class="event-meta">
-                  ${ev.date ? `<span>📅 ${escapeWedHtml(ev.date)}</span>` : ''}
-                  ${ev.time ? `<span>⏰ ${escapeWedHtml(ev.time)}</span>` : ''}
-                  ${ev.venue ? `<span>📍 ${escapeWedHtml(ev.venue)}</span>` : ''}
-                </div>
-              </div>
-              ${ev.mapLink ? `<a href="${escapeWedHtml(ev.mapLink)}" target="_blank" rel="noopener" class="btn-outline-wed" style="padding:0.5rem 1rem;font-size:0.8rem;align-self:flex-start;">🗺️ View Location</a>` : ''}
-            </div>
-          `).join('');
-        }
-
-        if (site.venueName || site.venueAddress || site.mapUrl) {
-          document.getElementById('main-venue-box').style.display = 'block';
-          document.getElementById('main-venue-name').textContent = site.venueName || 'Wedding Venue';
-          document.getElementById('main-venue-address').textContent = site.venueAddress || '';
-          const mapBtn = document.getElementById('main-venue-map-btn');
-          if (site.mapUrl) {
-            mapBtn.href = site.mapUrl;
-            mapBtn.style.display = 'inline-flex';
-          } else {
-            mapBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((site.venueName || '') + ' ' + (site.venueAddress || ''))}`;
-          }
-        }
-
-        // Gallery
-        if (site.galleryPhotos && site.galleryPhotos.length > 0) {
-          document.getElementById('gallery').style.display = 'block';
-          document.getElementById('gallery-grid').innerHTML = site.galleryPhotos.map(url => `
-            <div class="gallery-item" onclick="openLightbox('${escapeWedHtml(url)}')">
-              <img src="${escapeWedHtml(url)}" loading="lazy" alt="Couple Photo" />
-            </div>
-          `).join('');
-        }
-
-        // RSVP
-        if (!site.rsvpEnabled) {
-          document.getElementById('rsvp').style.display = 'none';
-        } else {
-          renderWishes(site.recentWishes, site.rsvpCount);
-        }
-
-        // Background Music
-        if (site.bgMusic && site.bgMusic !== 'none') {
-          const audioEl = document.getElementById('wed-bg-audio');
-          if (site.bgMusic.startsWith('/') || site.bgMusic.startsWith('http')) {
-            audioEl.src = site.bgMusic;
-          } else {
-            audioEl.src = `/audio/${encodeURIComponent(site.bgMusic)}.mp3`;
-          }
-        }
-
-        // Studio Branding Footer
-        if (site.studio) {
-          document.getElementById('footer-studio-name').textContent = site.studio.studioName || 'DM FILMS MAKER';
-          document.getElementById('footer-studio-tagline').textContent = site.studio.tagline || 'Luxury Wedding & Cinematic Photography';
-          if (site.studio.logoUrl) {
-            document.getElementById('footer-studio-logo').innerHTML = `<img src="${escapeWedHtml(site.studio.logoUrl)}" alt="Studio Logo" />`;
-          }
-        }
-
+        applySiteToDom(site);
         document.getElementById('wedding-loader').style.display = 'none';
         document.getElementById('wedding-app').style.display = 'block';
+        if (isEditMode) {
+          bindInlineEditors();
+          notifyParentDraft();
+        }
       } catch (err) {
         document.getElementById('wedding-loader').style.display = 'none';
         document.getElementById('wedding-not-found').style.display = 'flex';
@@ -953,6 +1240,13 @@
 
     async function submitWeddingRsvp(event) {
       event.preventDefault();
+      if (!activeSlug) {
+        const st = document.getElementById('rsvp-status-msg');
+        st.style.display = 'block';
+        st.style.color = '#22c55e';
+        st.textContent = '✨ Demo Preview: Guests can submit live RSVPs once published!';
+        return;
+      }
       const btn = document.getElementById('rsvp-submit-btn');
       const statusEl = document.getElementById('rsvp-status-msg');
       btn.disabled = true;
@@ -975,7 +1269,6 @@
           statusEl.style.color = '#22c55e';
           statusEl.textContent = '🎉 Thank you! Your RSVP & wishes have been saved.';
           document.getElementById('rsvp-form').reset();
-          // Reload wishes cleanly
           const ref = await fetch(`/api/public/wedding/${encodeURIComponent(activeSlug)}`);
           if (ref.ok) {
             const refreshed = await ref.json();
@@ -997,8 +1290,8 @@
 
     function shareThisWeddingWhatsApp() {
       if (!activeWebsiteData) return;
-      const url = window.location.href;
-      const msg = `✨ *Shubh Vivah Invitation* ✨\n\nYou are cordially invited to celebrate the wedding of *${activeWebsiteData.groomName} & ${activeWebsiteData.brideName}*!\n\nView Events, Venue Map & Confirm RSVP here:\n${url}`;
+      const url = window.location.href.replace(/[?&]edit=1/, '');
+      const msg = `✨ *Shubh Vivah Invitation* ✨\n\nYou are warmly invited to celebrate the wedding of *${activeWebsiteData.groomName} & ${activeWebsiteData.brideName}*!\n\nView Events, Venue Map & Confirm RSVP here:\n${url}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
