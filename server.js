@@ -3681,6 +3681,310 @@ async function syncClientPhotosFromDrive(client, db) {
       return;
     }
 
+    // =========================================================================
+    // 11.68 BRANDED WEDDING WEBSITES & DIGITAL INVITATIONS API (CRAFTY-STYLE)
+    // =========================================================================
+    if (pathname === '/api/wedding-websites/upload-photo' && req.method === 'POST') {
+      const slugHint = req.headers['x-wedding-slug'] ? decodeURIComponent(req.headers['x-wedding-slug']).trim() : 'General';
+      let rawOrigName = req.headers['x-filename'] ? decodeURIComponent(req.headers['x-filename']).trim() : ('wedding_' + Date.now() + '.jpg');
+      const origName = rawOrigName.replace(/[/\\?%*:|"<>]/g, '_').trim();
+      const studioId = getStudioIdFromRequest(req) || '';
+      const headerEmail = (req.headers['x-studio-email'] || '').toLowerCase().trim();
+      const db = loadDB();
+      const studio = findExactStudio(db, studioId, headerEmail) || getTargetStudio(db, studioId, headerEmail);
+      const studioName = (studio && studio.studioName) || 'DM STUDIO';
+
+      const chunks = [];
+      req.on('data', c => chunks.push(c));
+      req.on('end', async () => {
+        try {
+          const buffer = Buffer.concat(chunks);
+          let mime = 'image/jpeg';
+          if (origName.toLowerCase().endsWith('.png')) mime = 'image/png';
+          else if (origName.toLowerCase().endsWith('.webp')) mime = 'image/webp';
+
+          try {
+            const accessToken = await getDriveAccessToken();
+            if (!accessToken) throw new Error('No Google Drive access token');
+            const MASTER_WAPSITE_FOLDER_ID = "1Glh2NLXhJMIKO89jz2OsGBzI3fW8HZJf";
+            const rootWeddingFolder = await findOrCreateDriveFolder('Wedding Websites', MASTER_WAPSITE_FOLDER_ID, accessToken);
+            const studioFolder = await findOrCreateDriveFolder(studioName.trim().replace(/[^a-zA-Z0-9 _-]/g, '_'), rootWeddingFolder.id, accessToken);
+            const siteFolder = await findOrCreateDriveFolder(slugHint.replace(/[^a-zA-Z0-9 _-]/g, '_') || 'Site', studioFolder.id, accessToken);
+            const driveFile = await uploadToDrive(`${Date.now()}_${origName}`, buffer, mime, siteFolder.id, accessToken);
+            sendJSON({ success: true, url: `/api/image/${driveFile.id}`, driveId: driveFile.id, name: origName });
+            return;
+          } catch (driveErr) {
+            const localDir = path.join(__dirname, 'uploads', 'wedding');
+            if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
+            const safeLocal = `${Date.now()}_${origName}`;
+            fs.writeFileSync(path.join(localDir, safeLocal), buffer);
+            sendJSON({ success: true, url: `/uploads/wedding/${safeLocal}`, name: origName, localFallback: true });
+            return;
+          }
+        } catch (err) {
+          sendJSON({ error: 'Wedding photo upload failed: ' + err.message }, 500);
+        }
+      });
+      return;
+    }
+
+    if (pathname === '/api/wedding-websites') {
+      let db = loadDB();
+      db.weddingWebsites = db.weddingWebsites || [];
+      const studioId = getStudioIdFromRequest(req);
+      const headerEmail = (req.headers['x-studio-email'] || '').toLowerCase().trim();
+      let studio = findExactStudio(db, studioId, headerEmail);
+      if (!studio && (studioId || headerEmail)) {
+        try {
+          const cloudDb = await restoreDatabaseFromDrive();
+          const cloudMatch = findExactStudio(cloudDb, studioId, headerEmail);
+          if (cloudMatch) {
+            db = cloudDb;
+            db.weddingWebsites = db.weddingWebsites || [];
+            studio = cloudMatch;
+          }
+        } catch (e) {}
+      }
+      const actualStudioId = studio ? studio.id : studioId;
+
+      if (req.method === 'GET') {
+        if (!actualStudioId) {
+          sendJSON([]);
+          return;
+        }
+        const list = (db.weddingWebsites || []).filter(w => w.studioId === actualStudioId);
+        sendJSON(list);
+        return;
+      }
+
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', c => body += c);
+        req.on('end', async () => {
+          try {
+            const payload = JSON.parse(body || '{}');
+            const targetStudioId = actualStudioId || payload.studioId;
+            const targetStudio = findExactStudio(db, targetStudioId, headerEmail) || studio;
+            if (!targetStudio) {
+              sendJSON({ error: 'Studio session not found. Please sign in again.' }, 401);
+              return;
+            }
+
+            // Active Subscription Check (Developer Bypass)
+            if (!isDeveloperAccount(targetStudio)) {
+              const sub = targetStudio?.subscription;
+              const isLocked = !sub || (new Date(sub.expiresAt).getTime() <= Date.now()) || sub.status !== 'ACTIVE';
+              if (isLocked) {
+                sendJSON({
+                  error: 'Active Plan Required: Please activate your 7-Day Free Trial or upgrade your plan to publish Wedding Websites!',
+                  isLocked: true,
+                  requiresUpgrade: true
+                }, 403);
+                return;
+              }
+            }
+
+            const groomName = (payload.groomName || '').trim();
+            const brideName = (payload.brideName || '').trim();
+            if (!groomName || !brideName) {
+              sendJSON({ error: 'Groom Name and Bride Name are required' }, 400);
+              return;
+            }
+
+            const slugify = (s) => String(s || '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '')
+              .slice(0, 60);
+
+            const id = payload.id || ('wed_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900));
+            const existingIdx = db.weddingWebsites.findIndex(w => w.id === id);
+
+            let desiredSlug = slugify(payload.slug || `${groomName}-weds-${brideName}`) || ('wedding-' + Date.now().toString().slice(-5));
+            const slugConflict = (s) => db.weddingWebsites.some((w, idx) => idx !== existingIdx && (w.slug || '').toLowerCase() === s.toLowerCase());
+            if (slugConflict(desiredSlug)) {
+              desiredSlug = `${desiredSlug}-${Math.floor(100 + Math.random() * 900)}`;
+            }
+
+            const existingSite = existingIdx >= 0 ? db.weddingWebsites[existingIdx] : null;
+            if (existingSite && existingSite.studioId !== targetStudio.id) {
+              sendJSON({ error: 'Unauthorized to edit this wedding website' }, 403);
+              return;
+            }
+
+            const nowIso = new Date().toISOString();
+            const siteObj = {
+              id,
+              slug: desiredSlug,
+              studioId: targetStudio.id,
+              theme: payload.theme || 'royal',
+              groomName,
+              brideName,
+              groomBio: payload.groomBio || '',
+              brideBio: payload.brideBio || '',
+              groomParents: payload.groomParents || '',
+              brideParents: payload.brideParents || '',
+              weddingDate: payload.weddingDate || '',
+              weddingTime: payload.weddingTime || '7:00 PM Onwards',
+              hashtag: payload.hashtag || `#${groomName.replace(/\s+/g, '')}Weds${brideName.replace(/\s+/g, '')}`,
+              welcomeNote: payload.welcomeNote || 'Together with our families, we joyfully invite you to celebrate our wedding.',
+              ourStory: payload.ourStory || '',
+              coverPhoto: payload.coverPhoto || '',
+              groomPhoto: payload.groomPhoto || '',
+              bridePhoto: payload.bridePhoto || '',
+              galleryPhotos: Array.isArray(payload.galleryPhotos) ? payload.galleryPhotos.filter(Boolean) : [],
+              events: Array.isArray(payload.events) ? payload.events : [],
+              venueName: payload.venueName || '',
+              venueAddress: payload.venueAddress || '',
+              mapUrl: payload.mapUrl || '',
+              bgMusic: payload.bgMusic || 'romantic',
+              rsvpEnabled: payload.rsvpEnabled !== false,
+              rsvps: existingSite ? (existingSite.rsvps || []) : [],
+              views: existingSite ? (existingSite.views || 0) : 0,
+              createdAt: existingSite ? existingSite.createdAt : nowIso,
+              updatedAt: nowIso
+            };
+
+            if (existingIdx >= 0) {
+              db.weddingWebsites[existingIdx] = siteObj;
+            } else {
+              db.weddingWebsites.unshift(siteObj);
+            }
+
+            saveDB(db);
+            try { await syncDatabaseToDriveImmediate(db); } catch (e) {}
+
+            sendJSON({ success: true, website: siteObj });
+          } catch (e) {
+            sendJSON({ error: 'Failed to save wedding website: ' + e.message }, 400);
+          }
+        });
+        return;
+      }
+    }
+
+    if (pathname.startsWith('/api/wedding-websites/') && req.method === 'DELETE') {
+      const targetId = decodeURIComponent(pathname.replace('/api/wedding-websites/', '')).trim();
+      const db = loadDB();
+      db.weddingWebsites = db.weddingWebsites || [];
+      const studioId = getStudioIdFromRequest(req);
+      const headerEmail = (req.headers['x-studio-email'] || '').toLowerCase().trim();
+      const studio = findExactStudio(db, studioId, headerEmail);
+      const idx = db.weddingWebsites.findIndex(w => w.id === targetId || w.slug === targetId);
+      if (idx === -1) {
+        sendJSON({ error: 'Wedding website not found' }, 404);
+        return;
+      }
+      if (studio && db.weddingWebsites[idx].studioId !== studio.id && !isDeveloperAccount(studio)) {
+        sendJSON({ error: 'Unauthorized delete' }, 403);
+        return;
+      }
+      db.weddingWebsites.splice(idx, 1);
+      saveDB(db);
+      try { await syncDatabaseToDriveImmediate(db); } catch (e) {}
+      sendJSON({ success: true });
+      return;
+    }
+
+    // Public Wedding Website Data & Guest RSVP Endpoints (/w/:slug)
+    if (pathname.startsWith('/api/public/wedding/')) {
+      const parts = pathname.replace('/api/public/wedding/', '').split('/').filter(Boolean);
+      const slugOrId = decodeURIComponent(parts[0] || '').trim().toLowerCase();
+      const action = (parts[1] || '').toLowerCase();
+
+      let db = loadDB();
+      db.weddingWebsites = db.weddingWebsites || [];
+      let site = db.weddingWebsites.find(w => (w.slug || '').toLowerCase() === slugOrId || (w.id || '').toLowerCase() === slugOrId);
+      if (!site) {
+        try {
+          const cloudDb = await restoreDatabaseFromDrive();
+          const cloudSite = (cloudDb.weddingWebsites || []).find(w => (w.slug || '').toLowerCase() === slugOrId || (w.id || '').toLowerCase() === slugOrId);
+          if (cloudSite) {
+            db = cloudDb;
+            site = cloudSite;
+          }
+        } catch (e) {}
+      }
+      if (!site) {
+        sendJSON({ error: 'Wedding website not found' }, 404);
+        return;
+      }
+
+      if (action === 'rsvp' && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => body += c);
+        req.on('end', async () => {
+          try {
+            const data = JSON.parse(body || '{}');
+            const guestName = (data.guestName || '').trim();
+            if (!guestName) {
+              sendJSON({ error: 'Please enter your name to submit RSVP' }, 400);
+              return;
+            }
+            const rsvpEntry = {
+              id: 'rsvp_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900),
+              guestName,
+              phone: (data.phone || '').trim(),
+              attending: ['Yes', 'No', 'Maybe'].includes(data.attending) ? data.attending : 'Yes',
+              guestsCount: Math.max(1, Math.min(20, Number(data.guestsCount) || 1)),
+              message: (data.message || '').trim(),
+              createdAt: new Date().toISOString()
+            };
+            site.rsvps = site.rsvps || [];
+            site.rsvps.unshift(rsvpEntry);
+            saveDB(db);
+            try { await syncDatabaseToDriveImmediate(db); } catch (e) {}
+            sendJSON({ success: true, message: 'Thank you! Your RSVP has been recorded.', rsvp: rsvpEntry });
+          } catch (e) {
+            sendJSON({ error: 'Failed to submit RSVP: ' + e.message }, 400);
+          }
+        });
+        return;
+      }
+
+      if (req.method === 'GET' && !action) {
+        site.views = (site.views || 0) + 1;
+        saveDB(db);
+        const ownerStudio = (db.studios || []).find(s => s.id === site.studioId);
+        sendJSON({
+          id: site.id,
+          slug: site.slug,
+          theme: site.theme || 'royal',
+          groomName: site.groomName,
+          brideName: site.brideName,
+          groomBio: site.groomBio,
+          brideBio: site.brideBio,
+          groomParents: site.groomParents,
+          brideParents: site.brideParents,
+          weddingDate: site.weddingDate,
+          weddingTime: site.weddingTime,
+          hashtag: site.hashtag,
+          welcomeNote: site.welcomeNote,
+          ourStory: site.ourStory,
+          coverPhoto: site.coverPhoto,
+          groomPhoto: site.groomPhoto,
+          bridePhoto: site.bridePhoto,
+          galleryPhotos: site.galleryPhotos || [],
+          events: site.events || [],
+          venueName: site.venueName,
+          venueAddress: site.venueAddress,
+          mapUrl: site.mapUrl,
+          bgMusic: site.bgMusic || 'romantic',
+          rsvpEnabled: site.rsvpEnabled !== false,
+          views: site.views,
+          rsvpCount: (site.rsvps || []).filter(r => r.attending === 'Yes').reduce((sum, r) => sum + (Number(r.guestsCount) || 1), 0),
+          recentWishes: (site.rsvps || []).filter(r => r.message).slice(0, 12).map(r => ({ guestName: r.guestName, attending: r.attending, message: r.message, createdAt: r.createdAt })),
+          studio: {
+            studioName: ownerStudio?.studioName || 'DM FILMS MAKER',
+            logoUrl: ownerStudio?.logoUrl || '',
+            phone: ownerStudio?.phone || '',
+            tagline: ownerStudio?.tagline || 'Luxury Wedding & Cinematic Photography'
+          }
+        });
+        return;
+      }
+    }
+
     // 11.7 Studio Invoices & Quotations API
     if (pathname === '/api/invoices') {
       const db = loadDB();
@@ -5041,6 +5345,11 @@ async function syncClientPhotosFromDrive(client, db) {
       decodedPath = pathname;
     }
     let filePath = path.join(__dirname, decodedPath === '/' ? 'index.html' : decodedPath);
+
+    // Pretty public URL for Crafty-style Wedding Websites: /w/:slug -> wedding.html
+    if (decodedPath === '/w' || decodedPath.startsWith('/w/')) {
+      filePath = path.join(__dirname, 'wedding.html');
+    }
 
     // Auto-resolve admin.js whether uploaded to root or in js/ folder
     if (decodedPath === '/js/admin.js' || decodedPath === '/admin.js') {

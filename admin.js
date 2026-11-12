@@ -380,6 +380,9 @@ function switchView(viewName) {
   if (viewName === 'my-flipbooks') {
     renderMyFlipbooksGallery();
   }
+  if (viewName === 'wedding-websites') {
+    loadWeddingWebsitesView();
+  }
   if (viewName === 'invoices') {
     renderInvoicesView();
   }
@@ -5973,5 +5976,472 @@ window.showLivePaymentSuccess = showLivePaymentSuccess;
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(loadCurrentSubscription, 800);
 });
+
+// =========================================================================
+// DIGITAL WEDDING WEBSITES BUILDER (CRAFTY-STYLE UNDER STUDIO BRAND)
+// =========================================================================
+let allWeddingWebsites = [];
+let wedGalleryDraft = [];
+let wedEventsDraft = [];
+let activeRsvpSite = null;
+let activeShareSiteUrl = '';
+let activeShareCoupleText = '';
+
+async function loadWeddingWebsitesView() {
+  try {
+    const res = await fetch(`${API_BASE}/api/wedding-websites`, {
+      headers: getAdminStudioHeaders()
+    });
+    const data = await res.json();
+    allWeddingWebsites = Array.isArray(data) ? data : [];
+    renderWeddingWebsitesGrid();
+  } catch (err) {
+    console.error('Failed to load wedding websites:', err);
+    const grid = document.getElementById('wedding-websites-grid');
+    if (grid) {
+      grid.innerHTML = `<div class="glass-card" style="padding:2rem;text-align:center;color:#f87171;">Could not load wedding websites.</div>`;
+    }
+  }
+}
+
+function updateWeddingWebsiteStats(list) {
+  const totalEl = document.getElementById('wed-stat-total');
+  const rsvpEl = document.getElementById('wed-stat-rsvps');
+  const viewsEl = document.getElementById('wed-stat-views');
+  const totalRsvps = list.reduce((sum, site) => {
+    const yesGuests = (site.rsvps || []).filter(r => r.attending === 'Yes').reduce((s, r) => s + (Number(r.guestsCount) || 1), 0);
+    return sum + yesGuests;
+  }, 0);
+  const totalViews = list.reduce((sum, site) => sum + (Number(site.views) || 0), 0);
+  if (totalEl) totalEl.textContent = String(list.length);
+  if (rsvpEl) rsvpEl.textContent = String(totalRsvps);
+  if (viewsEl) viewsEl.textContent = String(totalViews);
+}
+
+function filterWeddingWebsites(query) {
+  renderWeddingWebsitesGrid(query || '');
+}
+
+function renderWeddingWebsitesGrid(filterText = '') {
+  const container = document.getElementById('wedding-websites-grid');
+  if (!container) return;
+  updateWeddingWebsiteStats(allWeddingWebsites);
+
+  const q = filterText.trim().toLowerCase();
+  const list = q
+    ? allWeddingWebsites.filter(w =>
+        (w.groomName || '').toLowerCase().includes(q) ||
+        (w.brideName || '').toLowerCase().includes(q) ||
+        (w.slug || '').toLowerCase().includes(q) ||
+        (w.venueName || '').toLowerCase().includes(q))
+    : allWeddingWebsites;
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="glass-card" style="grid-column:1/-1;padding:3rem 1.5rem;text-align:center;border:1px dashed rgba(212,175,55,0.4);border-radius:18px;">
+        <div style="font-size:3rem;margin-bottom:0.6rem;">💒</div>
+        <h3 class="gold-gradient-text" style="font-family:'Cinzel',serif;margin:0 0 0.5rem 0;">No Wedding Websites Yet</h3>
+        <p style="color:#94a3b8;max-width:460px;margin:0 auto 1.25rem auto;font-size:0.9rem;">
+          Create a Crafty-style luxury Wedding Website for your client couples in minutes with Countdown, Events Schedule, Map, Pre-Wedding Gallery &amp; Digital RSVP!
+        </p>
+        <button type="button" class="btn btn-primary" onclick="openWeddingWebsiteBuilder()">+ Create First Wedding Website</button>
+      </div>
+    `;
+    return;
+  }
+
+  const themeLabels = {
+    royal: '👑 Royal Heritage',
+    gold: '✨ Golden Luxury',
+    floral: '🌸 Pastel Floral',
+    minimal: '🤍 Modern Minimal'
+  };
+
+  container.innerHTML = list.map(site => {
+    const cover = site.coverPhoto || (site.galleryPhotos && site.galleryPhotos[0]) || '';
+    const dateLabel = site.weddingDate ? new Date(site.weddingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date TBD';
+    const yesGuests = (site.rsvps || []).filter(r => r.attending === 'Yes').reduce((s, r) => s + (Number(r.guestsCount) || 1), 0);
+    const totalRsvpRows = (site.rsvps || []).length;
+    const themeLabel = themeLabels[site.theme] || '👑 Royal Heritage';
+    const safeId = encodeURIComponent(site.id);
+    const publicUrl = `${window.location.origin}/w/${encodeURIComponent(site.slug)}`;
+
+    return `
+      <div class="glass-card" style="background:rgba(12,16,28,0.92);border:1px solid rgba(212,175,55,0.35);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="position:relative;height:175px;background:#070910;overflow:hidden;cursor:pointer;" onclick="window.open('${publicUrl}', '_blank')">
+          ${cover ? `<img src="${escapeHtml(cover)}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;color:#d4af37;">💒</div>`}
+          <div style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.75);border:1px solid rgba(212,175,55,0.45);color:#fde047;padding:3px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;">${themeLabel}</div>
+          <div style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.75);color:#e2e8f0;padding:3px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;">👁️ ${site.views || 0}</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);display:flex;justify-content:space-between;font-size:0.74rem;color:#cbd5e1;">
+            <span>📅 ${escapeHtml(dateLabel)}</span>
+            <span>💌 ${yesGuests} Confirmed (${totalRsvpRows})</span>
+          </div>
+        </div>
+
+        <div style="padding:1.15rem;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
+          <div style="margin-bottom:0.9rem;">
+            <h4 class="gold-gradient-text" style="font-family:'Cinzel',serif;font-size:1.15rem;margin:0 0 3px 0;">
+              ${escapeHtml(site.groomName)} ♥ ${escapeHtml(site.brideName)}
+            </h4>
+            <div style="font-size:0.76rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              🔗 /w/${escapeHtml(site.slug)} ${site.venueName ? '• ' + escapeHtml(site.venueName) : ''}
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.45rem;">
+            <button type="button" class="btn" style="height:35px;background:linear-gradient(135deg,#fde047,#d4af37);color:#000;font-weight:800;font-size:0.78rem;border:none;border-radius:8px;cursor:pointer;" onclick="window.open('${publicUrl}', '_blank')">👁️ OPEN SITE</button>
+            <button type="button" class="btn" style="height:35px;background:#25D366;color:#fff;font-weight:700;font-size:0.78rem;border:none;border-radius:8px;cursor:pointer;" onclick="openWeddingShareModal('${safeId}')">💬 SHARE &amp; QR</button>
+            <button type="button" class="btn" style="height:35px;background:rgba(168,85,247,0.16);border:1px solid rgba(168,85,247,0.45);color:#e9d5ff;font-weight:700;font-size:0.78rem;border-radius:8px;cursor:pointer;" onclick="openWeddingRsvpModal('${safeId}')">📋 RSVPs (${totalRsvpRows})</button>
+            <button type="button" class="btn" style="height:35px;background:rgba(255,255,255,0.08);border:1px solid rgba(212,175,55,0.4);color:#fde047;font-weight:700;font-size:0.78rem;border-radius:8px;cursor:pointer;" onclick="openWeddingWebsiteBuilder('${safeId}')">✏️ EDIT</button>
+          </div>
+          <button type="button" class="btn" style="margin-top:0.45rem;height:32px;background:rgba(220,38,38,0.14);border:1px solid rgba(220,38,38,0.35);color:#f87171;font-weight:700;font-size:0.75rem;border-radius:8px;cursor:pointer;width:100%;" onclick="deleteWeddingWebsitePrompt('${safeId}')">🗑️ DELETE WEBSITE</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function autoFillWeddingSlug() {
+  const editId = document.getElementById('wed-edit-id')?.value;
+  if (editId) return;
+  const g = (document.getElementById('wed-groom-name')?.value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const b = (document.getElementById('wed-bride-name')?.value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const slugInput = document.getElementById('wed-slug');
+  if (slugInput && (g || b)) {
+    slugInput.value = [g, 'weds', b].filter(Boolean).join('-');
+  }
+}
+
+function renderWeddingEventsRows() {
+  const container = document.getElementById('wed-events-list');
+  if (!container) return;
+  if (wedEventsDraft.length === 0) {
+    container.innerHTML = `<div style="color:#94a3b8;font-size:0.82rem;padding:0.5rem;">No events added yet. Click "Auto-Fill Indian Events" or "+ Add Event".</div>`;
+    return;
+  }
+  container.innerHTML = wedEventsDraft.map((ev, idx) => `
+    <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0.65rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:0.45rem;align-items:center;">
+      <input type="text" class="form-control" placeholder="Event (Haldi/Sangeet)" value="${escapeHtml(ev.title || '')}" oninput="wedEventsDraft[${idx}].title=this.value">
+      <input type="text" class="form-control" placeholder="Date (14 Feb)" value="${escapeHtml(ev.date || '')}" oninput="wedEventsDraft[${idx}].date=this.value">
+      <input type="text" class="form-control" placeholder="Time (11:00 AM)" value="${escapeHtml(ev.time || '')}" oninput="wedEventsDraft[${idx}].time=this.value">
+      <input type="text" class="form-control" placeholder="Venue / Lawn" value="${escapeHtml(ev.venue || '')}" oninput="wedEventsDraft[${idx}].venue=this.value">
+      <input type="text" class="form-control" placeholder="Dress Code (Yellow)" value="${escapeHtml(ev.dressCode || '')}" oninput="wedEventsDraft[${idx}].dressCode=this.value">
+      <button type="button" class="btn" style="background:rgba(220,38,38,0.2);color:#fca5a5;border:none;border-radius:6px;height:36px;cursor:pointer;" onclick="wedEventsDraft.splice(${idx},1);renderWeddingEventsRows()">✕ Remove</button>
+    </div>
+  `).join('');
+}
+
+function addWeddingEventRow(preset = {}) {
+  wedEventsDraft.push({
+    title: preset.title || '',
+    date: preset.date || '',
+    time: preset.time || '',
+    venue: preset.venue || '',
+    dressCode: preset.dressCode || ''
+  });
+  renderWeddingEventsRows();
+}
+
+function loadDefaultIndianWeddingEvents() {
+  const venue = document.getElementById('wed-venue-name')?.value.trim() || 'Grand Wedding Lawn';
+  wedEventsDraft = [
+    { title: '🌼 Haldi Ceremony', date: '', time: '10:30 AM', venue: venue + ' Poolside', dressCode: 'Yellow Festive' },
+    { title: '🌿 Mehndi & Sangeet', date: '', time: '6:30 PM', venue: venue + ' Ballroom', dressCode: 'Emerald & Gold' },
+    { title: '👑 Shubh Vivah & Baraat', date: document.getElementById('wed-date')?.value || '', time: '7:30 PM', venue: venue, dressCode: 'Royal Traditional' },
+    { title: '🥂 Grand Reception', date: '', time: '8:00 PM', venue: venue + ' Banquet', dressCode: 'Evening Glamour' }
+  ];
+  renderWeddingEventsRows();
+}
+
+function renderWeddingGalleryThumbs() {
+  const box = document.getElementById('wed-gallery-thumbs');
+  if (!box) return;
+  box.innerHTML = wedGalleryDraft.map((url, idx) => `
+    <div style="position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid rgba(212,175,55,0.4);">
+      <img src="${escapeHtml(url)}" style="width:100%;height:100%;object-fit:cover;">
+      <button type="button" onclick="wedGalleryDraft.splice(${idx},1);renderWeddingGalleryThumbs()" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;border:none;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;cursor:pointer;line-height:1;">&times;</button>
+    </div>
+  `).join('');
+}
+
+async function uploadWeddingPhotoFile(file, hiddenInputId, previewId) {
+  if (!file) return;
+  const preview = document.getElementById(previewId);
+  if (preview) preview.textContent = '⏳ Uploading photo...';
+  try {
+    const slug = document.getElementById('wed-slug')?.value.trim() || 'wedding';
+    const headers = getAdminStudioHeaders({
+      'X-Filename': encodeURIComponent(file.name),
+      'X-Wedding-Slug': encodeURIComponent(slug)
+    });
+    const res = await fetch(`${API_BASE}/api/wedding-websites/upload-photo`, {
+      method: 'POST',
+      headers,
+      body: file
+    });
+    const data = await res.json();
+    if (data.success && data.url) {
+      const hidden = document.getElementById(hiddenInputId);
+      if (hidden) hidden.value = data.url;
+      if (preview) preview.innerHTML = `<span style="color:#4ade80;">✔ Uploaded</span> <img src="${escapeHtml(data.url)}" style="height:24px;width:24px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-left:6px;">`;
+    } else {
+      if (preview) preview.textContent = '❌ Upload failed';
+    }
+  } catch (e) {
+    if (preview) preview.textContent = '❌ Error uploading';
+  }
+}
+
+async function uploadWeddingGalleryFiles(files) {
+  if (!files || !files.length) return;
+  const slug = document.getElementById('wed-slug')?.value.trim() || 'wedding';
+  if (window.api?.showToast) window.api.showToast(`Uploading ${files.length} photo(s)...`, 'info');
+  for (const file of Array.from(files)) {
+    try {
+      const res = await fetch(`${API_BASE}/api/wedding-websites/upload-photo`, {
+        method: 'POST',
+        headers: getAdminStudioHeaders({
+          'X-Filename': encodeURIComponent(file.name),
+          'X-Wedding-Slug': encodeURIComponent(slug)
+        }),
+        body: file
+      });
+      const data = await res.json();
+      if (data.success && data.url) {
+        wedGalleryDraft.push(data.url);
+        renderWeddingGalleryThumbs();
+      }
+    } catch (e) {}
+  }
+}
+
+function openWeddingWebsiteBuilder(encodedId = '') {
+  const id = encodedId ? decodeURIComponent(encodedId) : '';
+  const site = id ? allWeddingWebsites.find(w => w.id === id) : null;
+
+  document.getElementById('wed-edit-id').value = site ? site.id : '';
+  document.getElementById('wed-modal-title').textContent = site ? `✏️ Edit Wedding Website — ${site.groomName} & ${site.brideName}` : '💒 Create Wedding Website';
+
+  const themeVal = site?.theme || 'royal';
+  document.querySelectorAll('input[name="wed-theme"]').forEach(r => { r.checked = (r.value === themeVal); });
+
+  document.getElementById('wed-groom-name').value = site?.groomName || '';
+  document.getElementById('wed-bride-name').value = site?.brideName || '';
+  document.getElementById('wed-date').value = site?.weddingDate || '';
+  document.getElementById('wed-time').value = site?.weddingTime || '7:30 PM Onwards';
+  document.getElementById('wed-slug').value = site?.slug || '';
+  document.getElementById('wed-hashtag').value = site?.hashtag || '';
+  document.getElementById('wed-groom-parents').value = site?.groomParents || '';
+  document.getElementById('wed-bride-parents').value = site?.brideParents || '';
+  document.getElementById('wed-welcome-note').value = site?.welcomeNote || '';
+  document.getElementById('wed-our-story').value = site?.ourStory || '';
+  document.getElementById('wed-venue-name').value = site?.venueName || '';
+  document.getElementById('wed-venue-address').value = site?.venueAddress || '';
+  document.getElementById('wed-map-url').value = site?.mapUrl || '';
+  document.getElementById('wed-bg-music').value = site?.bgMusic || 'romantic';
+  document.getElementById('wed-rsvp-enabled').checked = site ? (site.rsvpEnabled !== false) : true;
+
+  document.getElementById('wed-cover-url').value = site?.coverPhoto || '';
+  document.getElementById('wed-cover-preview').innerHTML = site?.coverPhoto ? `<span style="color:#4ade80;">✔ Saved</span>` : 'No cover uploaded yet';
+  document.getElementById('wed-groom-photo').value = site?.groomPhoto || '';
+  document.getElementById('wed-groom-preview').innerHTML = site?.groomPhoto ? `<span style="color:#4ade80;">✔ Saved</span>` : 'Optional portrait';
+  document.getElementById('wed-bride-photo').value = site?.bridePhoto || '';
+  document.getElementById('wed-bride-preview').innerHTML = site?.bridePhoto ? `<span style="color:#4ade80;">✔ Saved</span>` : 'Optional portrait';
+
+  wedGalleryDraft = Array.isArray(site?.galleryPhotos) ? [...site.galleryPhotos] : [];
+  renderWeddingGalleryThumbs();
+
+  wedEventsDraft = Array.isArray(site?.events) && site.events.length ? site.events.map(e => ({ ...e })) : [];
+  renderWeddingEventsRows();
+
+  openModal('wedding-website-modal');
+}
+
+async function saveWeddingWebsite(event) {
+  event.preventDefault();
+  const btn = document.getElementById('wed-save-btn');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Publishing...'; }
+
+  try {
+    const selectedTheme = document.querySelector('input[name="wed-theme"]:checked')?.value || 'royal';
+    const payload = {
+      id: document.getElementById('wed-edit-id').value || undefined,
+      theme: selectedTheme,
+      groomName: document.getElementById('wed-groom-name').value.trim(),
+      brideName: document.getElementById('wed-bride-name').value.trim(),
+      weddingDate: document.getElementById('wed-date').value,
+      weddingTime: document.getElementById('wed-time').value.trim(),
+      slug: document.getElementById('wed-slug').value.trim(),
+      hashtag: document.getElementById('wed-hashtag').value.trim(),
+      groomParents: document.getElementById('wed-groom-parents').value.trim(),
+      brideParents: document.getElementById('wed-bride-parents').value.trim(),
+      welcomeNote: document.getElementById('wed-welcome-note').value.trim(),
+      ourStory: document.getElementById('wed-our-story').value.trim(),
+      coverPhoto: document.getElementById('wed-cover-url').value,
+      groomPhoto: document.getElementById('wed-groom-photo').value,
+      bridePhoto: document.getElementById('wed-bride-photo').value,
+      galleryPhotos: wedGalleryDraft,
+      events: wedEventsDraft.filter(e => (e.title || '').trim()),
+      venueName: document.getElementById('wed-venue-name').value.trim(),
+      venueAddress: document.getElementById('wed-venue-address').value.trim(),
+      mapUrl: document.getElementById('wed-map-url').value.trim(),
+      bgMusic: document.getElementById('wed-bg-music').value,
+      rsvpEnabled: document.getElementById('wed-rsvp-enabled').checked
+    };
+
+    const res = await fetch(`${API_BASE}/api/wedding-websites`, {
+      method: 'POST',
+      headers: getAdminStudioHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      if (data.requiresUpgrade) openUpgradeModal();
+      if (window.api?.showToast) window.api.showToast(data.error || 'Could not publish site', 'error');
+      return;
+    }
+
+    closeModal('wedding-website-modal');
+    if (window.api?.showToast) window.api.showToast('🎉 Wedding Website is LIVE!', 'success');
+    await loadWeddingWebsitesView();
+  } catch (err) {
+    if (window.api?.showToast) window.api.showToast('Error saving website: ' + err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+
+async function deleteWeddingWebsitePrompt(encodedId) {
+  const id = decodeURIComponent(encodedId);
+  const site = allWeddingWebsites.find(w => w.id === id);
+  if (!confirm(`Delete wedding website for ${site ? site.groomName + ' & ' + site.brideName : 'this couple'}?`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/wedding-websites/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: getAdminStudioHeaders()
+    });
+    if (res.ok) {
+      if (window.api?.showToast) window.api.showToast('Wedding website deleted.', 'success');
+      await loadWeddingWebsitesView();
+    }
+  } catch (e) {}
+}
+
+function openWeddingRsvpModal(encodedId) {
+  const id = decodeURIComponent(encodedId);
+  const site = allWeddingWebsites.find(w => w.id === id);
+  if (!site) return;
+  activeRsvpSite = site;
+
+  document.getElementById('wed-rsvp-modal-title').textContent = `📋 Guest RSVPs — ${site.groomName} & ${site.brideName}`;
+  const rsvps = site.rsvps || [];
+  const yesCount = rsvps.filter(r => r.attending === 'Yes').reduce((s, r) => s + (Number(r.guestsCount) || 1), 0);
+  const noCount = rsvps.filter(r => r.attending === 'No').length;
+
+  document.getElementById('wed-rsvp-summary').innerHTML = `
+    <span style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#4ade80;padding:5px 12px;border-radius:999px;font-size:0.8rem;font-weight:700;">✅ Confirmed Headcount: ${yesCount}</span>
+    <span style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;padding:5px 12px;border-radius:999px;font-size:0.8rem;font-weight:700;">📩 Responses: ${rsvps.length}</span>
+    <span style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.35);color:#fca5a5;padding:5px 12px;border-radius:999px;font-size:0.8rem;font-weight:700;">💐 Regrets: ${noCount}</span>
+  `;
+
+  const wrap = document.getElementById('wed-rsvp-table-wrap');
+  if (rsvps.length === 0) {
+    wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:#94a3b8;">No guest RSVPs submitted yet. Share the website link to collect RSVPs!</div>`;
+  } else {
+    wrap.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:0.84rem;">
+        <thead>
+          <tr style="border-bottom:1px solid rgba(212,175,55,0.3);color:#fde047;text-align:left;">
+            <th style="padding:8px;">Guest Name</th>
+            <th style="padding:8px;">Phone</th>
+            <th style="padding:8px;">Status</th>
+            <th style="padding:8px;">Count</th>
+            <th style="padding:8px;">Blessings</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rsvps.map(r => `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.07);">
+              <td style="padding:8px;font-weight:700;">${escapeHtml(r.guestName)}</td>
+              <td style="padding:8px;color:#94a3b8;">${escapeHtml(r.phone || '-')}</td>
+              <td style="padding:8px;">${r.attending === 'Yes' ? '✅ Yes' : (r.attending === 'No' ? '💐 No' : '🤔 Maybe')}</td>
+              <td style="padding:8px;font-weight:700;">${r.guestsCount || 1}</td>
+              <td style="padding:8px;color:#cbd5e1;">${escapeHtml(r.message || '')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  openModal('wedding-rsvp-modal');
+}
+
+function exportWeddingRsvpCsv() {
+  if (!activeRsvpSite || !(activeRsvpSite.rsvps || []).length) return;
+  const rows = [['Guest Name', 'Phone', 'Attending', 'Guests Count', 'Message', 'Submitted At']];
+  activeRsvpSite.rsvps.forEach(r => {
+    rows.push([
+      `"${(r.guestName || '').replace(/"/g, '""')}"`,
+      `"${(r.phone || '').replace(/"/g, '""')}"`,
+      `"${r.attending || ''}"`,
+      String(r.guestsCount || 1),
+      `"${(r.message || '').replace(/"/g, '""')}"`,
+      `"${r.createdAt || ''}"`
+    ]);
+  });
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${activeRsvpSite.slug || 'wedding'}-rsvps.csv`;
+  link.click();
+}
+
+function openWeddingShareModal(encodedId) {
+  const id = decodeURIComponent(encodedId);
+  const site = allWeddingWebsites.find(w => w.id === id);
+  if (!site) return;
+  activeShareSiteUrl = `${window.location.origin}/w/${encodeURIComponent(site.slug)}`;
+  activeShareCoupleText = `${site.groomName} & ${site.brideName}`;
+  document.getElementById('wed-share-couple-label').textContent = `💒 ${activeShareCoupleText}`;
+  document.getElementById('wed-share-url-input').value = activeShareSiteUrl;
+  document.getElementById('wed-share-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(activeShareSiteUrl)}`;
+  openModal('wedding-share-modal');
+}
+
+function copyWeddingLink() {
+  const input = document.getElementById('wed-share-url-input');
+  if (!input) return;
+  navigator.clipboard?.writeText(input.value).then(() => {
+    if (window.api?.showToast) window.api.showToast('🔗 Wedding Website Link Copied!', 'success');
+  }).catch(() => {
+    input.select();
+    document.execCommand('copy');
+  });
+}
+
+function shareWeddingOnWhatsApp() {
+  if (!activeShareSiteUrl) return;
+  const msg = `✨ *Shubh Vivah Digital Invitation* ✨\n\nYou are warmly invited to the wedding celebrations of *${activeShareCoupleText}*!\n\nTap below to view Events Schedule, Venue Map, Couple Gallery & Confirm RSVP:\n${activeShareSiteUrl}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+window.loadWeddingWebsitesView = loadWeddingWebsitesView;
+window.filterWeddingWebsites = filterWeddingWebsites;
+window.openWeddingWebsiteBuilder = openWeddingWebsiteBuilder;
+window.autoFillWeddingSlug = autoFillWeddingSlug;
+window.addWeddingEventRow = addWeddingEventRow;
+window.loadDefaultIndianWeddingEvents = loadDefaultIndianWeddingEvents;
+window.renderWeddingGalleryThumbs = renderWeddingGalleryThumbs;
+window.uploadWeddingPhotoFile = uploadWeddingPhotoFile;
+window.uploadWeddingGalleryFiles = uploadWeddingGalleryFiles;
+window.saveWeddingWebsite = saveWeddingWebsite;
+window.deleteWeddingWebsitePrompt = deleteWeddingWebsitePrompt;
+window.openWeddingRsvpModal = openWeddingRsvpModal;
+window.exportWeddingRsvpCsv = exportWeddingRsvpCsv;
+window.openWeddingShareModal = openWeddingShareModal;
+window.copyWeddingLink = copyWeddingLink;
+window.shareWeddingOnWhatsApp = shareWeddingOnWhatsApp;
+
 
 
