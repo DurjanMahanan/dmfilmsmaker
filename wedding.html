@@ -1095,13 +1095,19 @@
           } else if (field) {
             activeWebsiteData[field] = val;
             if (field === 'groomName') {
-              document.getElementById('hero-groom-name').textContent = val;
-              document.getElementById('groom-name-card').textContent = val;
-              document.getElementById('nav-couple-title').textContent = `${val} ♥ ${activeWebsiteData.brideName}`;
+              const heroEl = document.getElementById('hero-groom-name');
+              const cardEl = document.getElementById('groom-name-card');
+              const navEl = document.getElementById('nav-couple-title');
+              if (heroEl && heroEl !== el) heroEl.textContent = val;
+              if (cardEl && cardEl !== el) cardEl.textContent = val;
+              if (navEl && navEl !== el) navEl.textContent = `${val} ♥ ${activeWebsiteData.brideName}`;
             } else if (field === 'brideName') {
-              document.getElementById('hero-bride-name').textContent = val;
-              document.getElementById('bride-name-card').textContent = val;
-              document.getElementById('nav-couple-title').textContent = `${activeWebsiteData.groomName} ♥ ${val}`;
+              const heroEl = document.getElementById('hero-bride-name');
+              const cardEl = document.getElementById('bride-name-card');
+              const navEl = document.getElementById('nav-couple-title');
+              if (heroEl && heroEl !== el) heroEl.textContent = val;
+              if (cardEl && cardEl !== el) cardEl.textContent = val;
+              if (navEl && navEl !== el) navEl.textContent = `${activeWebsiteData.groomName} ♥ ${val}`;
             }
           }
           notifyParentDraft();
