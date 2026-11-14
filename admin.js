@@ -16,6 +16,7 @@ let isUploadPaused = false;
 let currentStudio = null;
 let autoCopyTargetClientId = null;
 let selectedLocalDirHandle = null;
+let selectedNativeFiles = null;
 
 function getAdminStudioHeaders(extraHeaders = {}) {
   const headers = { ...extraHeaders };
@@ -1894,6 +1895,7 @@ function exportSelectionsCSV(clientId) {
 function openAutoCopyModal(clientId) {
   autoCopyTargetClientId = clientId;
   selectedLocalDirHandle = null;
+  selectedNativeFiles = null;
   const client = allClients.find(c => c.id === clientId || c.code === clientId);
   if (!client) return;
 
@@ -1904,7 +1906,11 @@ function openAutoCopyModal(clientId) {
   }
 
   const pathInput = document.getElementById('original-folder-path');
-  if (pathInput) pathInput.value = '';
+  if (pathInput) {
+    pathInput.value = '';
+    delete pathInput.dataset.hasHandle;
+    delete pathInput.dataset.filesCount;
+  }
 
   const resEl = document.getElementById('auto-copy-result');
   if (resEl) resEl.style.display = 'none';
@@ -1918,36 +1924,46 @@ function openAutoCopyModal(clientId) {
 async function browseOriginalFolder() {
   const pathInput = document.getElementById('original-folder-path');
 
-  try {
-    if (window.showDirectoryPicker) {
+  // Priority 1: Native showDirectoryPicker for modern desktop Chrome/Edge
+  if (window.showDirectoryPicker) {
+    try {
       selectedLocalDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
       if (selectedLocalDirHandle) {
+        selectedNativeFiles = null;
         if (pathInput) {
           pathInput.value = `Selected Folder: [ ${selectedLocalDirHandle.name} ]`;
           pathInput.dataset.hasHandle = 'true';
         }
-        window.api.showToast(`Selected folder: ${selectedLocalDirHandle.name}`, 'success');
+        window.api.showToast(`✔ Folder selected: ${selectedLocalDirHandle.name}`, 'success');
+        return;
       }
-    } else {
-      document.getElementById('native-folder-input')?.click();
+    } catch (err) {
+      if (err.name === 'AbortError') return; // User closed picker dialog
+      console.warn('showDirectoryPicker failed, falling back to folder input:', err);
     }
-  } catch (err) {
-    if (err.name !== 'AbortError') {
-      document.getElementById('native-folder-input')?.click();
-    }
+  }
+
+  // Priority 2: Fallback to webkitdirectory native input
+  const folderInput = document.getElementById('native-folder-input');
+  if (folderInput) {
+    folderInput.value = '';
+    folderInput.click();
   }
 }
 
 function handleNativeFolderSelect(files) {
   const pathInput = document.getElementById('original-folder-path');
   if (files && files.length > 0) {
+    selectedNativeFiles = Array.from(files);
+    selectedLocalDirHandle = null;
     const firstFile = files[0];
-    const folderName = firstFile.webkitRelativePath.split('/')[0] || 'Selected Folder';
+    const folderName = (firstFile.webkitRelativePath ? firstFile.webkitRelativePath.split('/')[0] : '') || 'Selected Folder';
     if (pathInput) {
-      pathInput.value = folderName;
+      pathInput.value = `Selected Folder: [ ${folderName} ] (${files.length} files detected)`;
+      pathInput.dataset.hasHandle = 'native';
       pathInput.dataset.filesCount = files.length;
     }
-    window.api.showToast(`Selected folder with ${files.length} photos`, 'success');
+    window.api.showToast(`✔ Selected folder: ${folderName} (${files.length} files)`, 'success');
   }
 }
 
@@ -1964,11 +1980,21 @@ async function executeAutoCopy() {
   const substatusText = document.getElementById('auto-copy-substatus');
 
   const client = allClients.find(c => c.id === autoCopyTargetClientId || c.code === autoCopyTargetClientId);
-  if (!client) return;
+  if (!client) {
+    window.api.showToast('Client not found', 'error');
+    return;
+  }
 
   const selectedPhotos = client.photos?.filter(p => client.selectedPhotoIds?.includes(p.id)) || [];
   if (selectedPhotos.length === 0) {
     window.api.showToast('No photos selected by client yet', 'error');
+    return;
+  }
+
+  // If no folder selected yet, prompt user directly
+  if (!selectedLocalDirHandle && (!selectedNativeFiles || selectedNativeFiles.length === 0) && !manualPath) {
+    window.api.showToast('⚠️ Please click "📁 Browse Folder" to select your photos folder first!', 'warning');
+    browseOriginalFolder();
     return;
   }
 
@@ -1983,6 +2009,7 @@ async function executeAutoCopy() {
   if (statusText) statusText.textContent = 'Scanning camera folder...';
   if (substatusText) substatusText.textContent = `0 / ${selectedPhotos.length} photos`;
 
+  // Branch A: Modern File System Access API (showDirectoryPicker)
   if (selectedLocalDirHandle) {
     try {
       const clientSafeName = (client.name || 'Client')
@@ -2031,10 +2058,10 @@ async function executeAutoCopy() {
         // Yield to browser UI thread to smoothly animate progress bar
         await new Promise(r => setTimeout(r, 10));
 
-        const targetBaseName = p.name.split('.')[0].toLowerCase();
+        const targetBaseName = p.name.split('.')[0].toLowerCase().trim();
         const matchedEntry = allDiskFiles.find(f => {
-          const entryBase = f.name.split('.')[0].toLowerCase();
-          return entryBase === targetBaseName || f.name.toLowerCase() === p.name.toLowerCase();
+          const entryBase = f.name.split('.')[0].toLowerCase().trim();
+          return entryBase === targetBaseName || f.name.toLowerCase().trim() === p.name.toLowerCase().trim();
         });
 
         if (matchedEntry) {
@@ -2149,6 +2176,47 @@ async function executeAutoCopy() {
     return;
   }
 
+  // Branch B: If browser only provided File objects via webkitdirectory input
+  if (selectedNativeFiles && selectedNativeFiles.length > 0) {
+    try {
+      if (statusText) statusText.textContent = 'Preparing files download...';
+      let copiedCount = 0;
+      const totalToCopy = selectedPhotos.length;
+      for (const p of selectedPhotos) {
+        const targetBase = p.name.split('.')[0].toLowerCase().trim();
+        const matched = selectedNativeFiles.find(f => {
+          const fBase = f.name.split('.')[0].toLowerCase().trim();
+          return fBase === targetBase || f.name.toLowerCase().trim() === p.name.toLowerCase().trim();
+        });
+        if (matched) {
+          copiedCount++;
+          // Trigger browser file download
+          const blobUrl = URL.createObjectURL(matched);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = matched.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+          await new Promise(r => setTimeout(r, 150));
+        }
+      }
+      if (statusText) statusText.textContent = '✔ Download triggered!';
+      if (percentText) percentText.textContent = '100%';
+      if (progressFill) progressFill.style.width = '100%';
+      window.api.showToast(`✔ Downloaded ${copiedCount} photos directly to your computer!`, 'success');
+    } catch (err) {
+      console.error('Native copy error:', err);
+      window.api.showToast('Error: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '⚡ Start Auto-Copy & Separate Folder';
+    }
+    return;
+  }
+
+  // Branch C: Server path copy (when a local folder path is typed/pasted)
   if (!manualPath) {
     window.api.showToast('Please click "📁 Browse Folder" to select your folder', 'error');
     btn.disabled = false;
