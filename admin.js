@@ -1927,14 +1927,18 @@ async function browseOriginalFolder() {
   // Priority 1: Native showDirectoryPicker for modern desktop Chrome/Edge
   if (window.showDirectoryPicker) {
     try {
-      selectedLocalDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-      if (selectedLocalDirHandle) {
+      // Calling without mode upfront avoids permission blocks and prompts during folder selection
+      const handle = await window.showDirectoryPicker();
+      if (handle) {
+        selectedLocalDirHandle = handle;
         selectedNativeFiles = null;
         if (pathInput) {
-          pathInput.value = `Selected Folder: [ ${selectedLocalDirHandle.name} ]`;
+          pathInput.value = handle.name;
           pathInput.dataset.hasHandle = 'true';
         }
-        window.api.showToast(`✔ Folder selected: ${selectedLocalDirHandle.name}`, 'success');
+        if (window.api && window.api.showToast) {
+          window.api.showToast(`✔ Folder selected: ${handle.name}`, 'success');
+        }
         return;
       }
     } catch (err) {
@@ -1959,11 +1963,13 @@ function handleNativeFolderSelect(files) {
     const firstFile = files[0];
     const folderName = (firstFile.webkitRelativePath ? firstFile.webkitRelativePath.split('/')[0] : '') || 'Selected Folder';
     if (pathInput) {
-      pathInput.value = `Selected Folder: [ ${folderName} ] (${files.length} files detected)`;
+      pathInput.value = folderName;
       pathInput.dataset.hasHandle = 'native';
       pathInput.dataset.filesCount = files.length;
     }
-    window.api.showToast(`✔ Selected folder: ${folderName} (${files.length} files)`, 'success');
+    if (window.api && window.api.showToast) {
+      window.api.showToast(`✔ Selected folder: ${folderName} (${files.length} files)`, 'success');
+    }
   }
 }
 
@@ -2012,6 +2018,21 @@ async function executeAutoCopy() {
   // Branch A: Modern File System Access API (showDirectoryPicker)
   if (selectedLocalDirHandle) {
     try {
+      // Ensure write permission is granted
+      if (selectedLocalDirHandle.queryPermission) {
+        let perm = await selectedLocalDirHandle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') {
+          perm = await selectedLocalDirHandle.requestPermission({ mode: 'readwrite' });
+        }
+        if (perm !== 'granted') {
+          window.api.showToast('Write permission required to create folder and copy photos', 'warning');
+          btn.disabled = false;
+          btn.innerHTML = '⚡ Start Auto-Copy & Separate Folder';
+          if (progressWrap) progressWrap.style.display = 'none';
+          return;
+        }
+      }
+
       const clientSafeName = (client.name || 'Client')
         .replace(/&/g, 'and')
         .replace(/[^a-zA-Z0-9_-]/g, '_')
