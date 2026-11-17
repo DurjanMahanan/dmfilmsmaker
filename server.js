@@ -5351,15 +5351,11 @@ async function syncClientPhotosFromDrive(client, db) {
       filePath = path.join(__dirname, 'wedding.html');
     }
 
-    // Auto-resolve admin.js whether uploaded to root or in js/ folder
+    // Auto-resolve admin.js whether uploaded to root or in js/ folder (Always prioritize root admin.js)
     if (decodedPath === '/js/admin.js' || decodedPath === '/admin.js') {
       const rootAdmin = path.join(__dirname, 'admin.js');
       const jsAdmin = path.join(__dirname, 'js', 'admin.js');
-      if (fs.existsSync(rootAdmin) && fs.existsSync(jsAdmin)) {
-        const rootMtime = fs.statSync(rootAdmin).mtimeMs;
-        const jsMtime = fs.statSync(jsAdmin).mtimeMs;
-        filePath = rootMtime >= jsMtime ? rootAdmin : jsAdmin;
-      } else if (fs.existsSync(rootAdmin)) {
+      if (fs.existsSync(rootAdmin)) {
         filePath = rootAdmin;
       } else if (fs.existsSync(jsAdmin)) {
         filePath = jsAdmin;
